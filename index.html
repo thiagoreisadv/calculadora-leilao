@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Leilões Imobiliários</title>
+    
+    <!-- Tailwind CSS (Estilos) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'media',
+        theme: { extend: {} }
+      }
+    </script>
+
+    <!-- React (Lógica) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (Para traduzir o código JSX no navegador) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* Ajustes extras para impressão no PDF */
+        @media print {
+            body { background: white !important; }
+            .print\:hidden { display: none !important; }
+            .print\:text-black { color: black !important; }
+            .print\:bg-white { background: white !important; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Onde o App vai ser renderizado -->
+    <div id="root"></div>
+
+    <!-- Script do Aplicativo -->
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Ícones Simples via SVG
+        const Building = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2Z"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2Z"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>;
+        const Percent = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>;
+        const Wallet = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9"/></svg>;
+        const TrendingUp = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
+        const CheckCircle = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+        const AlertCircle = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+        const Printer = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>;
+
+        const formatMoney = (value) => {
+          if (value === '' || value === undefined || value === null) return 'R$ 0,00';
+          return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        };
+
+        const formatNumber = (value) => {
+          if (value === '' || value === undefined || value === null) return '0';
+          return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value);
+        };
+
+        const MoneyInput = ({ label, value, onChange, placeholder }) => (
+          <div className="mb-4">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
+            <div className="relative rounded-xl shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-slate-500 font-medium sm:text-sm">R$</span>
+              </div>
+              <input
+                type="number" min="0" value={value === '' ? '' : value}
+                onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                className="block w-full pl-10 pr-4 py-2.5 sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all hover:border-slate-300 dark:hover:border-slate-600"
+                placeholder={placeholder || "0,00"}
+              />
+            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-2 ml-1 font-medium h-4">
+               {value !== '' && formatMoney(value)}
+            </div>
+          </div>
+        );
+
+        const TaxInput = ({ label, value, onChangeValue, type, onChangeType, description, disabled }) => (
+          <div className="mb-4">
+            <div className="flex justify-between items-end mb-1.5">
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
+              {!disabled && (
+                <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-0.5">
+                  <button onClick={() => onChangeType('percent')} className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-md transition-colors ${type === 'percent' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>%</button>
+                  <button onClick={() => onChangeType('fixed')} className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-md transition-colors ${type === 'fixed' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}>R$</button>
+                </div>
+              )}
+            </div>
+            <div className="relative rounded-xl shadow-sm">
+              {(type === 'fixed' || disabled) && (
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <span className="text-slate-500 font-medium sm:text-sm">R$</span>
+                </div>
+              )}
+              <input
+                type="number" min="0" disabled={disabled} step={type === 'percent' ? "0.1" : "1"} value={value === '' ? '' : value}
+                onChange={(e) => onChangeValue(e.target.value === '' ? '' : Number(e.target.value))}
+                className={`block w-full ${(type === 'fixed' || disabled) ? 'pl-10 pr-4' : 'pl-4 pr-10'} py-2.5 sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all hover:border-slate-300 dark:hover:border-slate-600 disabled:opacity-75`}
+                placeholder="0"
+              />
+              {type === 'percent' && !disabled && (
+                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                  <span className="text-slate-500 font-medium sm:text-sm">%</span>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-between items-center mt-1.5 ml-1 h-4">
+              {description && <div className="text-[11px] text-slate-500">{description}</div>}
+              {(type === 'fixed' || disabled) && value !== '' && <div className="text-[11px] text-slate-500 font-medium">{formatMoney(value)}</div>}
+            </div>
+          </div>
+        );
+
+        const Card = ({ title, icon: Icon, children, extraHeader }) => (
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800/80 shadow-md shadow-slate-100/50 dark:shadow-none p-6 relative">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                {Icon && <Icon className="w-5 h-5 text-indigo-500" />}
+                {title}
+              </h3>
+              {extraHeader}
+            </div>
+            {children}
+          </div>
+        );
+
+        function AuctionCalculator() {
+          const [evaluationValue, setEvaluationValue] = useState(500000);
+          const [bidValue, setBidValue] = useState(250000);
+          const [cartorioMode, setCartorioMode] = useState('pr');
+          const [leiloeiro, setLeiloeiro] = useState({ value: 5, type: 'percent' });
+          const [itbi, setItbi] = useState({ value: 3, type: 'percent' });
+          const [cartorioManual, setCartorioManual] = useState({ value: 2, type: 'percent' });
+          const [legal, setLegal] = useState({ value: 5, type: 'percent' });
+          const [debts, setDebts] = useState(15000);
+          const [renovation, setRenovation] = useState(30000);
+          const [eviction, setEviction] = useState(0);
+
+          const safeNumber = (val) => (val === '' ? 0 : Number(val));
+          const evalVal = safeNumber(evaluationValue);
+          const bidVal = safeNumber(bidValue);
+
+          // PR Logic
+          const obterEmolumentoPR = (valorLance) => {
+            if (valorLance <= 56000) return 349.02;
+            if (valorLance <= 66000) return 411.34;
+            if (valorLance <= 76000) return 473.67;
+            if (valorLance <= 86000) return 535.99;
+            if (valorLance <= 96000) return 598.32;
+            if (valorLance <= 106000) return 660.64;
+            if (valorLance <= 116000) return 722.97;
+            if (valorLance <= 126000) return 785.29;
+            if (valorLance <= 136000) return 847.62;
+            if (valorLance <= 146000) return 909.94;
+            if (valorLance <= 156000) return 972.27;
+            if (valorLance <= 166000) return 1011.60;
+            if (valorLance <= 176000) return 1072.54;
+            if (valorLance <= 186000) return 1133.48;
+            if (valorLance <= 196000) return 1194.42;
+            return 1377.24; 
+          };
+
+          const emolumentoBase = obterEmolumentoPR(bidVal);
+          const fadepRegistro = Math.round((emolumentoBase * 0.05) * 100) / 100;
+          const seloRegistro = 8.00;
+          const subtotalPrenotacao = 3.85; 
+          const subtotalArquivamento = 2.78;
+          const funrejusCalculado = bidVal * 0.002;
+          const tetoFunrejus = 53 * 139.79;
+          const funrejusFinal = funrejusCalculado > tetoFunrejus ? tetoFunrejus : funrejusCalculado;
+          const issFinal = (emolumentoBase + 2.77 + 1.94) * 0.03;
+          const custoCartorioPR = emolumentoBase + fadepRegistro + seloRegistro + subtotalPrenotacao + subtotalArquivamento + funrejusFinal + issFinal;
+
+          const calcTax = (taxState, baseValue) => {
+            const val = safeNumber(taxState.value);
+            if (taxState.type === 'percent') return baseValue * (val / 100);
+            return val;
+          };
+
+          const leiloeiroCost = calcTax(leiloeiro, bidVal);
+          const itbiCost = calcTax(itbi, bidVal);
+          const legalCost = calcTax(legal, bidVal);
+          const cartorioCost = cartorioMode === 'pr' ? custoCartorioPR : calcTax(cartorioManual, bidVal);
+
+          const totalTaxesAndFees = leiloeiroCost + itbiCost + cartorioCost + legalCost;
+          const totalFixedCosts = safeNumber(debts) + safeNumber(renovation) + safeNumber(eviction);
+          
+          const finalTotal = bidVal + totalTaxesAndFees + totalFixedCosts;
+          const netProfit = evalVal - finalTotal;
+          const roi = finalTotal > 0 ? (netProfit / finalTotal) * 100 : 0;
+
+          const totalBudget = finalTotal > 0 ? finalTotal : 1;
+          const bidPercentage = (bidVal / totalBudget) * 100;
+          const taxesPercentage = (totalTaxesAndFees / totalBudget) * 100;
+          const extrasPercentage = (totalFixedCosts / totalBudget) * 100;
+
+          const getRoiStatus = (roiVal) => {
+            if (netProfit < 0) return { text: "Prejuízo Detectado", color: "text-rose-600 bg-rose-50 dark:bg-rose-950/30 border-rose-200" };
+            if (roiVal < 15) return { text: "Margem Baixa", color: "text-amber-600 bg-amber-50 dark:bg-amber-950/30 border-amber-200" };
+            return { text: "Excelente Oportunidade", color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200" };
+          };
+
+          const roiStatus = getRoiStatus(roi);
+
+          return (
+            <div className="min-h-screen bg-slate-50 dark:bg-slate-950 print:bg-white print:text-black font-sans text-slate-900 dark:text-slate-100 pb-20 selection:bg-indigo-200 dark:selection:bg-indigo-900">
+              <div className="bg-white dark:bg-slate-900 print:hidden border-b border-slate-200 dark:border-slate-800 pt-12 pb-16 px-4">
+                <div className="max-w-7xl mx-auto text-center">
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 tracking-widest uppercase bg-indigo-50 dark:bg-indigo-950/60 px-3 py-1 rounded-full">Simulador Inteligente</span>
+                  <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white mt-3 mb-4 tracking-tight">Calculadora de Leilões Imobiliários</h1>
+                  <p className="text-base text-slate-600 dark:text-slate-400 max-w-2xl mx-auto font-medium">Simule sua arrematação e descubra a verdadeira viabilidade do seu investimento, com regras do PR integradas.</p>
+                </div>
+              </div>
+
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 print:mt-4 print:max-w-none">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  <div className="lg:col-span-5 space-y-6 print:hidden">
+                    <Card title="Valores Principais" icon={Building}>
+                      <MoneyInput label="Valor de Avaliação (Mercado)" value={evaluationValue} onChange={setEvaluationValue} />
+                      <div className="mt-2">
+                        <MoneyInput label="Valor do Lance Pretendido" value={bidValue} onChange={setBidValue} />
+                        <div className="grid grid-cols-3 gap-2 mt-2">
+                          <button onClick={() => setBidValue(evalVal * 1.0)} className="py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors">1ª Praça (100%)</button>
+                          <button onClick={() => setBidValue(Math.round(evalVal * 0.6))} className="py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors">2ª Praça (60%)</button>
+                          <button onClick={() => setBidValue(Math.round(evalVal * 0.5))} className="py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors">Mínimo (50%)</button>
+                        </div>
+                      </div>
+                    </Card>
+
+                    <Card title="Taxas e Comissões" icon={Percent} extraHeader={<div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/50 dark:border-slate-700"><button onClick={() => setCartorioMode('pr')} className={`px-2 py-1 text-xs font-bold rounded-md transition-all ${cartorioMode === 'pr' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'}`}>Auto PR</button><button onClick={() => setCartorioMode('manual')} className={`px-2 py-1 text-xs font-bold rounded-md transition-all ${cartorioMode === 'manual' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'}`}>Manual</button></div>}>
+                      <div className="grid grid-cols-2 gap-4">
+                        <TaxInput label="Comissão Leiloeiro" value={leiloeiro.value} type={leiloeiro.type} onChangeValue={(val) => setLeiloeiro({ ...leiloeiro, value: val })} onChangeType={(t) => setLeiloeiro({ ...leiloeiro, type: t })} description="Padrão: 5%" />
+                        <TaxInput label="ITBI (Imposto)" value={itbi.value} type={itbi.type} onChangeValue={(val) => setItbi({ ...itbi, value: val })} onChangeType={(t) => setItbi({ ...itbi, type: t })} description="Varia de 2% a 3%" />
+                        {cartorioMode === 'pr' ? (
+                          <TaxInput label="Registro de Imóveis" value={Math.round(cartorioCost * 100) / 100} type="fixed" disabled description="Calculado via Lei 21.869-PR" />
+                        ) : (
+                          <TaxInput label="Registro de Imóveis" value={cartorioManual.value} type={cartorioManual.type} onChangeValue={(val) => setCartorioManual({ ...cartorioManual, value: val })} onChangeType={(t) => setCartorioManual({ ...cartorioManual, type: t })} description="Custas cartorárias manuais" />
+                        )}
+                        <TaxInput label="Assessoria Jurídica" value={legal.value} type={legal.type} onChangeValue={(val) => setLegal({ ...legal, value: val })} onChangeType={(t) => setLegal({ ...legal, type: t })} description="Honorários advocatícios" />
+                      </div>
+                    </Card>
+
+                    <Card title="Passivos e Extras (R$)" icon={Wallet}>
+                      <div className="space-y-1">
+                        <MoneyInput label="Dívidas de Condomínio / IPTU" value={debts} onChange={setDebts} />
+                        <MoneyInput label="Reforma Estimada" value={renovation} onChange={setRenovation} />
+                        <MoneyInput label="Custos de Desocupação / Liminares" value={eviction} onChange={setEviction} />
+                      </div>
+                    </Card>
+                  </div>
+
+                  <div className="lg:col-span-7 print:col-span-12 print:w-full">
+                    <div className="sticky top-8 space-y-6 print:space-y-8">
+                      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 print:border-slate-300 shadow-xl overflow-hidden relative">
+                        <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-indigo-500 to-blue-500 print:hidden"></div>
+                        <div className="p-8 sm:p-10">
+                          <div className="grid grid-cols-2 gap-6 items-center">
+                            <div>
+                              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Custo Total da Compra</span>
+                              <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-1 block">{formatMoney(finalTotal)}</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Lucro Líquido Estimado</span>
+                              <span className={`text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 block ${netProfit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>{formatMoney(netProfit)}</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-8 mb-6">
+                            <div className="flex h-3.5 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 shadow-inner">
+                              <div style={{ width: `${bidPercentage}%` }} className="bg-indigo-500 transition-all"></div>
+                              <div style={{ width: `${taxesPercentage}%` }} className="bg-rose-400 transition-all"></div>
+                              <div style={{ width: `${extrasPercentage}%` }} className="bg-amber-400 transition-all"></div>
+                            </div>
+                            <div className="flex flex-wrap text-xs font-semibold gap-4 justify-between mt-3">
+                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500 print:print-color-adjust-exact"></span>Lance ({formatNumber(bidPercentage)}%)</div>
+                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-rose-400 print:print-color-adjust-exact"></span>Taxas/Impostos ({formatNumber(taxesPercentage)}%)</div>
+                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 print:print-color-adjust-exact"></span>Passivos/Reformas ({formatNumber(extrasPercentage)}%)</div>
+                            </div>
+                          </div>
+
+                          <div className={`p-4 rounded-xl border flex items-center justify-between ${roiStatus.color}`}>
+                            <div className="flex items-center gap-2.5">
+                              <TrendingUp className="w-5 h-5" />
+                              <div>
+                                <span className="text-xs opacity-80 block font-medium">Retorno Estimado (ROI)</span>
+                                <span className="text-base font-bold">{formatNumber(roi)}%</span>
+                              </div>
+                            </div>
+                            <span className="text-xs font-bold uppercase tracking-wider bg-white/40 dark:bg-black/20 px-2.5 py-1 rounded-md">{roiStatus.text}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-8 print:border-slate-300">
+                        <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-5 flex items-center gap-2">
+                          <CheckCircle className="w-5 h-5 text-indigo-500" />
+                          Extrato Consolidado
+                        </h4>
+                        <ul className="space-y-3.5 text-sm">
+                          <li className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">Valor Arrematado (Lance)</span>
+                            <span className="font-bold text-slate-900 dark:text-white">{formatMoney(bidVal)}</span>
+                          </li>
+                          <li className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                            <span>Comissão Leiloeiro ({leiloeiro.type === 'percent' ? `${leiloeiro.value}%` : 'Fixo'})</span>
+                            <span className="font-medium text-rose-500">+{formatMoney(leiloeiroCost)}</span>
+                          </li>
+                          <li className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                            <span>Imposto de Transmissão (ITBI) ({itbi.type === 'percent' ? `${itbi.value}%` : 'Fixo'})</span>
+                            <span className="font-medium text-rose-500">+{formatMoney(itbiCost)}</span>
+                          </li>
+                          
+                          {cartorioMode === 'pr' && (
+                            <li className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1.5 block">
+                              <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                                <span>Registro de Imóveis (Regra PR)</span>
+                                <span className="text-rose-500">+{formatMoney(cartorioCost)}</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 pl-2">
+                                <div>• Emolumento Base: {formatMoney(emolumentoBase)}</div>
+                                <div>• FADEP (5%): {formatMoney(fadepRegistro)}</div>
+                                <div>• Funrejus (0.2% Teto): {formatMoney(funrejusFinal)}</div>
+                                <div>• ISS (3%): {formatMoney(issFinal)}</div>
+                                <div>• Atos Fixos/Selo: {formatMoney(seloRegistro + subtotalPrenotacao + subtotalArquivamento)}</div>
+                              </div>
+                            </li>
+                          )}
+
+                          {cartorioMode === 'manual' && (
+                            <li className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                              <span>Custas de Cartório e Registro</span>
+                              <span className="font-medium text-rose-500">+{formatMoney(cartorioCost)}</span>
+                            </li>
+                          )}
+
+                          <li className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                            <span>Assessoria Jurídica</span>
+                            <span className="font-medium text-rose-500">+{formatMoney(legalCost)}</span>
+                          </li>
+                          <li className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                            <span>Passivos de IPTU / Condomínio</span>
+                            <span className="font-medium text-amber-500">+{formatMoney(safeNumber(debts))}</span>
+                          </li>
+                          <li className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                            <span>Reforma e Benfeitorias</span>
+                            <span className="font-medium text-amber-500">+{formatMoney(safeNumber(renovation))}</span>
+                          </li>
+                          <li className="flex justify-between items-center text-slate-600 dark:text-slate-400 pb-3 border-b border-slate-100 dark:border-slate-800">
+                            <span>Desocupação Judicial/Extrajudicial</span>
+                            <span className="font-medium text-amber-500">+{formatMoney(safeNumber(eviction))}</span>
+                          </li>
+                          <li className="flex justify-between items-center pt-2">
+                            <span className="font-bold text-slate-800 dark:text-slate-200">Total Geral Desembolsado</span>
+                            <span className="font-extrabold text-xl text-indigo-600 dark:text-indigo-400">{formatMoney(finalTotal)}</span>
+                          </li>
+                        </ul>
+
+                        {evalVal < finalTotal && (
+                          <div className="mt-5 p-4 bg-rose-50 dark:bg-rose-900/20 rounded-xl border border-rose-100 dark:border-rose-800 flex items-start gap-3">
+                             <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5 flex-shrink-0" />
+                             <p className="text-xs text-rose-800 dark:text-rose-300 font-semibold leading-relaxed">Atenção: O custo total projetado ultrapassou o valor de mercado atual.</p>
+                          </div>
+                        )}
+
+                        <button onClick={() => window.print()} className="mt-6 w-full flex items-center justify-center gap-2 py-3 px-4 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white font-bold rounded-xl transition-all shadow-md print:hidden">
+                          <Printer className="w-4 h-4" />
+                          Gerar PDF / Imprimir Relatório
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Renderiza o aplicativo na página
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AuctionCalculator />);
+    </script>
+</body>
+</html>
