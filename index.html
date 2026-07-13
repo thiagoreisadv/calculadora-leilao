@@ -22,20 +22,24 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        /* Ajustes extras para impressão no PDF */
+        /* Ajustes extras super otimizados para impressão no PDF */
         @media print {
-            body { background: white !important; }
+            @page { margin: 1cm; }
+            body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .print\:hidden { display: none !important; }
             .print\:text-black { color: black !important; }
             .print\:bg-white { background: white !important; }
+            .print\:border-slate-300 { border-color: #cbd5e1 !important; }
+            .print\:shadow-none { box-shadow: none !important; }
+            .print\:pt-2 { padding-top: 0.5rem !important; }
+            .print\:pb-4 { padding-bottom: 1rem !important; }
+            .print\:mt-0 { margin-top: 0 !important; }
         }
     </style>
 </head>
 <body>
-    <!-- Onde o App vai ser renderizado -->
     <div id="root"></div>
 
-    <!-- Script do Aplicativo -->
     <script type="text/babel">
         const { useState } = React;
 
@@ -128,23 +132,34 @@
         );
 
         function AuctionCalculator() {
-          const [evaluationValue, setEvaluationValue] = useState(500000);
-          const [bidValue, setBidValue] = useState(250000);
+          // Valores Principais (Iniciando VAZIOS conforme solicitado)
+          const [evaluationValue, setEvaluationValue] = useState('');
+          const [marketValue, setMarketValue] = useState('');
+          const [bidValue, setBidValue] = useState('');
+          
           const [cartorioMode, setCartorioMode] = useState('pr');
+          
+          // Taxas e Comissões Modulares (Pré-preenchidas e ITBI em 2%)
           const [leiloeiro, setLeiloeiro] = useState({ value: 5, type: 'percent' });
-          const [itbi, setItbi] = useState({ value: 3, type: 'percent' });
+          const [itbi, setItbi] = useState({ value: 2, type: 'percent' });
           const [cartorioManual, setCartorioManual] = useState({ value: 2, type: 'percent' });
           const [legal, setLegal] = useState({ value: 5, type: 'percent' });
-          const [debts, setDebts] = useState(15000);
-          const [renovation, setRenovation] = useState(30000);
-          const [eviction, setEviction] = useState(0);
+
+          // Passivos e Extras (Iniciando VAZIOS)
+          const [debts, setDebts] = useState('');
+          const [renovation, setRenovation] = useState('');
+          const [eviction, setEviction] = useState('');
 
           const safeNumber = (val) => (val === '' ? 0 : Number(val));
           const evalVal = safeNumber(evaluationValue);
           const bidVal = safeNumber(bidValue);
+          
+          // O Valor de Mercado será o digitado. Se estiver vazio, usa a avaliação como base matemática de segurança
+          const marketVal = marketValue !== '' ? Number(marketValue) : evalVal;
 
-          // PR Logic
+          // PR Logic (Lei 21.869/2023)
           const obterEmolumentoPR = (valorLance) => {
+            if (valorLance <= 0) return 0;
             if (valorLance <= 56000) return 349.02;
             if (valorLance <= 66000) return 411.34;
             if (valorLance <= 76000) return 473.67;
@@ -164,14 +179,14 @@
           };
 
           const emolumentoBase = obterEmolumentoPR(bidVal);
-          const fadepRegistro = Math.round((emolumentoBase * 0.05) * 100) / 100;
-          const seloRegistro = 8.00;
-          const subtotalPrenotacao = 3.85; 
-          const subtotalArquivamento = 2.78;
+          const fadepRegistro = bidVal > 0 ? Math.round((emolumentoBase * 0.05) * 100) / 100 : 0;
+          const seloRegistro = bidVal > 0 ? 8.00 : 0;
+          const subtotalPrenotacao = bidVal > 0 ? 3.85 : 0; 
+          const subtotalArquivamento = bidVal > 0 ? 2.78 : 0;
           const funrejusCalculado = bidVal * 0.002;
           const tetoFunrejus = 53 * 139.79;
-          const funrejusFinal = funrejusCalculado > tetoFunrejus ? tetoFunrejus : funrejusCalculado;
-          const issFinal = (emolumentoBase + 2.77 + 1.94) * 0.03;
+          const funrejusFinal = bidVal > 0 ? (funrejusCalculado > tetoFunrejus ? tetoFunrejus : funrejusCalculado) : 0;
+          const issFinal = bidVal > 0 ? (emolumentoBase + 2.77 + 1.94) * 0.03 : 0;
           const custoCartorioPR = emolumentoBase + fadepRegistro + seloRegistro + subtotalPrenotacao + subtotalArquivamento + funrejusFinal + issFinal;
 
           const calcTax = (taxState, baseValue) => {
@@ -189,15 +204,16 @@
           const totalFixedCosts = safeNumber(debts) + safeNumber(renovation) + safeNumber(eviction);
           
           const finalTotal = bidVal + totalTaxesAndFees + totalFixedCosts;
-          const netProfit = evalVal - finalTotal;
+          const netProfit = marketVal - finalTotal; // Lucro agora é baseado no mercado
           const roi = finalTotal > 0 ? (netProfit / finalTotal) * 100 : 0;
 
           const totalBudget = finalTotal > 0 ? finalTotal : 1;
-          const bidPercentage = (bidVal / totalBudget) * 100;
-          const taxesPercentage = (totalTaxesAndFees / totalBudget) * 100;
-          const extrasPercentage = (totalFixedCosts / totalBudget) * 100;
+          const bidPercentage = bidVal > 0 ? (bidVal / totalBudget) * 100 : 0;
+          const taxesPercentage = totalTaxesAndFees > 0 ? (totalTaxesAndFees / totalBudget) * 100 : 0;
+          const extrasPercentage = totalFixedCosts > 0 ? (totalFixedCosts / totalBudget) * 100 : 0;
 
           const getRoiStatus = (roiVal) => {
+            if (bidVal === 0) return { text: "Aguardando Lance", color: "text-slate-600 bg-slate-100 dark:bg-slate-800 border-slate-200" };
             if (netProfit < 0) return { text: "Prejuízo Detectado", color: "text-rose-600 bg-rose-50 dark:bg-rose-950/30 border-rose-200" };
             if (roiVal < 15) return { text: "Margem Baixa", color: "text-amber-600 bg-amber-50 dark:bg-amber-950/30 border-amber-200" };
             return { text: "Excelente Oportunidade", color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200" };
@@ -207,20 +223,30 @@
 
           return (
             <div className="min-h-screen bg-slate-50 dark:bg-slate-950 print:bg-white print:text-black font-sans text-slate-900 dark:text-slate-100 pb-20 selection:bg-indigo-200 dark:selection:bg-indigo-900">
-              <div className="bg-white dark:bg-slate-900 print:hidden border-b border-slate-200 dark:border-slate-800 pt-12 pb-16 px-4">
+              
+              {/* Header Otimizado */}
+              <div className="bg-white dark:bg-slate-900 print:bg-white border-b border-slate-200 dark:border-slate-800 print:border-b-0 pt-10 pb-12 print:pt-2 print:pb-4 px-4">
                 <div className="max-w-7xl mx-auto text-center">
-                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 tracking-widest uppercase bg-indigo-50 dark:bg-indigo-950/60 px-3 py-1 rounded-full">Simulador Inteligente</span>
-                  <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white mt-3 mb-4 tracking-tight">Calculadora de Leilões Imobiliários</h1>
-                  <p className="text-base text-slate-600 dark:text-slate-400 max-w-2xl mx-auto font-medium">Simule sua arrematação e descubra a verdadeira viabilidade do seu investimento, com regras do PR integradas.</p>
+                  <div className="mb-4">
+                    <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 tracking-wider uppercase bg-indigo-50 dark:bg-indigo-950/60 print:bg-transparent print:border print:border-indigo-800 print:text-black px-4 py-1.5 rounded-full shadow-sm">
+                      Thiago Reis - Assessoria Jurídica | OAB/PR 115.608
+                    </span>
+                  </div>
+                  <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white print:text-black mt-2 mb-2 tracking-tight">Simulador de Leilões Imobiliários</h1>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 max-w-2xl mx-auto font-medium print:hidden">Simule sua arrematação e descubra a verdadeira viabilidade do investimento.</p>
                 </div>
               </div>
 
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 print:mt-4 print:max-w-none">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 print:mt-0 print:max-w-none">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  
+                  {/* Coluna Esquerda: Inputs (Oculto na Impressão) */}
                   <div className="lg:col-span-5 space-y-6 print:hidden">
-                    <Card title="Valores Principais" icon={Building}>
-                      <MoneyInput label="Valor de Avaliação (Mercado)" value={evaluationValue} onChange={setEvaluationValue} />
-                      <div className="mt-2">
+                    <Card title="Valores do Imóvel" icon={Building}>
+                      <MoneyInput label="Valor de Avaliação (Edital)" value={evaluationValue} onChange={setEvaluationValue} />
+                      <MoneyInput label="Valor de Mercado (Revenda)" value={marketValue} onChange={setMarketValue} placeholder="Opcional. Se vazio, usa a avaliação." />
+                      
+                      <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                         <MoneyInput label="Valor do Lance Pretendido" value={bidValue} onChange={setBidValue} />
                         <div className="grid grid-cols-3 gap-2 mt-2">
                           <button onClick={() => setBidValue(evalVal * 1.0)} className="py-1.5 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 transition-colors">1ª Praça (100%)</button>
@@ -233,7 +259,7 @@
                     <Card title="Taxas e Comissões" icon={Percent} extraHeader={<div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/50 dark:border-slate-700"><button onClick={() => setCartorioMode('pr')} className={`px-2 py-1 text-xs font-bold rounded-md transition-all ${cartorioMode === 'pr' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'}`}>Auto PR</button><button onClick={() => setCartorioMode('manual')} className={`px-2 py-1 text-xs font-bold rounded-md transition-all ${cartorioMode === 'manual' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'}`}>Manual</button></div>}>
                       <div className="grid grid-cols-2 gap-4">
                         <TaxInput label="Comissão Leiloeiro" value={leiloeiro.value} type={leiloeiro.type} onChangeValue={(val) => setLeiloeiro({ ...leiloeiro, value: val })} onChangeType={(t) => setLeiloeiro({ ...leiloeiro, type: t })} description="Padrão: 5%" />
-                        <TaxInput label="ITBI (Imposto)" value={itbi.value} type={itbi.type} onChangeValue={(val) => setItbi({ ...itbi, value: val })} onChangeType={(t) => setItbi({ ...itbi, type: t })} description="Varia de 2% a 3%" />
+                        <TaxInput label="ITBI (Imposto)" value={itbi.value} type={itbi.type} onChangeValue={(val) => setItbi({ ...itbi, value: val })} onChangeType={(t) => setItbi({ ...itbi, type: t })} description="Prefeitura (Padrão 2%)" />
                         {cartorioMode === 'pr' ? (
                           <TaxInput label="Registro de Imóveis" value={Math.round(cartorioCost * 100) / 100} type="fixed" disabled description="Calculado via Lei 21.869-PR" />
                         ) : (
@@ -252,15 +278,16 @@
                     </Card>
                   </div>
 
+                  {/* Coluna Direita: Dashboard de Resultados (Impresso no PDF) */}
                   <div className="lg:col-span-7 print:col-span-12 print:w-full">
-                    <div className="sticky top-8 space-y-6 print:space-y-8">
-                      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 print:border-slate-300 shadow-xl overflow-hidden relative">
+                    <div className="sticky top-6 space-y-6 print:space-y-4">
+                      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 print:border-slate-300 print:shadow-none shadow-xl overflow-hidden relative">
                         <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-indigo-500 to-blue-500 print:hidden"></div>
-                        <div className="p-8 sm:p-10">
+                        <div className="p-8 sm:p-10 print:p-6">
                           <div className="grid grid-cols-2 gap-6 items-center">
                             <div>
                               <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Custo Total da Compra</span>
-                              <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-1 block">{formatMoney(finalTotal)}</span>
+                              <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white print:text-black tracking-tight mt-1 block">{formatMoney(finalTotal)}</span>
                             </div>
                             <div className="text-right">
                               <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Lucro Líquido Estimado</span>
@@ -268,20 +295,20 @@
                             </div>
                           </div>
 
-                          <div className="mt-8 mb-6">
-                            <div className="flex h-3.5 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 shadow-inner">
-                              <div style={{ width: `${bidPercentage}%` }} className="bg-indigo-500 transition-all"></div>
-                              <div style={{ width: `${taxesPercentage}%` }} className="bg-rose-400 transition-all"></div>
-                              <div style={{ width: `${extrasPercentage}%` }} className="bg-amber-400 transition-all"></div>
+                          <div className="mt-8 mb-6 print:mt-6 print:mb-4">
+                            <div className="flex h-3.5 w-full rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 print:border print:border-slate-300 shadow-inner">
+                              <div style={{ width: `${bidPercentage}%` }} className="bg-indigo-500 transition-all print:bg-indigo-600"></div>
+                              <div style={{ width: `${taxesPercentage}%` }} className="bg-rose-400 transition-all print:bg-rose-500"></div>
+                              <div style={{ width: `${extrasPercentage}%` }} className="bg-amber-400 transition-all print:bg-amber-500"></div>
                             </div>
                             <div className="flex flex-wrap text-xs font-semibold gap-4 justify-between mt-3">
-                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500 print:print-color-adjust-exact"></span>Lance ({formatNumber(bidPercentage)}%)</div>
-                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-rose-400 print:print-color-adjust-exact"></span>Taxas/Impostos ({formatNumber(taxesPercentage)}%)</div>
-                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 print:print-color-adjust-exact"></span>Passivos/Reformas ({formatNumber(extrasPercentage)}%)</div>
+                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500 print:bg-indigo-600 print:print-color-adjust-exact"></span>Lance ({formatNumber(bidPercentage)}%)</div>
+                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-rose-400 print:bg-rose-500 print:print-color-adjust-exact"></span>Taxas/Impostos ({formatNumber(taxesPercentage)}%)</div>
+                              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 print:bg-amber-500 print:print-color-adjust-exact"></span>Passivos/Reformas ({formatNumber(extrasPercentage)}%)</div>
                             </div>
                           </div>
 
-                          <div className={`p-4 rounded-xl border flex items-center justify-between ${roiStatus.color}`}>
+                          <div className={`p-4 rounded-xl border flex items-center justify-between ${roiStatus.color} print:bg-white print:border-slate-300 print:text-black`}>
                             <div className="flex items-center gap-2.5">
                               <TrendingUp className="w-5 h-5" />
                               <div>
@@ -289,37 +316,48 @@
                                 <span className="text-base font-bold">{formatNumber(roi)}%</span>
                               </div>
                             </div>
-                            <span className="text-xs font-bold uppercase tracking-wider bg-white/40 dark:bg-black/20 px-2.5 py-1 rounded-md">{roiStatus.text}</span>
+                            <span className="text-xs font-bold uppercase tracking-wider bg-white/40 dark:bg-black/20 px-2.5 py-1 rounded-md print:bg-transparent print:border print:border-black">{roiStatus.text}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-8 print:border-slate-300">
-                        <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-5 flex items-center gap-2">
+                      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-8 print:p-6 print:border-slate-300">
+                        <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-5 flex items-center gap-2 print:text-black">
                           <CheckCircle className="w-5 h-5 text-indigo-500" />
                           Extrato Consolidado
                         </h4>
-                        <ul className="space-y-3.5 text-sm">
-                          <li className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
-                            <span className="font-semibold text-slate-700 dark:text-slate-300">Valor Arrematado (Lance)</span>
-                            <span className="font-bold text-slate-900 dark:text-white">{formatMoney(bidVal)}</span>
+                        <ul className="space-y-3.5 text-sm print:text-black">
+                          {/* Novos Campos Iniciais no Extrato */}
+                          <li className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                            <span>Valor de Avaliação (Edital)</span>
+                            <span className="font-medium text-slate-800 dark:text-slate-200 print:text-black">{formatMoney(evalVal)}</span>
+                          </li>
+                          <li className="flex justify-between items-center text-slate-500 dark:text-slate-400 pb-3 border-b border-slate-100 dark:border-slate-800 print:border-slate-200">
+                            <span>Valor de Mercado Estimado</span>
+                            <span className="font-bold text-indigo-600 dark:text-indigo-400">{formatMoney(marketVal)}</span>
+                          </li>
+
+                          {/* Detalhamento de Custos */}
+                          <li className="flex justify-between items-center pt-1 pb-2 border-b border-slate-100 dark:border-slate-800 print:border-slate-200">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300 print:text-black">Valor do Arremate (Lance)</span>
+                            <span className="font-bold text-slate-900 dark:text-white print:text-black">{formatMoney(bidVal)}</span>
                           </li>
                           <li className="flex justify-between items-center text-slate-600 dark:text-slate-400">
                             <span>Comissão Leiloeiro ({leiloeiro.type === 'percent' ? `${leiloeiro.value}%` : 'Fixo'})</span>
-                            <span className="font-medium text-rose-500">+{formatMoney(leiloeiroCost)}</span>
+                            <span className="font-medium text-rose-500 print:text-black">+{formatMoney(leiloeiroCost)}</span>
                           </li>
                           <li className="flex justify-between items-center text-slate-600 dark:text-slate-400">
                             <span>Imposto de Transmissão (ITBI) ({itbi.type === 'percent' ? `${itbi.value}%` : 'Fixo'})</span>
-                            <span className="font-medium text-rose-500">+{formatMoney(itbiCost)}</span>
+                            <span className="font-medium text-rose-500 print:text-black">+{formatMoney(itbiCost)}</span>
                           </li>
                           
                           {cartorioMode === 'pr' && (
-                            <li className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1.5 block">
-                              <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                            <li className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800 print:bg-white print:border-slate-300 space-y-1.5 block">
+                              <div className="flex justify-between text-xs font-bold text-slate-700 dark:text-slate-300 print:text-black">
                                 <span>Registro de Imóveis (Regra PR)</span>
-                                <span className="text-rose-500">+{formatMoney(cartorioCost)}</span>
+                                <span className="text-rose-500 print:text-black">+{formatMoney(cartorioCost)}</span>
                               </div>
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 pl-2">
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 print:text-slate-600 pl-2">
                                 <div>• Emolumento Base: {formatMoney(emolumentoBase)}</div>
                                 <div>• FADEP (5%): {formatMoney(fadepRegistro)}</div>
                                 <div>• Funrejus (0.2% Teto): {formatMoney(funrejusFinal)}</div>
@@ -332,38 +370,47 @@
                           {cartorioMode === 'manual' && (
                             <li className="flex justify-between items-center text-slate-600 dark:text-slate-400">
                               <span>Custas de Cartório e Registro</span>
-                              <span className="font-medium text-rose-500">+{formatMoney(cartorioCost)}</span>
+                              <span className="font-medium text-rose-500 print:text-black">+{formatMoney(cartorioCost)}</span>
                             </li>
                           )}
 
                           <li className="flex justify-between items-center text-slate-600 dark:text-slate-400">
                             <span>Assessoria Jurídica</span>
-                            <span className="font-medium text-rose-500">+{formatMoney(legalCost)}</span>
+                            <span className="font-medium text-rose-500 print:text-black">+{formatMoney(legalCost)}</span>
                           </li>
                           <li className="flex justify-between items-center text-slate-600 dark:text-slate-400">
                             <span>Passivos de IPTU / Condomínio</span>
-                            <span className="font-medium text-amber-500">+{formatMoney(safeNumber(debts))}</span>
+                            <span className="font-medium text-amber-500 print:text-black">+{formatMoney(safeNumber(debts))}</span>
                           </li>
                           <li className="flex justify-between items-center text-slate-600 dark:text-slate-400">
                             <span>Reforma e Benfeitorias</span>
-                            <span className="font-medium text-amber-500">+{formatMoney(safeNumber(renovation))}</span>
+                            <span className="font-medium text-amber-500 print:text-black">+{formatMoney(safeNumber(renovation))}</span>
                           </li>
-                          <li className="flex justify-between items-center text-slate-600 dark:text-slate-400 pb-3 border-b border-slate-100 dark:border-slate-800">
+                          <li className="flex justify-between items-center text-slate-600 dark:text-slate-400 pb-3 border-b border-slate-100 dark:border-slate-800 print:border-slate-200">
                             <span>Desocupação Judicial/Extrajudicial</span>
-                            <span className="font-medium text-amber-500">+{formatMoney(safeNumber(eviction))}</span>
+                            <span className="font-medium text-amber-500 print:text-black">+{formatMoney(safeNumber(eviction))}</span>
                           </li>
                           <li className="flex justify-between items-center pt-2">
-                            <span className="font-bold text-slate-800 dark:text-slate-200">Total Geral Desembolsado</span>
-                            <span className="font-extrabold text-xl text-indigo-600 dark:text-indigo-400">{formatMoney(finalTotal)}</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200 print:text-black">Total Geral Desembolsado</span>
+                            <span className="font-extrabold text-xl text-indigo-600 dark:text-indigo-400 print:text-black">{formatMoney(finalTotal)}</span>
                           </li>
                         </ul>
 
-                        {evalVal < finalTotal && (
-                          <div className="mt-5 p-4 bg-rose-50 dark:bg-rose-900/20 rounded-xl border border-rose-100 dark:border-rose-800 flex items-start gap-3">
+                        {marketVal < finalTotal && bidVal > 0 && (
+                          <div className="mt-5 p-4 bg-rose-50 dark:bg-rose-900/20 rounded-xl border border-rose-100 dark:border-rose-800 print:bg-white print:border-rose-300 flex items-start gap-3">
                              <AlertCircle className="w-5 h-5 text-rose-600 mt-0.5 flex-shrink-0" />
-                             <p className="text-xs text-rose-800 dark:text-rose-300 font-semibold leading-relaxed">Atenção: O custo total projetado ultrapassou o valor de mercado atual.</p>
+                             <p className="text-xs text-rose-800 dark:text-rose-300 print:text-black font-semibold leading-relaxed">Atenção: O custo total projetado ultrapassou o valor de mercado. Avalie reduzir a oferta ou mitigar custos extras.</p>
                           </div>
                         )}
+
+                        {/* Aviso Legal de Estimativa */}
+                        <div className="mt-8 text-center border-t border-dashed border-slate-200 dark:border-slate-700 pt-4">
+                            <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide print:text-slate-600">
+                                * Valores estimados para fins de simulação e análise prévia.<br/>
+                                Os custos exatos de ITBI, emolumentos e taxas judiciais estão sujeitos<br/>
+                                a variação conforme a comarca, prefeitura e análise documental no fechamento.
+                            </p>
+                        </div>
 
                         <button onClick={() => window.print()} className="mt-6 w-full flex items-center justify-center gap-2 py-3 px-4 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 text-white font-bold rounded-xl transition-all shadow-md print:hidden">
                           <Printer className="w-4 h-4" />
