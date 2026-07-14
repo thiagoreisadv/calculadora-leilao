@@ -113,6 +113,8 @@
     const Scale = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>;
     const Sun = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>;
     const Moon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>;
+    const SettingsIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+    const XIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
 
     const formatMoney = (value) => {
       if (value === '' || value === undefined || value === null) return 'R$ 0,00';
@@ -354,8 +356,8 @@
                    <p className="text-sm text-slate-600 font-medium mt-1">Arrematação de Leilão Imobiliário</p>
                  </div>
                  <div className="text-right">
-                   <p className="text-sm font-bold text-slate-900">Dr. Thiago Reis</p>
-                   <p className="text-xs text-slate-500">Assessoria Jurídica | OAB/PR 115.608</p>
+                   <p className="text-sm font-bold text-slate-900">{data.lawyerName}</p>
+                   <p className="text-xs text-slate-500">Assessoria Jurídica | {data.lawyerOAB}</p>
                  </div>
                </div>
                
@@ -421,8 +423,8 @@
                {/* Rodapé de Assinatura para Impressão */}
                <div className="hidden print:flex mt-16 justify-between items-center text-xs print-page-break">
                  <div className="text-center w-64">
-                   <div className="border-t border-slate-400 pt-2 font-bold text-slate-800">Dr. Thiago Reis</div>
-                   <div className="text-slate-500 mt-0.5">OAB/PR 115.608</div>
+                   <div className="border-t border-slate-400 pt-2 font-bold text-slate-800">{data.lawyerName}</div>
+                   <div className="text-slate-500 mt-0.5">{data.lawyerOAB}</div>
                  </div>
                  <div className="text-center w-64">
                    <div className="border-t border-slate-400 pt-2 font-bold text-slate-800">Assinatura do Cliente</div>
@@ -505,8 +507,8 @@
                     <p className="text-sm text-slate-600 font-medium mt-1">Escritura Pública e Registro Imobiliário</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-slate-900">Dr. Thiago Reis</p>
-                    <p className="text-xs text-slate-500">Assessoria Jurídica | OAB/PR 115.608</p>
+                    <p className="text-sm font-bold text-slate-900">{data.lawyerName}</p>
+                    <p className="text-xs text-slate-500">Assessoria Jurídica | {data.lawyerOAB}</p>
                   </div>
                 </div>
                 
@@ -554,8 +556,8 @@
                {/* Rodapé de Assinatura para Impressão */}
                <div className="hidden print:flex mt-16 justify-between items-center text-xs print-page-break">
                  <div className="text-center w-64">
-                   <div className="border-t border-slate-400 pt-2 font-bold text-slate-800">Dr. Thiago Reis</div>
-                   <div className="text-slate-500 mt-0.5">OAB/PR 115.608</div>
+                   <div className="border-t border-slate-400 pt-2 font-bold text-slate-800">{data.lawyerName}</div>
+                   <div className="text-slate-500 mt-0.5">{data.lawyerOAB}</div>
                  </div>
                  <div className="text-center w-64">
                    <div className="border-t border-slate-400 pt-2 font-bold text-slate-800">Assinatura do Cliente</div>
@@ -576,7 +578,8 @@
         leiloeiro: { value: 5, type: 'percent' }, itbi: { value: 2, type: 'percent' }, 
         cartorioManual: { value: 2, type: 'percent' }, legal: { value: 5, type: 'percent' }, 
         debts: '', renovation: '', eviction: '',
-        deedValue: '', deedItbi: 2, deedCertidoes: 300, deedMode: 'pr', deedManualEscritura: 1600, deedManualRegistro: 1600
+        deedValue: '', deedItbi: 2, deedCertidoes: 300, deedMode: 'pr', deedManualEscritura: 1600, deedManualRegistro: 1600,
+        lawyerName: 'Dr. Thiago Reis', lawyerOAB: 'OAB/PR 115.608'
       };
 
       const [data, setData] = useState(() => {
@@ -588,6 +591,7 @@
       });
 
       const [activeTab, setActiveTab] = useState('leilao');
+      const [showSettings, setShowSettings] = useState(false);
       const [isDarkMode, setIsDarkMode] = useState(() => {
         try { return localStorage.getItem('theme_preference') === 'dark'; } catch (e) { return false; }
       });
@@ -607,6 +611,23 @@
         }
       }, [isDarkMode]);
 
+      // --- NOVO: Forçar Modo Claro EXCLUSIVAMENTE na Impressão do PDF ---
+      useEffect(() => {
+        const handleBeforePrint = () => window.document.documentElement.classList.remove('dark');
+        const handleAfterPrint = () => {
+          if (isDarkMode) window.document.documentElement.classList.add('dark');
+        };
+        
+        window.addEventListener('beforeprint', handleBeforePrint);
+        window.addEventListener('afterprint', handleAfterPrint);
+        
+        return () => {
+          window.removeEventListener('beforeprint', handleBeforePrint);
+          window.removeEventListener('afterprint', handleAfterPrint);
+        };
+      }, [isDarkMode]);
+      // ------------------------------------------------------------------
+
       const updateData = (key, value) => setData(prev => ({ ...prev, [key]: value }));
 
       const handleReset = () => {
@@ -622,18 +643,44 @@
       return (
         <div className="min-h-screen pb-20 selection:bg-brand-200 dark:selection:bg-brand-900">
           
+          {/* Modal de Configurações */}
+          {showSettings && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 print-hide">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md border border-slate-200 dark:border-slate-800">
+                <div className="flex justify-between items-center p-5 border-b border-slate-100 dark:border-slate-800/60">
+                  <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">Personalizar Relatório</h3>
+                  <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><XIcon className="w-5 h-5"/></button>
+                </div>
+                <div className="p-5 space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Nome do Profissional / Escritório</label>
+                    <input type="text" value={data.lawyerName} onChange={(e) => updateData('lawyerName', e.target.value)} className="w-full p-3 text-sm font-medium border border-slate-200 dark:border-slate-700/80 rounded-xl bg-slate-50 dark:bg-slate-900/40 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500/50 outline-none transition-all" placeholder="Ex: Dr. João Silva" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Registro (OAB, CRECI, etc)</label>
+                    <input type="text" value={data.lawyerOAB} onChange={(e) => updateData('lawyerOAB', e.target.value)} className="w-full p-3 text-sm font-medium border border-slate-200 dark:border-slate-700/80 rounded-xl bg-slate-50 dark:bg-slate-900/40 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500/50 outline-none transition-all" placeholder="Ex: OAB/SP 123.456" />
+                  </div>
+                  <button onClick={() => setShowSettings(false)} className="w-full mt-2 py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl shadow-md transition-all">Salvar Configurações</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-slate-900 text-white print-hide pt-10 px-4 shadow-md border-b border-slate-800">
             <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
               <div className="text-center md:text-left">
                 <div className="inline-flex items-center gap-2 bg-slate-800 border border-slate-700/80 px-3.5 py-1.5 rounded-full mb-5 shadow-sm">
                   <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-                  <span className="text-[11px] font-bold tracking-widest uppercase text-slate-300">Thiago Reis - Assessoria Jurídica</span>
+                  <span className="text-[11px] font-bold tracking-widest uppercase text-slate-300">{data.lawyerName}</span>
                 </div>
                 <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2">Central de Cálculos</h1>
-                <p className="text-slate-400 font-medium text-sm">OAB/PR 115.608 • Inteligência em Imóveis e Leilões</p>
+                <p className="text-slate-400 font-medium text-sm">{data.lawyerOAB} • Inteligência em Imóveis e Leilões</p>
               </div>
               
               <div className="flex items-center gap-3">
+                <button onClick={() => setShowSettings(true)} className="p-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl shadow-sm transition-all flex items-center justify-center" title="Personalizar Relatório">
+                  <SettingsIcon className="w-5 h-5" />
+                </button>
                 <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl shadow-sm transition-all flex items-center justify-center" title="Alternar Modo Claro/Escuro">
                   {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
