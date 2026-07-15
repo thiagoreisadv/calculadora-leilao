@@ -217,6 +217,22 @@
       </div>
     );
 
+    const TextInput = ({ label, value, onChange, placeholder, hint }) => (
+      <div className="mb-5">
+        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex justify-between items-center">
+          {label}
+          {hint && <span className="text-[10px] bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">{hint}</span>}
+        </label>
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          className="block w-full px-4 py-2.5 sm:text-sm font-medium border border-slate-200 dark:border-slate-700/80 rounded-xl bg-slate-50/50 dark:bg-slate-900/40 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 outline-none transition-all"
+          placeholder={placeholder}
+        />
+      </div>
+    );
+
     const Card = ({ title, icon: Icon, children, extraHeader }) => (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm p-6 relative print-hide transition-all hover:shadow-md">
         <div className="flex justify-between items-center mb-6 border-b border-slate-50 dark:border-slate-800/50 pb-3">
@@ -462,13 +478,16 @@
       const valEscritura = data.deedMode === 'pr' ? custoEscrituraAuto : safeNumber(data.deedManualEscritura);
       const valRegistro = data.deedMode === 'pr' ? custoRegistroAuto : safeNumber(data.deedManualRegistro);
       
-      const subtotalNotarial = valEscritura + custoCertidoes + (data.deedMode === 'manual' ? funrejus : 0);
-      const totalGeral = subtotalNotarial + valRegistro + custoItbi;
+      const subtotalNotarial = valEscritura + custoCertidoes + custoItbi;
+      const totalRegistro = valRegistro + (data.deedMode === 'manual' ? funrejus : 0);
+      const totalGeral = subtotalNotarial + totalRegistro;
 
       return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 print-grid-reset">
           <div className="lg:col-span-5 space-y-6 print-hide">
             <Card title="Dados da Negociação" icon={FileText}>
+              <TextInput label="Cliente / Comprador" value={data.clientName} onChange={(v) => updateData('clientName', v)} placeholder="Ex: João da Silva" />
+              <TextInput label="Descrição do Imóvel" value={data.propertyDescription} onChange={(v) => updateData('propertyDescription', v)} placeholder="Ex: Lote 05, Quadra 10 - Centro" />
               <MoneyInput label="Valor do Negócio (Contrato/Base)" value={data.deedValue} onChange={(v) => updateData('deedValue', v)} />
               
               <div className="mt-6 mb-5">
@@ -512,6 +531,13 @@
                   </div>
                 </div>
                 
+                {(data.clientName || data.propertyDescription) && (
+                  <div className="mb-6 bg-slate-50 dark:bg-slate-800/40 print-bg-light p-4 rounded-xl border border-slate-100 dark:border-slate-800 print-border-light text-sm print-text-dark">
+                    {data.clientName && <div className="mb-1.5"><span className="font-semibold text-slate-500 dark:text-slate-400 print-text-dark uppercase text-[10px] tracking-wider block">Para o Cliente</span> <span className="font-bold text-slate-900 dark:text-white print-text-dark text-base">{data.clientName}</span></div>}
+                    {data.propertyDescription && <div><span className="font-semibold text-slate-500 dark:text-slate-400 print-text-dark uppercase text-[10px] tracking-wider block">Referente ao Imóvel</span> <span className="font-medium text-slate-800 dark:text-slate-200 print-text-dark">{data.propertyDescription}</span></div>}
+                  </div>
+                )}
+
                 <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2 print-text-dark"><Scale className="w-5 h-5 text-brand-500" /> Demonstrativo de Transmissão</h4>
                 
                 <div className="space-y-4 text-sm print-text-dark">
@@ -528,6 +554,10 @@
                             <div className="flex justify-between text-slate-600 dark:text-slate-400 print-text-dark"><span>Lavratura da Escritura (Notas)</span><span className="font-medium text-slate-900 dark:text-white print-text-dark">{formatMoney(valEscritura)}</span></div>
                             {data.deedMode === 'manual' && <div className="flex justify-between text-slate-600 dark:text-slate-400 print-text-dark"><span>Taxa Judiciária (Funrejus)</span><span className="font-medium text-slate-900 dark:text-white print-text-dark">{formatMoney(funrejus)}</span></div>}
                         </div>
+                        <div className="flex justify-between items-center mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/50 print-border-light">
+                            <span className="font-bold text-slate-700 dark:text-slate-300 print-text-dark">Subtotal (Sem Registro)</span>
+                            <span className="font-bold text-slate-900 dark:text-white print-text-dark">{formatMoney(subtotalNotarial)}</span>
+                        </div>
                     </div>
 
                     <div className="pt-5">
@@ -541,10 +571,14 @@
                                </div>
                             )}
                         </div>
+                        <div className="flex justify-between items-center mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/50 print-border-light">
+                            <span className="font-bold text-slate-700 dark:text-slate-300 print-text-dark">Subtotal (Apenas Registro)</span>
+                            <span className="font-bold text-slate-900 dark:text-white print-text-dark">{formatMoney(totalRegistro)}</span>
+                        </div>
                     </div>
 
                     <div className="flex justify-between items-center pt-6 border-t border-slate-200 dark:border-slate-700 print-border-light mt-5">
-                        <span className="font-extrabold text-base text-slate-800 dark:text-slate-200 print-text-dark uppercase">Custo de Transmissão</span>
+                        <span className="font-extrabold text-base text-slate-800 dark:text-slate-200 print-text-dark uppercase">Custo Total (Com Registro)</span>
                         <span className="font-black text-2xl text-brand-700 dark:text-brand-400 print-text-dark">{formatMoney(totalGeral)}</span>
                     </div>
                 </div>
@@ -579,6 +613,7 @@
         cartorioManual: { value: 2, type: 'percent' }, legal: { value: 5, type: 'percent' }, 
         debts: '', renovation: '', eviction: '',
         deedValue: '', deedItbi: 2, deedCertidoes: 300, deedMode: 'pr', deedManualEscritura: 1600, deedManualRegistro: 1600,
+        clientName: '', propertyDescription: '',
         lawyerName: 'Dr. Thiago Reis', lawyerOAB: 'OAB/PR 115.608'
       };
 
@@ -635,7 +670,8 @@
           setData(prev => ({ 
             ...prev, 
             marketValue: '', evaluationValue: '', bidValue: '', maxBudget: '', 
-            debts: '', renovation: '', eviction: '', deedValue: '' 
+            debts: '', renovation: '', eviction: '', deedValue: '',
+            clientName: '', propertyDescription: ''
           }));
         }
       };
