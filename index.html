@@ -279,12 +279,9 @@
 
     // --- App Principal ---
     function App() {
-      // Carregamento de Configurações da Memória Local
       const loadInitialState = () => {
-          const savedData = localStorage.getItem('central_calc_imob_v11');
-          if (savedData) {
-              return JSON.parse(savedData);
-          }
+          const savedData = localStorage.getItem('central_calc_imob_v12');
+          if (savedData) return JSON.parse(savedData);
           return null;
       };
 
@@ -317,10 +314,8 @@
       const [assetSize, setAssetSize] = useState(initialState?.assetSize || '');
       const [ruralUnit, setRuralUnit] = useState(initialState?.ruralUnit || 'ha'); 
       
-      // Veículos FIPE Discount
       const [fipeDiscount, setFipeDiscount] = useState(initialState?.fipeDiscount || '30');
 
-      // Taxas
       const [leiloeiro, setLeiloeiro] = useState(initialState?.leiloeiro || { value: '5', type: 'percent' });
       const [itbi, setItbi] = useState(initialState?.itbi || { value: '2', type: 'percent' });
       const [legal, setLegal] = useState(initialState?.legal || { value: '5', type: 'percent' });
@@ -338,6 +333,8 @@
       const [itbiEscritura, setItbiEscritura] = useState(initialState?.itbiEscritura || { value: '2', type: 'percent' });
       const [escrituraManual, setEscrituraManual] = useState(initialState?.escrituraManual || { value: '', type: 'fixed' });
       const [rgiManual, setRgiManual] = useState(initialState?.rgiManual || { value: '', type: 'fixed' });
+      const [certidoesEsc, setCertidoesEsc] = useState(initialState?.certidoesEsc || '');
+      const [diligenciasEsc, setDiligenciasEsc] = useState(initialState?.diligenciasEsc || '');
 
       // Salvar Memória
       useEffect(() => {
@@ -345,10 +342,10 @@
               advName, advOab, darkMode, activeTab, assetType, clienteNomeLeilao, imovelDescLeilao, 
               valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
               assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, 
-              clienteNome, imovelDesc, negocioValor, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual
+              clienteNome, imovelDesc, negocioValor, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc
           };
-          localStorage.setItem('central_calc_imob_v11', JSON.stringify(stateToSave));
-      }, [advName, advOab, darkMode, activeTab, assetType, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual]);
+          localStorage.setItem('central_calc_imob_v12', JSON.stringify(stateToSave));
+      }, [advName, advOab, darkMode, activeTab, assetType, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc]);
 
       // Efeito Tema
       useEffect(() => {
@@ -385,6 +382,7 @@
                 setItbiEscritura({ value: '2', type: 'percent' });
                 setEscrituraManual({ value: '', type: 'fixed' });
                 setRgiManual({ value: '', type: 'fixed' });
+                setCertidoesEsc(''); setDiligenciasEsc('');
                 setEscrituraMode('pr');
             }
         }
@@ -440,7 +438,6 @@
       const safeEval = valMode === 'total' ? safeNumber(evalValue) : safeNumber(evalUnitValue) * safeSize;
       const safeMarket = valMode === 'total' ? safeNumber(marketValue) : safeNumber(marketUnitValue) * safeSize;
       
-      // Aplicativo de desconto FIPE para Veículos
       const discountedSaleValue = assetType === 'veiculo' ? safeMarket * (1 - safeNumber(fipeDiscount) / 100) : safeMarket;
 
       const leiloeiroCost = calcTax(leiloeiro, safeBid);
@@ -456,14 +453,11 @@
       const fixedCostsLeilao = safeNumber(debts) + safeNumber(renovation);
       const finalLeilao = safeBid + leiloeiroCost + itbiCostLeilao + legalCost + cartorioCostLeilao + fixedCostsLeilao;
       
-      // Margem e ROI (Baseado no Venda com Desconto se for Carro)
       const lucroAbsoluto = discountedSaleValue > 0 ? discountedSaleValue - finalLeilao : 0;
       const margemLucroPorcentagem = discountedSaleValue > 0 && finalLeilao > 0 ? (lucroAbsoluto / finalLeilao) * 100 : 0;
       
-      // Estatísticas Veículo Adicionais
       const arremateFipePercent = safeMarket > 0 && safeBid > 0 ? (safeBid / safeMarket) * 100 : 0;
 
-      // Calcular Limite Máximo Bid para Lucro Zero
       let maxBidForProfit = 0;
       if (assetType === 'veiculo' && discountedSaleValue > 0) {
           let low = 0, high = discountedSaleValue, best = 0;
@@ -478,7 +472,6 @@
           maxBidForProfit = Math.floor(best);
       }
 
-      // Engenharia Reversa (Orçamento)
       const handleSuggestBid = () => {
         const budget = safeNumber(maxBudget);
         let low = 0, high = budget, bestBid = 0;
@@ -508,8 +501,6 @@
         }
       };
 
-
-      // Conversão Rural & Urbano
       let areaInM2 = 0, areaInHa = 0, areaInAlq = 0;
       let alqName = "Alqueire";
 
@@ -564,7 +555,10 @@
           cartorioCostEsc = calcTax(rgiManual, safeNegocio);
       }
       
-      const custoInicialEsc = itbiCostEsc + lavraturaCost + funrejusCost;
+      const safeCertidoesEsc = safeNumber(certidoesEsc);
+      const safeDiligenciasEsc = safeNumber(diligenciasEsc);
+
+      const custoInicialEsc = itbiCostEsc + lavraturaCost + funrejusCost + safeCertidoesEsc + safeDiligenciasEsc;
       const totalEscrituraComRegistro = custoInicialEsc + cartorioCostEsc;
 
       return (
@@ -988,6 +982,13 @@
                         </label>
                     </div>
                   </Card>
+
+                  <Card title="Custos Acessórios" icon={FileText}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <MoneyInput label="Certidões (Buscas/Emissões)" value={certidoesEsc} onChange={setCertidoesEsc} />
+                      <MoneyInput label="Diligências / Honorários" value={diligenciasEsc} onChange={setDiligenciasEsc} />
+                    </div>
+                  </Card>
                 </div>
 
                 {/* VISUALIZAÇÃO DO PDF / RESULTADO (ESCRITURA) */}
@@ -1027,7 +1028,7 @@
                     
                     {/* Bloco 1: Inicial */}
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 mb-4">
-                      <h5 className="text-xs font-bold uppercase text-slate-500 mb-2">Passo 1: Lavratura da Escritura e Impostos</h5>
+                      <h5 className="text-xs font-bold uppercase text-slate-500 mb-2">Passo 1: Lavratura, Impostos e Acessórios</h5>
                       <ul className="space-y-2 text-sm">
                         <li className="flex justify-between pb-1 border-b border-dashed border-slate-200 dark:border-slate-700">
                           <span>Base da Transação</span> 
@@ -1045,6 +1046,20 @@
                           <span>Funrejus Compulsório (0.2% - TJPR)</span> 
                           <span>+{formatMoney(funrejusCost)}</span>
                         </li>
+                        
+                        {safeNumber(certidoesEsc) > 0 && (
+                          <li className="flex justify-between text-slate-600 dark:text-slate-400">
+                            <span>Certidões e Buscas</span> 
+                            <span>+{formatMoney(safeNumber(certidoesEsc))}</span>
+                          </li>
+                        )}
+                        {safeNumber(diligenciasEsc) > 0 && (
+                          <li className="flex justify-between text-slate-600 dark:text-slate-400">
+                            <span>Diligências / Assessoria</span> 
+                            <span>+{formatMoney(safeNumber(diligenciasEsc))}</span>
+                          </li>
+                        )}
+
                         <li className="flex justify-between font-bold pt-2 mt-2 border-t border-slate-200 dark:border-slate-700">
                           <span>Subtotal Sem Registro</span> 
                           <span>{formatMoney(custoInicialEsc)}</span>
@@ -1070,7 +1085,7 @@
                         <h5 className="text-[10px] font-bold uppercase text-slate-400 mb-3 text-center tracking-widest">Apurado Geral do Orçamento</h5>
                         
                         <div className="flex justify-between items-center text-sm mb-2 pb-2 border-b border-slate-800">
-                            <span className="text-slate-400">Total Lavratura + Impostos (Passo 1)</span> 
+                            <span className="text-slate-400">Total Documentação Inicial (Passo 1)</span> 
                             <span className="font-semibold">{formatMoney(custoInicialEsc)}</span>
                         </div>
                         
