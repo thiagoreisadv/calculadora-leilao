@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-PT" class="antialiased">
+<html lang="pt-BR" class="antialiased">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -55,15 +55,26 @@
     const Car = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a2 2 0 0 0-1.6-.8H9.3a2 2 0 0 0-1.6.8L5 11l-5.16.86a1 1 0 0 0-.84.99V16h3m10 0a2 2 0 1 1-4 0m4 0a2 2 0 1 0-4 0m-7 0a2 2 0 1 1-4 0m4 0a2 2 0 1 0-4 0"/></svg>;
     const Home = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
 
-    // --- Helpers Formatação ---
+    // --- Helpers Core ---
+    const formatCurrencyStr = (value) => {
+        if (value === '' || value === 0 || value == null) return '';
+        return Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
     const formatMoney = (val) => {
       if (val === '' || val == null || isNaN(val)) return 'R$ 0,00';
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
     };
 
-    const safeNumber = (val) => (val === '' || isNaN(val) ? 0 : Number(val));
+    const safeNumber = (val) => {
+        if (val === '' || val == null) return 0;
+        if (typeof val === 'number') return val;
+        const strVal = String(val).replace(',', '.');
+        const num = parseFloat(strVal);
+        return isNaN(num) ? 0 : num;
+    };
 
-    // --- Componentes de Input ---
+    // --- Componentes de Input Atualizados ---
     const TextInput = ({ label, value, onChange, placeholder }) => (
       <div className="mb-4">
         <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
@@ -71,49 +82,133 @@
       </div>
     );
 
-    const MoneyInput = ({ label, value, onChange, placeholder }) => (
-      <div className="mb-4">
-        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
-        <div className="relative rounded-xl shadow-sm">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">R$</span></div>
-          <input type="number" min="0" value={value === '' ? '' : value} onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))} className="block w-full pl-10 pr-4 py-2.5 sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder={placeholder || "0,00"} />
+    const DecimalInput = ({ label, value, onChange, placeholder }) => {
+      const handleChange = (e) => {
+        let val = e.target.value;
+        val = val.replace(/[^0-9,]/g, '');
+        const parts = val.split(',');
+        if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
+        onChange(val);
+      };
+      return (
+        <div className="mb-4">
+          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
+          <input type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className="block w-full px-4 py-2.5 sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
         </div>
-        <div className="text-xs text-slate-500 mt-1 ml-1 font-medium h-4">{value !== '' && formatMoney(value)}</div>
-      </div>
-    );
+      );
+    };
 
-    const TaxInput = ({ label, value, onChangeValue, type, onChangeType, description, disabled }) => (
-      <div className="mb-4">
-        <div className="flex justify-between items-end mb-1.5">
-          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
-          {!disabled && (
-            <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-0.5">
-              <button onClick={() => onChangeType('percent')} className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-md transition-colors ${type === 'percent' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>%</button>
-              <button onClick={() => onChangeType('fixed')} className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-md transition-colors ${type === 'fixed' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>R$</button>
-            </div>
-          )}
-        </div>
-        <div className="relative rounded-xl shadow-sm">
-          {(type === 'fixed' || disabled) && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">R$</span></div>
-          )}
-          <input
-            type="number" min="0" disabled={disabled} step={type === 'percent' ? "0.1" : "1"}
-            value={value === '' ? '' : value}
-            onChange={(e) => onChangeValue(e.target.value === '' ? '' : Number(e.target.value))}
-            className={`block w-full ${(type === 'fixed' || disabled) ? 'pl-10 pr-4' : 'pl-4 pr-10'} py-2.5 sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all disabled:opacity-75`}
-            placeholder="0"
-          />
-          {type === 'percent' && !disabled && (
+    const PercentInput = ({ label, value, onChange, placeholder, extraElement }) => {
+      const handleChange = (e) => {
+        let val = e.target.value;
+        val = val.replace(/[^0-9,]/g, '');
+        const parts = val.split(',');
+        if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
+        onChange(val);
+      };
+      return (
+        <div className="mb-4">
+          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
+          <div className="relative rounded-xl shadow-sm">
+            <input type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className="block w-full pl-4 pr-10 py-2.5 sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
             <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">%</span></div>
-          )}
+          </div>
+          {extraElement && <div className="mt-1">{extraElement}</div>}
         </div>
-        <div className="flex justify-between items-center mt-1.5 ml-1 h-4">
-          {description && <div className="text-[11px] text-slate-500">{description}</div>}
-          {(type === 'fixed' || disabled) && value !== '' && <div className="text-[11px] text-slate-500 font-medium">{formatMoney(value)}</div>}
+      );
+    };
+
+    const MoneyInput = ({ label, value, onChange, placeholder, subText }) => {
+      const displayValue = value === '' ? '' : formatCurrencyStr(value);
+
+      const handleChange = (e) => {
+        let rawValue = e.target.value;
+        if (rawValue === '') {
+          onChange('');
+          return;
+        }
+        const digits = rawValue.replace(/\D/g, '');
+        if (digits === '') {
+          onChange('');
+          return;
+        }
+        const floatValue = parseInt(digits, 10) / 100;
+        onChange(floatValue);
+      };
+
+      return (
+        <div className="mb-4">
+          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
+          <div className="relative rounded-xl shadow-sm">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">R$</span></div>
+            <input type="text" inputMode="numeric" value={displayValue} onChange={handleChange} className="block w-full pl-10 pr-4 py-2.5 sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder={placeholder || "0,00"} />
+          </div>
+          <div className="text-xs text-slate-500 mt-1 ml-1 font-medium h-4">
+            {subText ? subText : ''}
+          </div>
         </div>
-      </div>
-    );
+      );
+    };
+
+    const TaxInput = ({ label, value, onChangeValue, type, onChangeType, description, disabled }) => {
+      let displayValue = value;
+      if (type === 'fixed' && value !== '') {
+          displayValue = formatCurrencyStr(value);
+      }
+
+      const handleChange = (e) => {
+        const raw = e.target.value;
+        if (type === 'fixed') {
+            if (raw === '') {
+                onChangeValue('');
+                return;
+            }
+            const digits = raw.replace(/\D/g, '');
+            if (digits === '') {
+                onChangeValue('');
+                return;
+            }
+            onChangeValue(parseInt(digits, 10) / 100);
+        } else {
+            let val = raw.replace(/[^0-9,]/g, '');
+            const parts = val.split(',');
+            if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
+            onChangeValue(val);
+        }
+      };
+
+      return (
+        <div className="mb-4">
+          <div className="flex justify-between items-end mb-1.5">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
+            {!disabled && (
+              <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-0.5">
+                <button onClick={() => onChangeType('percent')} className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-md transition-colors ${type === 'percent' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>%</button>
+                <button onClick={() => onChangeType('fixed')} className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded-md transition-colors ${type === 'fixed' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>R$</button>
+              </div>
+            )}
+          </div>
+          <div className="relative rounded-xl shadow-sm">
+            {(type === 'fixed' || disabled) && (
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">R$</span></div>
+            )}
+            <input
+              type="text" inputMode={type === 'fixed' || disabled ? "numeric" : "decimal"} disabled={disabled}
+              value={displayValue}
+              onChange={handleChange}
+              className={`block w-full ${(type === 'fixed' || disabled) ? 'pl-10 pr-4' : 'pl-4 pr-10'} py-2.5 sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all disabled:opacity-75`}
+              placeholder="0"
+            />
+            {type === 'percent' && !disabled && (
+              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">%</span></div>
+            )}
+          </div>
+          <div className="flex justify-between items-center mt-1.5 ml-1 h-4">
+            {description && <div className="text-[11px] text-slate-500">{description}</div>}
+          </div>
+        </div>
+      );
+    };
 
     const Card = ({ title, icon: Icon, children, extraHeader }) => (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 print-no-shadow print-tight relative">
@@ -186,7 +281,7 @@
     function App() {
       // Carregamento de Configurações da Memória Local
       const loadInitialState = () => {
-          const savedData = localStorage.getItem('central_calc_imob_v8');
+          const savedData = localStorage.getItem('central_calc_imob_v11');
           if (savedData) {
               return JSON.parse(savedData);
           }
@@ -203,24 +298,34 @@
       const [activeTab, setActiveTab] = useState(initialState?.activeTab || 'leilao');
 
       // Estados: LEILÃO
-      const [assetType, setAssetType] = useState(initialState?.assetType || 'urbano'); // 'urbano', 'rural', 'veiculo'
+      const [assetType, setAssetType] = useState(initialState?.assetType || 'urbano'); 
       const [clienteNomeLeilao, setClienteNomeLeilao] = useState(initialState?.clienteNomeLeilao || '');
       const [imovelDescLeilao, setImovelDescLeilao] = useState(initialState?.imovelDescLeilao || '');
+      
+      const [valMode, setValMode] = useState(initialState?.valMode || 'total'); 
+      
       const [evalValue, setEvalValue] = useState(initialState?.evalValue || '');
       const [marketValue, setMarketValue] = useState(initialState?.marketValue || ''); 
       const [bidValue, setBidValue] = useState(initialState?.bidValue || '');
+
+      const [evalUnitValue, setEvalUnitValue] = useState(initialState?.evalUnitValue || '');
+      const [marketUnitValue, setMarketUnitValue] = useState(initialState?.marketUnitValue || ''); 
+      const [bidUnitValue, setBidUnitValue] = useState(initialState?.bidUnitValue || '');
+
       const [maxBudget, setMaxBudget] = useState(initialState?.maxBudget || '');
       
-      // Dimensões
       const [assetSize, setAssetSize] = useState(initialState?.assetSize || '');
       const [ruralUnit, setRuralUnit] = useState(initialState?.ruralUnit || 'ha'); 
+      
+      // Veículos FIPE Discount
+      const [fipeDiscount, setFipeDiscount] = useState(initialState?.fipeDiscount || '30');
 
       // Taxas
-      const [leiloeiro, setLeiloeiro] = useState(initialState?.leiloeiro || { value: 5, type: 'percent' });
-      const [itbi, setItbi] = useState(initialState?.itbi || { value: 2, type: 'percent' });
-      const [legal, setLegal] = useState(initialState?.legal || { value: 5, type: 'percent' });
+      const [leiloeiro, setLeiloeiro] = useState(initialState?.leiloeiro || { value: '5', type: 'percent' });
+      const [itbi, setItbi] = useState(initialState?.itbi || { value: '2', type: 'percent' });
+      const [legal, setLegal] = useState(initialState?.legal || { value: '5', type: 'percent' });
       const [cartorioModeLeilao, setCartorioModeLeilao] = useState(initialState?.cartorioModeLeilao || 'pr');
-      const [cartorioManualLeilao, setCartorioManualLeilao] = useState(initialState?.cartorioManualLeilao || { value: 2, type: 'percent' });
+      const [cartorioManualLeilao, setCartorioManualLeilao] = useState(initialState?.cartorioManualLeilao || { value: '2', type: 'percent' });
       const [debts, setDebts] = useState(initialState?.debts || '');
       const [renovation, setRenovation] = useState(initialState?.renovation || '');
       
@@ -230,25 +335,33 @@
       const [negocioValor, setNegocioValor] = useState(initialState?.negocioValor || '');
       const [incluirRgi, setIncluirRgi] = useState(initialState?.incluirRgi ?? true);
       const [escrituraMode, setEscrituraMode] = useState(initialState?.escrituraMode || 'pr');
-      const [itbiEscritura, setItbiEscritura] = useState(initialState?.itbiEscritura || { value: 2, type: 'percent' });
+      const [itbiEscritura, setItbiEscritura] = useState(initialState?.itbiEscritura || { value: '2', type: 'percent' });
       const [escrituraManual, setEscrituraManual] = useState(initialState?.escrituraManual || { value: '', type: 'fixed' });
       const [rgiManual, setRgiManual] = useState(initialState?.rgiManual || { value: '', type: 'fixed' });
 
       // Salvar Memória
       useEffect(() => {
           const stateToSave = {
-              advName, advOab, darkMode, activeTab, assetType, clienteNomeLeilao, imovelDescLeilao, evalValue, marketValue, bidValue, maxBudget,
-              assetSize, ruralUnit, leiloeiro, itbi, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, 
+              advName, advOab, darkMode, activeTab, assetType, clienteNomeLeilao, imovelDescLeilao, 
+              valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
+              assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, 
               clienteNome, imovelDesc, negocioValor, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual
           };
-          localStorage.setItem('central_calc_imob_v8', JSON.stringify(stateToSave));
-      }, [advName, advOab, darkMode, activeTab, assetType, clienteNomeLeilao, imovelDescLeilao, evalValue, marketValue, bidValue, maxBudget, assetSize, ruralUnit, leiloeiro, itbi, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual]);
+          localStorage.setItem('central_calc_imob_v11', JSON.stringify(stateToSave));
+      }, [advName, advOab, darkMode, activeTab, assetType, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual]);
 
       // Efeito Tema
       useEffect(() => {
         if (darkMode) document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
       }, [darkMode]);
+
+      // Segurança no Modo de Valores
+      useEffect(() => {
+         if (assetType === 'veiculo' || safeNumber(assetSize) <= 0) {
+             if (valMode === 'unit') handleValModeChange('total');
+         }
+      }, [assetType, assetSize]);
 
       const handlePrint = () => {
         const wasDark = darkMode;
@@ -262,10 +375,14 @@
       const handleReset = () => {
         if(window.confirm("Zerar valores desta aba?")) {
             if(activeTab === 'leilao') {
-                setClienteNomeLeilao(''); setImovelDescLeilao(''); setEvalValue(''); setMarketValue(''); setBidValue(''); setMaxBudget(''); setDebts(''); setRenovation(''); setAssetSize(''); setAssetType('urbano'); setRuralUnit('ha');
+                setClienteNomeLeilao(''); setImovelDescLeilao(''); 
+                setEvalValue(''); setMarketValue(''); setBidValue(''); 
+                setEvalUnitValue(''); setMarketUnitValue(''); setBidUnitValue(''); 
+                setMaxBudget(''); setDebts(''); setRenovation(''); 
+                setAssetSize(''); setAssetType('urbano'); setRuralUnit('ha'); setValMode('total'); setFipeDiscount('30');
             } else {
                 setClienteNome(''); setImovelDesc(''); setNegocioValor('');
-                setItbiEscritura({ value: 2, type: 'percent' });
+                setItbiEscritura({ value: '2', type: 'percent' });
                 setEscrituraManual({ value: '', type: 'fixed' });
                 setRgiManual({ value: '', type: 'fixed' });
                 setEscrituraMode('pr');
@@ -273,41 +390,59 @@
         }
       };
 
-      // Engenharia Reversa (Leilão)
-      const handleSuggestBid = () => {
-        const budget = safeNumber(maxBudget);
-        const fixed = safeNumber(debts) + safeNumber(renovation);
-        let low = 0, high = budget, bestBid = 0;
-
-        for (let i = 0; i < 50; i++) {
-          let mid = (low + high) / 2;
-          let lCost = leiloeiro.type === 'percent' ? mid * (leiloeiro.value/100) : safeNumber(leiloeiro.value);
-          let iCost = assetType === 'veiculo' ? 0 : (itbi.type === 'percent' ? mid * (itbi.value/100) : safeNumber(itbi.value));
-          let legCost = legal.type === 'percent' ? mid * (legal.value/100) : safeNumber(legal.value);
-          
-          let cCost = 0;
-          if (assetType !== 'veiculo') {
-            if(cartorioModeLeilao === 'pr') cCost = calcularRegistroPR(mid);
-            else cCost = cartorioManualLeilao.type === 'percent' ? mid * (cartorioManualLeilao.value/100) : safeNumber(cartorioManualLeilao.value);
-          }
-
-          let total = mid + lCost + iCost + legCost + cCost + fixed;
-          if (total > budget) high = mid;
-          else { bestBid = mid; low = mid; }
+      const getUnitLabel = () => {
+        if (assetType === 'urbano') return 'm²';
+        if (assetType === 'rural') {
+           if (ruralUnit === 'm2') return 'm²';
+           if (ruralUnit === 'ha') return 'Hectare';
+           if (ALQUEIRES[ruralUnit]) return ALQUEIRES[ruralUnit].name.split(' (')[0];
         }
-        setBidValue(Math.floor(bestBid));
+        return '';
       };
 
+      const handleValModeChange = (newMode) => {
+        const size = safeNumber(assetSize);
+        if (size <= 0 && newMode === 'unit') return;
+        
+        if (newMode === 'unit' && valMode === 'total') {
+            setBidUnitValue(safeNumber(bidValue) / size || '');
+            setEvalUnitValue(safeNumber(evalValue) / size || '');
+            setMarketUnitValue(safeNumber(marketValue) / size || '');
+        } else if (newMode === 'total' && valMode === 'unit') {
+            setBidValue(safeNumber(bidUnitValue) * size || '');
+            setEvalValue(safeNumber(evalUnitValue) * size || '');
+            setMarketValue(safeNumber(marketUnitValue) * size || '');
+        }
+        setValMode(newMode);
+      };
+
+      const getSubText = (isTotal, value, size) => {
+        if (size <= 0 || value === '' || value === null) return '';
+        const num = safeNumber(value);
+        if (isNaN(num) || num === 0) return '';
+        if (isTotal) {
+          return `Equivale a ${formatMoney(num / size)} / ${getUnitLabel()}`;
+        } else {
+          return `Total: ${formatMoney(num * size)}`;
+        }
+      };
+
+      const safeSize = safeNumber(assetSize);
+
+      // --- Matemática: LEILÃO ---
       const calcTax = (taxState, baseValue) => {
         const val = safeNumber(taxState.value);
         if (taxState.type === 'percent') return baseValue * (val / 100);
         return val;
       };
 
-      // --- Matemática: LEILÃO ---
-      const safeBid = safeNumber(bidValue);
-      const safeEval = safeNumber(evalValue);
-      const safeMarket = safeNumber(marketValue);
+      const safeBid = valMode === 'total' ? safeNumber(bidValue) : safeNumber(bidUnitValue) * safeSize;
+      const safeEval = valMode === 'total' ? safeNumber(evalValue) : safeNumber(evalUnitValue) * safeSize;
+      const safeMarket = valMode === 'total' ? safeNumber(marketValue) : safeNumber(marketUnitValue) * safeSize;
+      
+      // Aplicativo de desconto FIPE para Veículos
+      const discountedSaleValue = assetType === 'veiculo' ? safeMarket * (1 - safeNumber(fipeDiscount) / 100) : safeMarket;
+
       const leiloeiroCost = calcTax(leiloeiro, safeBid);
       const itbiCostLeilao = assetType === 'veiculo' ? 0 : calcTax(itbi, safeBid);
       const legalCost = calcTax(legal, safeBid);
@@ -321,44 +456,89 @@
       const fixedCostsLeilao = safeNumber(debts) + safeNumber(renovation);
       const finalLeilao = safeBid + leiloeiroCost + itbiCostLeilao + legalCost + cartorioCostLeilao + fixedCostsLeilao;
       
-      // Margem e ROI
-      const lucroAbsoluto = safeMarket > 0 ? safeMarket - finalLeilao : 0;
-      const margemLucroPorcentagem = safeMarket > 0 && finalLeilao > 0 ? (lucroAbsoluto / finalLeilao) * 100 : 0;
+      // Margem e ROI (Baseado no Venda com Desconto se for Carro)
+      const lucroAbsoluto = discountedSaleValue > 0 ? discountedSaleValue - finalLeilao : 0;
+      const margemLucroPorcentagem = discountedSaleValue > 0 && finalLeilao > 0 ? (lucroAbsoluto / finalLeilao) * 100 : 0;
       
-      // Estatísticas para Veículo
+      // Estatísticas Veículo Adicionais
       const arremateFipePercent = safeMarket > 0 && safeBid > 0 ? (safeBid / safeMarket) * 100 : 0;
+
+      // Calcular Limite Máximo Bid para Lucro Zero
+      let maxBidForProfit = 0;
+      if (assetType === 'veiculo' && discountedSaleValue > 0) {
+          let low = 0, high = discountedSaleValue, best = 0;
+          for(let i=0; i<50; i++) {
+              let mid = (low + high) / 2;
+              let lCost = leiloeiro.type === 'percent' ? mid * (safeNumber(leiloeiro.value)/100) : safeNumber(leiloeiro.value);
+              let legCost = legal.type === 'percent' ? mid * (safeNumber(legal.value)/100) : safeNumber(legal.value);
+              let total = mid + lCost + legCost + fixedCostsLeilao;
+              if (total > discountedSaleValue) high = mid;
+              else { best = mid; low = mid; }
+          }
+          maxBidForProfit = Math.floor(best);
+      }
+
+      // Engenharia Reversa (Orçamento)
+      const handleSuggestBid = () => {
+        const budget = safeNumber(maxBudget);
+        let low = 0, high = budget, bestBid = 0;
+
+        for (let i = 0; i < 50; i++) {
+          let mid = (low + high) / 2;
+          let lCost = leiloeiro.type === 'percent' ? mid * (safeNumber(leiloeiro.value)/100) : safeNumber(leiloeiro.value);
+          let iCost = assetType === 'veiculo' ? 0 : (itbi.type === 'percent' ? mid * (safeNumber(itbi.value)/100) : safeNumber(itbi.value));
+          let legCost = legal.type === 'percent' ? mid * (safeNumber(legal.value)/100) : safeNumber(legal.value);
+          
+          let cCost = 0;
+          if (assetType !== 'veiculo') {
+            if(cartorioModeLeilao === 'pr') cCost = calcularRegistroPR(mid);
+            else cCost = cartorioManualLeilao.type === 'percent' ? mid * (safeNumber(cartorioManualLeilao.value)/100) : safeNumber(cartorioManualLeilao.value);
+          }
+
+          let total = mid + lCost + iCost + legCost + cCost + fixedCostsLeilao;
+          if (total > budget) high = mid;
+          else { bestBid = mid; low = mid; }
+        }
+        
+        const finalBest = Math.floor(bestBid);
+        if (valMode === 'total') {
+            setBidValue(finalBest);
+        } else {
+            setBidUnitValue(finalBest / safeSize);
+        }
+      };
+
 
       // Conversão Rural & Urbano
       let areaInM2 = 0, areaInHa = 0, areaInAlq = 0;
-      const sizeInput = safeNumber(assetSize);
-      let alqName = "Alqueire"; // default
+      let alqName = "Alqueire";
 
       if (assetType === 'urbano') {
-          areaInM2 = sizeInput;
-      } else if (assetType === 'rural' && sizeInput > 0) {
+          areaInM2 = safeSize;
+      } else if (assetType === 'rural' && safeSize > 0) {
         if (ruralUnit === 'm2') { 
-            areaInM2 = sizeInput; 
-            areaInHa = sizeInput / 10000; 
-            areaInAlq = sizeInput / ALQUEIRES.alq_paulista.m2; 
+            areaInM2 = safeSize; 
+            areaInHa = safeSize / 10000; 
+            areaInAlq = safeSize / ALQUEIRES.alq_paulista.m2; 
             alqName = "Alq. Paulista";
         } 
         else if (ruralUnit === 'ha') { 
-            areaInM2 = sizeInput * 10000; 
-            areaInHa = sizeInput; 
-            areaInAlq = sizeInput / ALQUEIRES.alq_paulista.ha; 
+            areaInM2 = safeSize * 10000; 
+            areaInHa = safeSize; 
+            areaInAlq = safeSize / ALQUEIRES.alq_paulista.ha; 
             alqName = "Alq. Paulista";
         } 
         else if (ALQUEIRES[ruralUnit]) {
             const config = ALQUEIRES[ruralUnit];
-            areaInM2 = sizeInput * config.m2;
-            areaInHa = sizeInput * config.ha;
-            areaInAlq = sizeInput;
-            alqName = config.name.split(" (")[0]; // Obtém apenas a parte do nome "Alqueire Paulista"
+            areaInM2 = safeSize * config.m2;
+            areaInHa = safeSize * config.ha;
+            areaInAlq = safeSize;
+            alqName = config.name.split(" (")[0]; 
         }
       }
 
       const getUnitRates = (totalValue) => {
-        if (assetType === 'veiculo' || sizeInput <= 0 || !totalValue) return { m2: 0, ha: 0, alq: 0 };
+        if (assetType === 'veiculo' || safeSize <= 0 || !totalValue) return { m2: 0, ha: 0, alq: 0 };
         return {
           m2: totalValue / areaInM2,
           ha: assetType === 'rural' ? totalValue / areaInHa : 0,
@@ -455,7 +635,7 @@
                   {assetType !== 'veiculo' && (
                     <Card title="Dimensões do Imóvel" icon={assetType === 'rural' ? Tree : Home}>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <TextInput label={assetType === 'urbano' ? "Área Total (m²)" : "Tamanho Total"} value={assetSize} onChange={setAssetSize} placeholder="Ex: 250" />
+                        <DecimalInput label={assetType === 'urbano' ? "Área Total (m²)" : "Tamanho Total"} value={assetSize} onChange={setAssetSize} placeholder="Ex: 250,50" />
                         {assetType === 'rural' && (
                           <div>
                             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Unidade</label>
@@ -472,16 +652,54 @@
                     </Card>
                   )}
 
-                  <Card title={`Valores do ${assetType === 'veiculo' ? 'Veículo' : 'Imóvel'}`} icon={FileText}>
+                  <Card 
+                    title={`Valores do ${assetType === 'veiculo' ? 'Veículo' : 'Imóvel'}`} 
+                    icon={FileText}
+                    extraHeader={assetType !== 'veiculo' && safeSize > 0 && (
+                      <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/50 dark:border-slate-700">
+                        <button onClick={() => handleValModeChange('total')} className={`px-2 py-1 text-[10px] sm:text-xs font-bold rounded-md transition-all ${valMode === 'total' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'}`}>Total</button>
+                        <button onClick={() => handleValModeChange('unit')} className={`px-2 py-1 text-[10px] sm:text-xs font-bold rounded-md transition-all ${valMode === 'unit' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'}`}>Por {getUnitLabel()}</button>
+                      </div>
+                    )}
+                  >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <MoneyInput label="Valor do Lance / Arremate" value={bidValue} onChange={setBidValue} />
-                      <MoneyInput label="Valor de Avaliação" value={evalValue} onChange={setEvalValue} />
+                      <MoneyInput 
+                        label={valMode === 'total' ? "Valor do Lance / Arremate" : `Lance (Por ${getUnitLabel()})`} 
+                        value={valMode === 'total' ? bidValue : bidUnitValue} 
+                        onChange={valMode === 'total' ? setBidValue : setBidUnitValue} 
+                        subText={assetType !== 'veiculo' ? getSubText(valMode === 'total', valMode === 'total' ? bidValue : bidUnitValue, safeSize) : undefined}
+                      />
+                      <MoneyInput 
+                        label={valMode === 'total' ? "Valor de Avaliação" : `Avaliação (Por ${getUnitLabel()})`} 
+                        value={valMode === 'total' ? evalValue : evalUnitValue} 
+                        onChange={valMode === 'total' ? setEvalValue : setEvalUnitValue} 
+                        subText={assetType !== 'veiculo' ? getSubText(valMode === 'total', valMode === 'total' ? evalValue : evalUnitValue, safeSize) : undefined}
+                      />
                     </div>
+                    
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <MoneyInput label={assetType === 'veiculo' ? "Valor Tabela FIPE / Mercado" : "Valor de Mercado Real"} value={marketValue} onChange={setMarketValue} />
-                      <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
-                        <MoneyInput label="Orçamento Máximo" value={maxBudget} onChange={setMaxBudget} />
-                        <button onClick={handleSuggestBid} className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition-colors">Calcular Lance Ideal</button>
+                      <MoneyInput 
+                        label={assetType === 'veiculo' ? "Valor Tabela FIPE (Cheia)" : (valMode === 'total' ? "Valor de Mercado Real" : `Mercado (Por ${getUnitLabel()})`)} 
+                        value={valMode === 'total' ? marketValue : marketUnitValue} 
+                        onChange={valMode === 'total' ? setMarketValue : setMarketUnitValue} 
+                        subText={assetType !== 'veiculo' ? getSubText(valMode === 'total', valMode === 'total' ? marketValue : marketUnitValue, safeSize) : undefined}
+                      />
+                      
+                      {assetType === 'veiculo' && (
+                        <PercentInput 
+                            label="Desvalorização na Revenda" 
+                            value={fipeDiscount} 
+                            onChange={setFipeDiscount} 
+                            placeholder="30"
+                            extraElement={<div className="text-[11px] font-bold text-amber-600 dark:text-amber-500">Venda Estimada: {formatMoney(discountedSaleValue)}</div>}
+                        />
+                      )}
+                    </div>
+
+                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
+                        <MoneyInput label="Orçamento Máximo Total (Teto Pessoal)" value={maxBudget} onChange={setMaxBudget} />
+                        <button onClick={handleSuggestBid} className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition-colors">Calcular Lance Ideal Baseado no Orçamento</button>
                       </div>
                     </div>
                   </Card>
@@ -530,12 +748,11 @@
                     {/* Header do Relatório */}
                     <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-start">
                       <div>
-                        <h2 className="text-xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">Estudo de Viabilidade Econômica</h2>
+                        <h2 className="text-xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">{assetType === 'veiculo' ? 'Análise Veicular' : 'Análise Imobiliária'}</h2>
                         <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-0.5">{advName} — {advOab}</p>
                       </div>
-                      <div className="text-right text-[10px] text-slate-400">
-                        Documento Gerado Oficialmente<br/>
-                        {assetType === 'veiculo' ? 'Análise Veicular' : 'Análise Imobiliária'}
+                      <div className="text-right text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+                        Simulação Estimativa
                       </div>
                     </div>
 
@@ -561,26 +778,30 @@
                     {assetType === 'veiculo' && safeMarket > 0 && (
                       <div className="mb-6 p-5 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-xl flex justify-between items-center">
                         <div>
-                           <span className="text-xs font-bold uppercase text-amber-800 dark:text-amber-400 block mb-1">Comparativo de Mercado</span>
-                           <span className="text-2xl font-extrabold text-amber-600 dark:text-amber-500">{formatMoney(safeMarket)}</span>
-                           <span className="text-xs text-amber-700/80 dark:text-amber-400/70 block font-medium">Tabela FIPE / Mercado Real</span>
+                           <span className="text-xs font-bold uppercase text-amber-800 dark:text-amber-400 block mb-1">Tabela FIPE Base</span>
+                           <span className="text-xl font-extrabold text-amber-600 dark:text-amber-500 line-through opacity-60">{formatMoney(safeMarket)}</span>
+                           <div className="mt-1.5 text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                              Venda Estimada: {formatMoney(discountedSaleValue)} 
+                              {safeNumber(fipeDiscount) > 0 && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-0.5 rounded ml-2">-{safeNumber(fipeDiscount)}% desvalorização</span>}
+                           </div>
                         </div>
                         <div className="text-right">
                            <div className="inline-block px-3 py-1 bg-amber-200 dark:bg-amber-800/50 text-amber-800 dark:text-amber-300 rounded-md text-xs font-bold mb-2">
                              Arremate = {arremateFipePercent.toFixed(1)}% da FIPE
                            </div>
-                           {safeEval > 0 && <div className="text-xs text-slate-500 font-medium">Avaliação Judicial: {formatMoney(safeEval)}</div>}
+                           {safeEval > 0 && <div className="text-xs text-slate-500 font-medium mb-1">Avaliação Judicial: {formatMoney(safeEval)}</div>}
+                           {maxBidForProfit > 0 && <div className="text-xs text-rose-600 dark:text-rose-400 font-bold mt-2">Teto para Lucro Zero: {formatMoney(maxBidForProfit)}</div>}
                         </div>
                       </div>
                     )}
 
                     {/* Dimensões Imóvel no PDF (Urbano ou Rural) */}
-                    {assetType !== 'veiculo' && sizeInput > 0 && (
+                    {assetType !== 'veiculo' && safeSize > 0 && (
                       <div className={`mb-6 p-4 border rounded-xl ${assetType === 'rural' ? 'bg-emerald-50/40 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30' : 'bg-slate-50/40 border-slate-100 dark:bg-slate-800/20 dark:border-slate-800/50'}`}>
                         <div className="flex justify-between items-center mb-3">
                           <span className={`text-xs font-bold uppercase ${assetType === 'rural' ? 'text-emerald-800 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>Dimensões da Área</span>
                           <span className={`text-xs font-bold ${assetType === 'rural' ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-300'}`}>
-                            {assetType === 'rural' ? `Área: ${sizeInput} ${ruralUnit === 'm2' ? 'm²' : ruralUnit === 'ha' ? 'ha' : alqName}` : `Área Total: ${sizeInput} m²`}
+                            {assetType === 'rural' ? `Área: ${formatCurrencyStr(safeSize)} ${ruralUnit === 'm2' ? 'm²' : ruralUnit === 'ha' ? 'ha' : alqName}` : `Área Total: ${formatCurrencyStr(safeSize)} m²`}
                           </span>
                         </div>
                         
@@ -588,36 +809,36 @@
                           <div className="grid grid-cols-3 gap-2 text-center text-xs">
                             <div className="bg-white/80 dark:bg-slate-800 p-2 rounded-lg">
                               <span className="text-[10px] block text-slate-400 uppercase font-bold">Total m²</span>
-                              <strong className="text-slate-800 dark:text-slate-200">{areaInM2.toLocaleString('pt-BR')} m²</strong>
+                              <strong className="text-slate-800 dark:text-slate-200">{formatCurrencyStr(areaInM2)} m²</strong>
                             </div>
                             <div className="bg-white/80 dark:bg-slate-800 p-2 rounded-lg">
                               <span className="text-[10px] block text-slate-400 uppercase font-bold">Total Hectares</span>
-                              <strong className="text-slate-800 dark:text-slate-200">{areaInHa.toFixed(2).replace('.', ',')} ha</strong>
+                              <strong className="text-slate-800 dark:text-slate-200">{formatCurrencyStr(areaInHa)} ha</strong>
                             </div>
                             <div className="bg-white/80 dark:bg-slate-800 p-2 rounded-lg">
                               <span className="text-[10px] block text-slate-400 uppercase font-bold">Total {alqName}</span>
-                              <strong className="text-slate-800 dark:text-slate-200">{areaInAlq.toFixed(2).replace('.', ',')} alq</strong>
+                              <strong className="text-slate-800 dark:text-slate-200">{formatCurrencyStr(areaInAlq)} alq</strong>
                             </div>
                           </div>
                         ) : (
                           <div className="bg-white/80 dark:bg-slate-800 p-2 rounded-lg text-center">
                               <span className="text-[10px] block text-slate-400 uppercase font-bold">Área Total Computada</span>
-                              <strong className="text-slate-800 dark:text-slate-200 text-sm">{areaInM2.toLocaleString('pt-BR')} Metros Quadrados (m²)</strong>
+                              <strong className="text-slate-800 dark:text-slate-200 text-sm">{formatCurrencyStr(areaInM2)} Metros Quadrados (m²)</strong>
                           </div>
                         )}
                       </div>
                     )}
 
                     {/* Bloco de Margem de Lucro e ROI */}
-                    {safeMarket > 0 && finalLeilao > 0 && (
-                      <div className="grid grid-cols-2 gap-4 p-4 bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/30 rounded-xl mb-6">
+                    {discountedSaleValue > 0 && finalLeilao > 0 && (
+                      <div className={`grid grid-cols-2 gap-4 p-4 border rounded-xl mb-6 ${lucroAbsoluto >= 0 ? 'bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900/30' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/30'}`}>
                         <div>
-                          <span className="text-[10px] uppercase font-bold text-indigo-400 block">Lucro Absoluto Estimado</span>
+                          <span className={`text-[10px] uppercase font-bold block ${lucroAbsoluto >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>{lucroAbsoluto >= 0 ? 'Lucro Absoluto Estimado' : 'Prejuízo Estimado'}</span>
                           <span className={`text-xl font-extrabold ${lucroAbsoluto >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatMoney(lucroAbsoluto)}</span>
                         </div>
                         <div>
-                          <span className="text-[10px] uppercase font-bold text-indigo-400 block">Retorno / Margem (ROI)</span>
-                          <span className={`text-xl font-extrabold ${margemLucroPorcentagem >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600'}`}>{margemLucroPorcentagem > 0 ? '+' : ''}{margemLucroPorcentagem.toFixed(1)}%</span>
+                          <span className={`text-[10px] uppercase font-bold block ${lucroAbsoluto >= 0 ? 'text-indigo-400' : 'text-rose-400'}`}>Retorno / Margem (ROI)</span>
+                          <span className={`text-xl font-extrabold ${margemLucroPorcentagem >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600'}`}>{margemLucroPorcentagem > 0 ? '+' : ''}{formatCurrencyStr(margemLucroPorcentagem)}%</span>
                         </div>
                       </div>
                     )}
@@ -663,7 +884,7 @@
                     </ul>
 
                     {/* Comparativo de Preço por Unidade (Imóveis) */}
-                    {assetType !== 'veiculo' && sizeInput > 0 && (
+                    {assetType !== 'veiculo' && safeSize > 0 && (
                       <div className="mt-8">
                         <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-3 text-xs uppercase tracking-wider text-slate-500">Comparação de Custos por Área</h4>
                         <div className="overflow-x-auto">
@@ -706,7 +927,7 @@
                     )}
 
                     <div className="mt-8 text-[9px] text-slate-400 text-justify leading-relaxed">
-                      <strong>Nota Legal:</strong> Este relatório é de natureza estimativa e consultiva para amparo em lances. {assetType !== 'veiculo' ? 'As custas notariais e de registo seguem a lei de emolumentos paranaense vigente.' : 'Os valores de FIPE e débitos veiculares são informativos.'}
+                      <strong>Nota Legal:</strong> Documento de caráter puramente estimativo e consultivo visando planejamento financeiro para leilões. {assetType !== 'veiculo' ? 'Custas notariais seguem a legislação estadual vigente.' : 'Tabela FIPE e débitos são informativos e sujeitos a variação de mercado.'}
                     </div>
 
                     <div className="flex gap-2 mt-6 print-hide">
@@ -779,8 +1000,8 @@
                         <h2 className="text-xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">Memorial de Custas de Escrituração</h2>
                         <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-0.5">{advName} — {advOab}</p>
                       </div>
-                      <div className="text-right text-[10px] text-slate-400">
-                        Documento Oficial de Simulação
+                      <div className="text-right text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+                        Simulação Estimativa
                       </div>
                     </div>
 
@@ -860,7 +1081,7 @@
                     </div>
 
                     <div className="mt-8 text-[9px] text-slate-400 text-justify leading-relaxed">
-                      <strong>Observações:</strong> Esta guia é de caráter de simulação baseado na tabela de custas do Estado do Paraná em conformidade com as diretrizes locais. Valores oficiais serão confirmados nos respectivos cartórios competentes.
+                      <strong>Nota Legal:</strong> Este relatório é de natureza estimativa e consultiva para fins de planejamento financeiro. As custas notariais e de registo seguem a lei de emolumentos paranaense vigente e podem variar conforme o cartório competente.
                     </div>
 
                     <div className="flex gap-2 mt-6 print-hide">
