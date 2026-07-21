@@ -455,6 +455,12 @@
       const safeSize = safeNumber(assetSize);
 
       // --- Matemática: LEILÃO ---
+      const calcTax = (taxState, baseValue) => {
+        const val = safeNumber(taxState.value);
+        if (taxState.type === 'percent') return baseValue * (val / 100);
+        return val;
+      };
+
       const safeBid = valMode === 'total' ? safeNumber(bidValue) : safeNumber(bidUnitValue) * safeSize;
       const safeEval = valMode === 'total' ? safeNumber(evalValue) : safeNumber(evalUnitValue) * safeSize;
       const safeMarket = valMode === 'total' ? safeNumber(marketValue) : safeNumber(marketUnitValue) * safeSize;
@@ -995,14 +1001,14 @@
                         
                         {escrituraMode === 'pr' ? (
                           <>
-                            <TaxInput label="Escritura de Compra" value={lavraturaCost} type="fixed" disabled description="Cálculo (Regra PR)" />
-                            <TaxInput label="Funrejus Obrigatório" value={funrejusCost} type="fixed" disabled description="Automático (0.2% Teto PR)" />
-                            <TaxInput label="Registo de Imóveis" value={cartorioCostEsc} type="fixed" disabled description="Cálculo (Regra PR)" />
+                            <TaxInput label="Escritura de Compra" value={Math.round(lavraturaCost * 100) / 100} type="fixed" disabled description="Cálculo (Regra PR)" />
+                            <TaxInput label="Funrejus Obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Automático (0.2% Teto PR)" />
+                            <TaxInput label="Registo de Imóveis" value={Math.round(cartorioCostEsc * 100) / 100} type="fixed" disabled description="Cálculo (Regra PR)" />
                           </>
                         ) : (
                           <>
                             <TaxInput label="Escritura de Compra" value={escrituraManual.value} type={escrituraManual.type} onChangeValue={(val) => setEscrituraManual({ ...escrituraManual, value: val })} onChangeType={(t) => setEscrituraManual({ ...escrituraManual, type: t })} description="Tabelionato" />
-                            <TaxInput label="Funrejus Obrigatório" value={funrejusCost} type="fixed" disabled description="Compulsório (0.2% Teto PR)" />
+                            <TaxInput label="Funrejus Obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Compulsório (0.2% Teto PR)" />
                             <TaxInput label="Registo de Imóveis" value={rgiManual.value} type={rgiManual.type} onChangeValue={(val) => setRgiManual({ ...rgiManual, value: val })} onChangeType={(t) => setRgiManual({ ...rgiManual, type: t })} description="Cartório de Registo" />
                           </>
                         )}
