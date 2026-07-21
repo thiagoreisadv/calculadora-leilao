@@ -322,6 +322,7 @@
 
       // Estados: LEILÃO
       const [assetType, setAssetType] = useState(initialState?.assetType || 'urbano'); 
+      const [veiculoMode, setVeiculoMode] = useState(initialState?.veiculoMode || 'leilao');
       const [clienteNomeLeilao, setClienteNomeLeilao] = useState(initialState?.clienteNomeLeilao || '');
       const [imovelDescLeilao, setImovelDescLeilao] = useState(initialState?.imovelDescLeilao || '');
       
@@ -365,13 +366,13 @@
       // Salvar Memória
       useEffect(() => {
           const stateToSave = {
-              advName, advOab, darkMode, activeTab, assetType, clienteNomeLeilao, imovelDescLeilao, 
+              advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, 
               valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
               assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, 
               clienteNome, imovelDesc, negocioValor, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc
           };
           localStorage.setItem('central_calc_imob_v13', JSON.stringify(stateToSave));
-      }, [advName, advOab, darkMode, activeTab, assetType, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc]);
+      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc]);
 
       // Efeito Tema
       useEffect(() => {
@@ -402,7 +403,7 @@
                 setEvalValue(''); setMarketValue(''); setBidValue(''); 
                 setEvalUnitValue(''); setMarketUnitValue(''); setBidUnitValue(''); 
                 setMaxBudget(''); setDebts(''); setRenovation(''); 
-                setAssetSize(''); setAssetType('urbano'); setRuralUnit('ha'); setValMode('total'); setFipeDiscount('30');
+                setAssetSize(''); setAssetType('urbano'); setVeiculoMode('leilao'); setRuralUnit('ha'); setValMode('total'); setFipeDiscount('30');
             } else {
                 setClienteNome(''); setImovelDesc(''); setNegocioValor('');
                 setItbiEscritura({ value: '2', type: 'percent' });
@@ -454,19 +455,15 @@
       const safeSize = safeNumber(assetSize);
 
       // --- Matemática: LEILÃO ---
-      const calcTax = (taxState, baseValue) => {
-        const val = safeNumber(taxState.value);
-        if (taxState.type === 'percent') return baseValue * (val / 100);
-        return val;
-      };
-
       const safeBid = valMode === 'total' ? safeNumber(bidValue) : safeNumber(bidUnitValue) * safeSize;
       const safeEval = valMode === 'total' ? safeNumber(evalValue) : safeNumber(evalUnitValue) * safeSize;
       const safeMarket = valMode === 'total' ? safeNumber(marketValue) : safeNumber(marketUnitValue) * safeSize;
       
       const discountedSaleValue = assetType === 'veiculo' ? safeMarket * (1 - safeNumber(fipeDiscount) / 100) : safeMarket;
 
-      const leiloeiroCost = calcTax(leiloeiro, safeBid);
+      const isRegularizacao = assetType === 'veiculo' && veiculoMode === 'regularizacao';
+
+      const leiloeiroCost = isRegularizacao ? 0 : calcTax(leiloeiro, safeBid);
       const itbiCostLeilao = assetType === 'veiculo' ? 0 : calcTax(itbi, safeBid);
       const legalCost = calcTax(legal, safeBid);
       
@@ -489,7 +486,7 @@
           let low = 0, high = discountedSaleValue, best = 0;
           for(let i=0; i<50; i++) {
               let mid = (low + high) / 2;
-              let lCost = leiloeiro.type === 'percent' ? mid * (safeNumber(leiloeiro.value)/100) : safeNumber(leiloeiro.value);
+              let lCost = isRegularizacao ? 0 : (leiloeiro.type === 'percent' ? mid * (safeNumber(leiloeiro.value)/100) : safeNumber(leiloeiro.value));
               let legCost = legal.type === 'percent' ? mid * (safeNumber(legal.value)/100) : safeNumber(legal.value);
               let total = mid + lCost + legCost + fixedCostsLeilao;
               if (total > discountedSaleValue) high = mid;
@@ -504,7 +501,7 @@
 
         for (let i = 0; i < 50; i++) {
           let mid = (low + high) / 2;
-          let lCost = leiloeiro.type === 'percent' ? mid * (safeNumber(leiloeiro.value)/100) : safeNumber(leiloeiro.value);
+          let lCost = isRegularizacao ? 0 : (leiloeiro.type === 'percent' ? mid * (safeNumber(leiloeiro.value)/100) : safeNumber(leiloeiro.value));
           let iCost = assetType === 'veiculo' ? 0 : (itbi.type === 'percent' ? mid * (safeNumber(itbi.value)/100) : safeNumber(itbi.value));
           let legCost = legal.type === 'percent' ? mid * (safeNumber(legal.value)/100) : safeNumber(legal.value);
           
@@ -526,7 +523,6 @@
             setBidUnitValue(finalBest / safeSize);
         }
       };
-
 
       // Conversão Rural & Urbano
       let areaInM2 = 0, areaInHa = 0, areaInAlq = 0;
@@ -650,6 +646,13 @@
                       </button>
                   </div>
 
+                  {assetType === 'veiculo' && (
+                    <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl flex gap-1 mb-6 border border-slate-200 dark:border-slate-700 mt-2">
+                        <button onClick={() => setVeiculoMode('leilao')} className={`flex-1 py-2.5 sm:py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${veiculoMode === 'leilao' ? 'bg-amber-500 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>Arrematação em Leilão</button>
+                        <button onClick={() => setVeiculoMode('regularizacao')} className={`flex-1 py-2.5 sm:py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${veiculoMode === 'regularizacao' ? 'bg-amber-500 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>Compra c/ Regularização Judicial</button>
+                    </div>
+                  )}
+
                   <Card title="Dados do Arrematante" icon={Building}>
                     <TextInput label="Nome do Cliente" value={clienteNomeLeilao} onChange={setClienteNomeLeilao} placeholder="Ex: Thiago de Souza Reis" />
                     <TextInput label={assetType === 'veiculo' ? "Identificação do Veículo" : "Identificação do Imóvel"} value={imovelDescLeilao} onChange={setImovelDescLeilao} placeholder={assetType === 'veiculo' ? "Ex: Toyota Corolla 2022" : "Ex: Casa - Centro, Loanda/PR"} />
@@ -688,7 +691,7 @@
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <MoneyInput 
-                        label={valMode === 'total' ? "Valor do Lance / Arremate" : `Lance (Por ${getUnitLabel()})`} 
+                        label={valMode === 'total' ? (isRegularizacao ? "Valor de Compra Acordado" : "Valor do Lance / Arremate") : `Lance (Por ${getUnitLabel()})`} 
                         value={valMode === 'total' ? bidValue : bidUnitValue} 
                         onChange={valMode === 'total' ? setBidValue : setBidUnitValue} 
                         subText={assetType !== 'veiculo' ? getSubText(valMode === 'total', valMode === 'total' ? bidValue : bidUnitValue, safeSize) : undefined}
@@ -739,7 +742,9 @@
                     )}
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <TaxInput label="Leiloeiro" value={leiloeiro.value} type={leiloeiro.type} onChangeValue={(val) => setLeiloeiro({ ...leiloeiro, value: val })} onChangeType={(t) => setLeiloeiro({ ...leiloeiro, type: t })} description="Padrão: 5%" />
+                        {!isRegularizacao && (
+                          <TaxInput label="Leiloeiro" value={leiloeiro.value} type={leiloeiro.type} onChangeValue={(val) => setLeiloeiro({ ...leiloeiro, value: val })} onChangeType={(t) => setLeiloeiro({ ...leiloeiro, type: t })} description="Padrão: 5%" />
+                        )}
                         
                         {assetType !== 'veiculo' && (
                           <TaxInput label="ITBI (Imposto)" value={itbi.value} type={itbi.type} onChangeValue={(val) => setItbi({ ...itbi, value: val })} onChangeType={(t) => setItbi({ ...itbi, type: t })} description="Padrão: 2%" />
@@ -753,13 +758,13 @@
                           )
                         )}
                         
-                        <TaxInput label="Assessoria Reis" value={legal.value} type={legal.type} onChangeValue={(val) => setLegal({ ...legal, value: val })} onChangeType={(t) => setLegal({ ...legal, type: t })} description="Honorários" />
+                        <TaxInput label={isRegularizacao ? "Honorários Judiciais" : "Assessoria Reis"} value={legal.value} type={legal.type} onChangeValue={(val) => setLegal({ ...legal, value: val })} onChangeType={(t) => setLegal({ ...legal, type: t })} description={isRegularizacao ? "Regularização" : "Honorários"} />
                     </div>
                   </Card>
 
-                  <Card title={assetType === 'veiculo' ? "Débitos e Reparos Extras" : "Custos Extras / Reformas"} icon={FileText}>
+                  <Card title={assetType === 'veiculo' ? (isRegularizacao ? "Débitos / Documentação / Reparos" : "Débitos e Reparos Extras") : "Custos Extras / Reformas"} icon={FileText}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <MoneyInput label={assetType === 'veiculo' ? "Multas / IPVA" : "Dívidas do Imóvel"} value={debts} onChange={setDebts} />
+                      <MoneyInput label={assetType === 'veiculo' ? "Multas / IPVA / Débitos" : "Dívidas do Imóvel"} value={debts} onChange={setDebts} />
                       <MoneyInput label={assetType === 'veiculo' ? "Mecânica / Reparos" : "Reformas / Outros"} value={renovation} onChange={setRenovation} />
                     </div>
                   </Card>
@@ -772,7 +777,7 @@
                     {/* Header do Relatório */}
                     <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0">
                       <div>
-                        <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">{assetType === 'veiculo' ? 'Análise Veicular' : 'Análise Imobiliária'}</h2>
+                        <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">{assetType === 'veiculo' ? (isRegularizacao ? 'Análise de Compra com Regularização' : 'Análise Veicular') : 'Análise Imobiliária'}</h2>
                         <p className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 mt-0.5">{advName} — {advOab}</p>
                       </div>
                     </div>
@@ -782,13 +787,13 @@
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 mb-6">
                         {clienteNomeLeilao && (
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Arrematante / Cliente</span>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">{assetType === 'veiculo' && isRegularizacao ? 'Comprador / Cliente' : 'Arrematante / Cliente'}</span>
                             <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{clienteNomeLeilao}</span>
                           </div>
                         )}
                         {imovelDescLeilao && (
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 block">{assetType === 'veiculo' ? "Veículo Avaliado" : "Imóvel Avaliado"}</span>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block">{assetType === 'veiculo' ? (isRegularizacao ? "Veículo para Regularizar" : "Veículo Avaliado") : "Imóvel Avaliado"}</span>
                             <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{imovelDescLeilao}</span>
                           </div>
                         )}
@@ -808,9 +813,9 @@
                         </div>
                         <div className="text-left sm:text-right w-full sm:w-auto">
                            <div className="inline-block px-3 py-1.5 bg-amber-200 dark:bg-amber-800/50 text-amber-800 dark:text-amber-300 rounded-md text-xs font-bold mb-2">
-                             Arremate = {arremateFipePercent.toFixed(1)}% da FIPE
+                             {isRegularizacao ? 'Compra' : 'Arremate'} = {arremateFipePercent.toFixed(1)}% da FIPE
                            </div>
-                           {safeEval > 0 && <div className="text-xs text-slate-500 font-medium mb-1">Avaliação Judicial: {formatMoney(safeEval)}</div>}
+                           {safeEval > 0 && <div className="text-xs text-slate-500 font-medium mb-1">Avaliação {isRegularizacao ? 'Atual' : 'Judicial'}: {formatMoney(safeEval)}</div>}
                            {maxBidForProfit > 0 && <div className="text-xs text-rose-600 dark:text-rose-400 font-bold mt-1">Teto p/ Lucro Zero: {formatMoney(maxBidForProfit)}</div>}
                         </div>
                       </div>
@@ -867,13 +872,16 @@
                     <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 text-xs uppercase tracking-wider text-slate-500">Detalhamento Financeiro</h4>
                     <ul className="space-y-3 text-sm">
                       <li className="flex justify-between font-bold text-base pb-2 border-b border-slate-100 dark:border-slate-800">
-                        <span>Valor de Aquisição</span> 
+                        <span>{isRegularizacao ? "Valor da Compra Acordada" : "Valor de Aquisição (Lance)"}</span> 
                         <span className="text-slate-900 dark:text-white">{formatMoney(safeBid)}</span>
                       </li>
-                      <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                        <span>Comissão do Leiloeiro</span> 
-                        <span className="text-rose-500 font-medium">+{formatMoney(leiloeiroCost)}</span>
-                      </li>
+                      
+                      {!isRegularizacao && (
+                        <li className="flex justify-between text-slate-600 dark:text-slate-400">
+                          <span>Comissão do Leiloeiro</span> 
+                          <span className="text-rose-500 font-medium">+{formatMoney(leiloeiroCost)}</span>
+                        </li>
+                      )}
                       
                       {assetType !== 'veiculo' && (
                         <>
@@ -889,12 +897,12 @@
                       )}
                       
                       <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                        <span>Assessoria Jurídica</span> 
+                        <span>{isRegularizacao ? "Honorários Judiciais e Custas" : "Assessoria Jurídica"}</span> 
                         <span className="text-rose-500 font-medium">+{formatMoney(legalCost)}</span>
                       </li>
                       {(safeNumber(debts) > 0 || safeNumber(renovation) > 0) && (
                         <li className="flex justify-between text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
-                          <span>Passivos & Custos Extras</span> 
+                          <span>{isRegularizacao ? "Multas, Doc. e Reparos" : "Passivos & Custos Extras"}</span> 
                           <span className="text-amber-500 font-medium">+{formatMoney(fixedCostsLeilao)}</span>
                         </li>
                       )}
