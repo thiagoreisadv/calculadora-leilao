@@ -11,48 +11,22 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js" crossorigin="anonymous"></script>
 
   <style>
-    /* Otimização extrema para PDF e Impressão Limpa e Compacta */
+    /* Layout de impressão dedicado: documento formal (tabelas, cabeçalho, assinatura),
+       não uma cópia com CSS forçado do dashboard da tela. */
     @page {
       size: A4;
-      margin: 10mm;
+      margin: 16mm 14mm;
     }
     @media print {
-      body {
-        background-color: white !important;
+      html, body {
+        background: #ffffff !important;
       }
-
-      * {
-        background-color: transparent !important;
-        color: black !important;
-        box-shadow: none !important;
-        text-shadow: none !important;
-      }
-
       .print-hide { display: none !important; }
       .print-page-wrapper { margin: 0 !important; padding: 0 !important; }
-
-      .p-8, .p-6, .p-5, .p-4, .p-3 { padding: 6px !important; }
-      .mb-6, .mb-5, .mb-4, .mb-3 { margin-bottom: 6px !important; }
-      .mt-8, .mt-6, .mt-4 { margin-top: 6px !important; }
-      .pb-4, .pb-2 { padding-bottom: 4px !important; }
-      .pt-4, .pt-2 { padding-top: 4px !important; }
-      .gap-4, .gap-6 { gap: 6px !important; }
-
-      .border, .border-t, .border-b, .border-l, .border-r { border-color: #cbd5e1 !important; }
-      .rounded-xl, .rounded-2xl { border-radius: 4px !important; }
-
-      h2 { font-size: 13px !important; margin-bottom: 2px !important; font-weight: 800 !important; text-transform: uppercase !important; }
-      h4, h5 { font-size: 11px !important; margin-bottom: 2px !important; font-weight: bold !important; }
-      span, p, li, strong, td, th { line-height: 1.25 !important; }
-
-      .text-2xl, .text-xl, .text-lg { font-size: 12px !important; font-weight: bold !important; }
-      .text-base, .text-sm { font-size: 10px !important; }
-      .text-xs { font-size: 9px !important; }
-      .text-\[10px\] { font-size: 8px !important; }
-      .text-\[9px\] { font-size: 7px !important; }
-
-      li { padding-top: 2px !important; padding-bottom: 2px !important; }
-      th, td { padding: 4px !important; }
+      .avoid-break { page-break-inside: avoid; break-inside: avoid; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; break-inside: avoid; }
+      thead { display: table-header-group; }
     }
   </style>
   <script>
@@ -88,6 +62,8 @@
       if (val === '' || val == null || isNaN(val)) return 'R$ 0,00';
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
     };
+
+    const formatDateTime = (date) => date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     const safeNumber = (val) => {
         if (val === '' || val == null) return 0;
@@ -986,8 +962,8 @@
 
                 {/* VISUALIZAÇÃO DO PDF / RESULTADO (LEILÃO) */}
                 <div className="space-y-4 sm:space-y-6 mt-6 lg:mt-0">
-                  <div id="pdf-leilao" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl sm:shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0">
-
+                  <div id="pdf-leilao" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl sm:shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0 print:shadow-none">
+                    <div className="print:hidden">
                     {/* Header do Relatório */}
                     <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0">
                       <div>
@@ -1184,6 +1160,158 @@
                         <Printer className="w-5 h-5" /> Gerar Relatório PDF
                       </button>
                     </div>
+                    </div>{/* fim do bloco de tela (print:hidden) */}
+
+                    {/* ===== DOCUMENTO DE IMPRESSÃO (formal, tabelas, sem chrome de dashboard) ===== */}
+                    <div className="hidden print:block text-black">
+                      <div className="flex justify-between items-end border-b-2 border-black pb-3 mb-5">
+                        <div>
+                          <div className="text-base font-bold uppercase tracking-tight">{advName}</div>
+                          <div className="text-[10px]">{advOab}</div>
+                        </div>
+                        <div className="text-right text-[9px] text-gray-600">
+                          Documento gerado em {formatDateTime(new Date())}
+                        </div>
+                      </div>
+
+                      <h1 className="text-sm font-bold uppercase text-center mb-1 tracking-wide">
+                        {assetType === 'veiculo' ? (isRegularizacao ? 'Análise de Compra com Regularização Judicial' : 'Análise de Viabilidade Veicular') : 'Análise de Viabilidade Imobiliária'}
+                      </h1>
+                      <p className="text-[9px] text-center text-gray-500 mb-5">Relatório estimativo de custos e retorno financeiro</p>
+
+                      {(clienteNomeLeilao || imovelDescLeilao) && (
+                        <table className="w-full text-[10px] mb-5 border-collapse avoid-break">
+                          <tbody>
+                            {clienteNomeLeilao && (
+                              <tr><td className="py-1 pr-3 font-bold uppercase w-1/4 align-top">{assetType === 'veiculo' && isRegularizacao ? 'Comprador' : 'Arrematante'}</td><td className="py-1 align-top">{clienteNomeLeilao}</td></tr>
+                            )}
+                            {imovelDescLeilao && (
+                              <tr><td className="py-1 pr-3 font-bold uppercase w-1/4 align-top">{assetType === 'veiculo' ? 'Veículo' : 'Imóvel'}</td><td className="py-1 align-top">{imovelDescLeilao}</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      )}
+
+                      {assetType === 'veiculo' && safeMarket > 0 && (
+                        <table className="w-full text-[10px] mb-5 border-collapse avoid-break">
+                          <tbody>
+                            <tr className="border-b border-gray-300"><td className="py-1">Tabela FIPE (Cheia)</td><td className="py-1 text-right">{formatMoney(safeMarket)}</td></tr>
+                            <tr className="border-b border-gray-300"><td className="py-1">Venda Estimada (desvalorização de {formatCurrencyStr(fipeDiscountClamped)}%)</td><td className="py-1 text-right">{formatMoney(discountedSaleValue)}</td></tr>
+                            <tr className="border-b border-gray-300"><td className="py-1">{isRegularizacao ? 'Compra' : 'Arremate'} em relação à FIPE</td><td className="py-1 text-right">{arremateFipePercent.toFixed(1)}%</td></tr>
+                            {safeEval > 0 && <tr className="border-b border-gray-300"><td className="py-1">Avaliação {isRegularizacao ? 'Atual' : 'Judicial'}</td><td className="py-1 text-right">{formatMoney(safeEval)}</td></tr>}
+                            {maxBidForProfit > 0 && <tr><td className="py-1">Teto de Lance para Lucro Zero</td><td className="py-1 text-right">{formatMoney(maxBidForProfit)}</td></tr>}
+                          </tbody>
+                        </table>
+                      )}
+
+                      {assetType !== 'veiculo' && safeSize > 0 && (
+                        <table className="w-full text-[10px] mb-5 border-collapse avoid-break">
+                          <tbody>
+                            <tr>
+                              <td className="py-1 font-bold uppercase w-1/4">Dimensões</td>
+                              <td className="py-1">
+                                {assetType === 'rural'
+                                  ? `${formatCurrencyStr(areaInM2)} m² · ${formatCurrencyStr(areaInHa)} ha · ${formatCurrencyStr(areaInAlq)} ${alqName}`
+                                  : `${formatCurrencyStr(areaInM2)} m²`}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      )}
+
+                      <table className="w-full text-[10px] border-collapse mb-5 avoid-break">
+                        <thead>
+                          <tr className="border-b-2 border-black">
+                            <th className="text-left py-1.5 font-bold uppercase">Descrição</th>
+                            <th className="text-right py-1.5 font-bold uppercase">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b border-gray-300">
+                            <td className="py-1.5 font-bold">{isRegularizacao ? "Valor da Compra Acordada" : "Valor de Aquisição (Lance)"}</td>
+                            <td className="py-1.5 text-right font-bold">{formatMoney(safeBid)}</td>
+                          </tr>
+                          {!isRegularizacao && (
+                            <tr className="border-b border-gray-300"><td className="py-1.5">Comissão do Leiloeiro</td><td className="py-1.5 text-right">{formatMoney(leiloeiroCost)}</td></tr>
+                          )}
+                          {assetType !== 'veiculo' && (
+                            <>
+                              <tr className="border-b border-gray-300"><td className="py-1.5">ITBI Arrematação{safeNumber(valorVenalLeilao) > safeBid ? ' (s/ valor venal)' : ''}</td><td className="py-1.5 text-right">{formatMoney(itbiCostLeilao)}</td></tr>
+                              <tr className="border-b border-gray-300"><td className="py-1.5">Cartório de Registo</td><td className="py-1.5 text-right">{formatMoney(cartorioCostLeilao)}</td></tr>
+                            </>
+                          )}
+                          <tr className="border-b border-gray-300"><td className="py-1.5">{isRegularizacao ? "Honorários Judiciais e Custas" : "Assessoria Jurídica"}</td><td className="py-1.5 text-right">{formatMoney(legalCost)}</td></tr>
+                          {(safeNumber(debts) > 0 || safeNumber(renovation) > 0) && (
+                            <tr className="border-b border-gray-300"><td className="py-1.5">{isRegularizacao ? "Multas, Documentação e Reparos" : "Passivos e Custos Extras"}</td><td className="py-1.5 text-right">{formatMoney(fixedCostsLeilao)}</td></tr>
+                          )}
+                          <tr className="border-t-2 border-black">
+                            <td className="py-2 font-bold uppercase">Custo Operacional Total</td>
+                            <td className="py-2 text-right font-bold">{formatMoney(finalLeilao)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+
+                      {discountedSaleValue > 0 && (
+                        <table className="w-full text-[10px] border-collapse mb-5 avoid-break">
+                          <tbody>
+                            <tr className="border-b border-gray-300"><td className="py-1.5 font-semibold">{lucroAbsoluto >= 0 ? 'Lucro Absoluto Estimado' : 'Prejuízo Estimado'}</td><td className="py-1.5 text-right font-bold">{formatMoney(lucroAbsoluto)}</td></tr>
+                            <tr><td className="py-1.5 font-semibold">Retorno / Margem (ROI)</td><td className="py-1.5 text-right font-bold">{margemLucroPorcentagem > 0 ? '+' : ''}{formatCurrencyStr(margemLucroPorcentagem)}%</td></tr>
+                          </tbody>
+                        </table>
+                      )}
+
+                      {assetType !== 'veiculo' && safeSize > 0 && (safeEval > 0 || safeMarket > 0) && (
+                        <table className="w-full text-[9px] border-collapse mb-5 avoid-break">
+                          <thead>
+                            <tr className="border-b border-black">
+                              <th className="text-left py-1 font-bold uppercase">Comparação por Área</th>
+                              <th className="text-right py-1 font-bold uppercase">Por m²</th>
+                              {assetType === 'rural' && <th className="text-right py-1 font-bold uppercase">Por Hectare</th>}
+                              {assetType === 'rural' && <th className="text-right py-1 font-bold uppercase">Por {alqName}</th>}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {safeEval > 0 && (
+                              <tr className="border-b border-gray-300">
+                                <td className="py-1">Avaliação ({formatMoney(safeEval)})</td>
+                                <td className="py-1 text-right">{formatMoney(ratesEval.m2)}</td>
+                                {assetType === 'rural' && <td className="py-1 text-right">{formatMoney(ratesEval.ha)}</td>}
+                                {assetType === 'rural' && <td className="py-1 text-right">{formatMoney(ratesEval.alq)}</td>}
+                              </tr>
+                            )}
+                            {safeMarket > 0 && (
+                              <tr className="border-b border-gray-300">
+                                <td className="py-1">Mercado Real ({formatMoney(safeMarket)})</td>
+                                <td className="py-1 text-right">{formatMoney(ratesMarket.m2)}</td>
+                                {assetType === 'rural' && <td className="py-1 text-right">{formatMoney(ratesMarket.ha)}</td>}
+                                {assetType === 'rural' && <td className="py-1 text-right">{formatMoney(ratesMarket.alq)}</td>}
+                              </tr>
+                            )}
+                            <tr>
+                              <td className="py-1">Arrematação ({formatMoney(safeBid)})</td>
+                              <td className="py-1 text-right">{formatMoney(ratesBid.m2)}</td>
+                              {assetType === 'rural' && <td className="py-1 text-right">{formatMoney(ratesBid.ha)}</td>}
+                              {assetType === 'rural' && <td className="py-1 text-right">{formatMoney(ratesBid.alq)}</td>}
+                            </tr>
+                          </tbody>
+                        </table>
+                      )}
+
+                      <p className="text-[8px] text-gray-600 text-justify leading-relaxed mb-10">
+                        <strong>Nota Legal:</strong> Documento de caráter puramente estimativo e consultivo visando planejamento financeiro. {assetType !== 'veiculo' ? `Custas notariais calculadas pela Tabela III-C do TJ-PR, vigente desde ${VIGENCIA_TABELAS_PR}, sujeita a atualização anual.` : 'Tabela FIPE e débitos são informativos e sujeitos a variação de mercado.'}
+                      </p>
+
+                      <div className="flex justify-between text-[9px] avoid-break">
+                        <div className="text-center w-56">
+                          <div className="border-t border-black pt-1 font-bold">{advName}</div>
+                          <div className="text-gray-600">{advOab}</div>
+                        </div>
+                        <div className="text-center w-56">
+                          <div className="border-t border-black pt-1 font-bold">Assinatura do Cliente</div>
+                          <div className="text-gray-600">Ciente da Estimativa</div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1251,8 +1379,8 @@
 
                 {/* VISUALIZAÇÃO DO PDF / RESULTADO (ESCRITURA) */}
                 <div className="space-y-4 sm:space-y-6 mt-6 lg:mt-0">
-                  <div id="pdf-escritura" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl sm:shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0">
-
+                  <div id="pdf-escritura" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl sm:shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0 print:shadow-none">
+                    <div className="print:hidden">
                     {/* Header Limpo Sem Dados de Controle ou Configuração */}
                     <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0">
                       <div>
@@ -1364,6 +1492,81 @@
                       <button onClick={handlePrint} className="w-full flex-1 flex items-center justify-center gap-2 py-4 sm:py-3 bg-slate-900 text-white font-bold rounded-xl transition-all shadow-lg">
                         <Printer className="w-5 h-5" /> Gerar PDF do Orçamento
                       </button>
+                    </div>
+                    </div>{/* fim do bloco de tela (print:hidden) */}
+
+                    {/* ===== DOCUMENTO DE IMPRESSÃO (formal, tabelas, sem chrome de dashboard) ===== */}
+                    <div className="hidden print:block text-black">
+                      <div className="flex justify-between items-end border-b-2 border-black pb-3 mb-5">
+                        <div>
+                          <div className="text-base font-bold uppercase tracking-tight">{advName}</div>
+                          <div className="text-[10px]">{advOab}</div>
+                        </div>
+                        <div className="text-right text-[9px] text-gray-600">
+                          Documento gerado em {formatDateTime(new Date())}
+                        </div>
+                      </div>
+
+                      <h1 className="text-sm font-bold uppercase text-center mb-1 tracking-wide">Memorial de Custas de Escrituração</h1>
+                      <p className="text-[9px] text-center text-gray-500 mb-5">Simulação estimativa de custos de transmissão imobiliária</p>
+
+                      {(clienteNome || imovelDesc) && (
+                        <table className="w-full text-[10px] mb-5 border-collapse avoid-break">
+                          <tbody>
+                            {clienteNome && <tr><td className="py-1 pr-3 font-bold uppercase w-1/4 align-top">Adquirente</td><td className="py-1 align-top">{clienteNome}</td></tr>}
+                            {imovelDesc && <tr><td className="py-1 pr-3 font-bold uppercase w-1/4 align-top">Imóvel</td><td className="py-1 align-top">{imovelDesc}</td></tr>}
+                          </tbody>
+                        </table>
+                      )}
+
+                      <table className="w-full text-[10px] border-collapse mb-5 avoid-break">
+                        <thead>
+                          <tr className="border-b-2 border-black"><th colSpan="2" className="text-left py-1.5 font-bold uppercase">Passo 1 — Lavratura, Impostos e Acessórios</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b border-gray-300"><td className="py-1.5 font-bold">Base da Transação</td><td className="py-1.5 text-right font-bold">{formatMoney(safeNegocio)}</td></tr>
+                          <tr className="border-b border-gray-300"><td className="py-1.5">Imposto de Transmissão (ITBI){safeNumber(valorVenalEsc) > safeNegocio ? ' (s/ valor venal)' : ''}</td><td className="py-1.5 text-right">{formatMoney(itbiCostEsc)}</td></tr>
+                          <tr className="border-b border-gray-300"><td className="py-1.5">Ato de Escrituração Imobiliária{escrituraExtrapolada ? ' *' : ''}</td><td className="py-1.5 text-right">{formatMoney(lavraturaCost)}</td></tr>
+                          <tr className="border-b border-gray-300"><td className="py-1.5">Funrejus Compulsório (0,2% — TJPR)</td><td className="py-1.5 text-right">{formatMoney(funrejusCost)}</td></tr>
+                          {safeCertidoesEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">Certidões e Buscas</td><td className="py-1.5 text-right">{formatMoney(safeCertidoesEsc)}</td></tr>}
+                          {safeDiligenciasEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">Diligências / Assessoria</td><td className="py-1.5 text-right">{formatMoney(safeDiligenciasEsc)}</td></tr>}
+                          <tr className="border-t-2 border-black"><td className="py-2 font-bold uppercase">Subtotal Sem Registro</td><td className="py-2 text-right font-bold">{formatMoney(custoInicialEsc)}</td></tr>
+                        </tbody>
+                      </table>
+
+                      {incluirRgi && (
+                        <table className="w-full text-[10px] border-collapse mb-5 avoid-break">
+                          <thead>
+                            <tr className="border-b-2 border-black"><th colSpan="2" className="text-left py-1.5 font-bold uppercase">Passo 2 — Registro de Imóveis (RGI)</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td className="py-1.5 font-bold">Emolumento de Registro</td><td className="py-1.5 text-right font-bold">{formatMoney(cartorioCostEsc)}</td></tr>
+                          </tbody>
+                        </table>
+                      )}
+
+                      <table className="w-full text-[11px] border-collapse mb-5 avoid-break">
+                        <tbody>
+                          <tr className="border-b border-gray-300"><td className="py-1.5">Total Documentação Inicial (Passo 1)</td><td className="py-1.5 text-right">{formatMoney(custoInicialEsc)}</td></tr>
+                          <tr className="border-t-2 border-black"><td className="py-2 font-bold uppercase">Apurado Final {incluirRgi ? 'Com Registro (RGI)' : ''}</td><td className="py-2 text-right font-bold">{formatMoney(totalEscrituraComRegistro)}</td></tr>
+                        </tbody>
+                      </table>
+
+                      <p className="text-[8px] text-gray-600 text-justify leading-relaxed mb-10">
+                        <strong>Nota Legal:</strong> Este relatório é de natureza estimativa e consultiva para fins de planejamento financeiro. As custas notariais e de registo seguem as tabelas de emolumentos do TJ-PR vigentes desde {VIGENCIA_TABELAS_PR} e podem variar conforme o cartório competente ou reajuste anual.
+                        {escrituraExtrapolada ? ' * A tabela oficial do Tabelionato de Notas não define faixas acima de R$226.000,00; o valor exibido é uma estimativa mínima baseada na última faixa conhecida — confirme com o tabelionato.' : ''}
+                      </p>
+
+                      <div className="flex justify-between text-[9px] avoid-break">
+                        <div className="text-center w-56">
+                          <div className="border-t border-black pt-1 font-bold">{advName}</div>
+                          <div className="text-gray-600">{advOab}</div>
+                        </div>
+                        <div className="text-center w-56">
+                          <div className="border-t border-black pt-1 font-bold">Assinatura do Cliente</div>
+                          <div className="text-gray-600">Ciente da Estimativa</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
