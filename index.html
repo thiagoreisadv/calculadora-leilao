@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
   <title>Central de Cálculos de Leilões e Imóveis</title>
-  
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
@@ -14,13 +14,13 @@
     /* Otimização extrema para PDF e Impressão Limpa e Compacta */
     @page {
       size: A4;
-      margin: 10mm; 
+      margin: 10mm;
     }
     @media print {
-      body { 
-        background-color: white !important; 
+      body {
+        background-color: white !important;
       }
-      
+
       * {
         background-color: transparent !important;
         color: black !important;
@@ -30,21 +30,21 @@
 
       .print-hide { display: none !important; }
       .print-page-wrapper { margin: 0 !important; padding: 0 !important; }
-      
+
       .p-8, .p-6, .p-5, .p-4, .p-3 { padding: 6px !important; }
       .mb-6, .mb-5, .mb-4, .mb-3 { margin-bottom: 6px !important; }
       .mt-8, .mt-6, .mt-4 { margin-top: 6px !important; }
       .pb-4, .pb-2 { padding-bottom: 4px !important; }
       .pt-4, .pt-2 { padding-top: 4px !important; }
       .gap-4, .gap-6 { gap: 6px !important; }
-      
+
       .border, .border-t, .border-b, .border-l, .border-r { border-color: #cbd5e1 !important; }
       .rounded-xl, .rounded-2xl { border-radius: 4px !important; }
-      
+
       h2 { font-size: 13px !important; margin-bottom: 2px !important; font-weight: 800 !important; text-transform: uppercase !important; }
       h4, h5 { font-size: 11px !important; margin-bottom: 2px !important; font-weight: bold !important; }
       span, p, li, strong, td, th { line-height: 1.25 !important; }
-      
+
       .text-2xl, .text-xl, .text-lg { font-size: 12px !important; font-weight: bold !important; }
       .text-base, .text-sm { font-size: 10px !important; }
       .text-xs { font-size: 9px !important; }
@@ -121,12 +121,15 @@
       );
     };
 
-    const PercentInput = ({ label, value, onChange, placeholder, extraElement }) => {
+    const PercentInput = ({ label, value, onChange, placeholder, extraElement, max }) => {
       const handleChange = (e) => {
         let val = e.target.value;
         val = val.replace(/[^0-9,]/g, '');
         const parts = val.split(',');
         if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
+        if (max != null && val !== '' && safeNumber(val) > max) {
+          val = String(max).replace('.', ',');
+        }
         onChange(val);
       };
       return (
@@ -234,7 +237,7 @@
     };
 
     const Card = ({ title, icon: Icon, children, extraHeader }) => (
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-6 print-no-shadow print-tight relative">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-6 relative">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3 sm:gap-0">
             <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
             {Icon && <Icon className="w-5 h-5 text-indigo-600" />} {title}
@@ -245,43 +248,66 @@
       </div>
     );
 
-    // --- Matemática Paraná (TJ-PR Lei 21.869/2023) ---
-    const obterEmolumentoBasePR = (valor) => {
-      if (valor <= 56000) return 349.02;
-      if (valor <= 66000) return 411.34;
-      if (valor <= 76000) return 473.67;
-      if (valor <= 86000) return 535.99;
-      if (valor <= 96000) return 598.32;
-      if (valor <= 106000) return 660.64;
-      if (valor <= 116000) return 722.97;
-      if (valor <= 126000) return 785.29;
-      if (valor <= 136000) return 847.62;
-      if (valor <= 146000) return 909.94;
-      if (valor <= 156000) return 972.27;
-      if (valor <= 166000) return 1011.60;
-      if (valor <= 176000) return 1072.54;
-      if (valor <= 186000) return 1133.48;
-      if (valor <= 196000) return 1194.42;
-      return 1377.24; 
+    // --- Matemática Paraná (TJ-PR - Lei 6.183/2023 e Lei 21.869/2023, atualizada 2026) ---
+
+    // Tabela III-C (Registro de Imóveis, atos onerosos: compra e venda / arrematação em
+    // hasta pública). Valor TOTAL já inclui Emolumento + FUNJECC + FUNADEP/FUNDE-PGE +
+    // FEADMP + ISS 5% + Selos. Vigência: 01/01/2026.
+    const TABELA_REGISTRO_PR_2026 = [
+      { ate: 5000, total: 142.38 }, { ate: 10000, total: 259.09 }, { ate: 15000, total: 374.24 },
+      { ate: 20000, total: 490.81 }, { ate: 25000, total: 604.43 }, { ate: 30000, total: 719.44 },
+      { ate: 35000, total: 836.17 }, { ate: 40000, total: 951.33 }, { ate: 45000, total: 1068.03 },
+      { ate: 50000, total: 1183.07 }, { ate: 55000, total: 1414.93 }, { ate: 60000, total: 1529.96 },
+      { ate: 65000, total: 1646.67 }, { ate: 70000, total: 1760.29 }, { ate: 75000, total: 1875.29 },
+      { ate: 80000, total: 1990.46 }, { ate: 85000, total: 2107.18 }, { ate: 90000, total: 2222.19 },
+      { ate: 95000, total: 2338.83 }, { ate: 100000, total: 2569.08 }, { ate: 110000, total: 2683.01 },
+      { ate: 120000, total: 2799.41 }, { ate: 130000, total: 2914.44 }, { ate: 140000, total: 3029.58 },
+      { ate: 150000, total: 3144.60 }, { ate: 160000, total: 3240.52 }, { ate: 170000, total: 3336.44 },
+      { ate: 180000, total: 3432.36 }, { ate: 190000, total: 3528.30 }, { ate: 200000, total: 3624.22 },
+      { ate: 210000, total: 3717.02 }, { ate: 220000, total: 3809.68 }, { ate: 230000, total: 3902.49 },
+      { ate: 240000, total: 3995.16 }, { ate: 250000, total: 4087.82 }, { ate: 260000, total: 4257.30 },
+      { ate: 270000, total: 4426.79 }, { ate: 280000, total: 4596.29 }, { ate: 290000, total: 4765.76 },
+      { ate: 300000, total: 4935.11 }, { ate: 325000, total: 5016.74 }, { ate: 350000, total: 5098.24 },
+      { ate: 375000, total: 5179.71 }, { ate: 400000, total: 5261.35 }, { ate: 425000, total: 5342.88 },
+      { ate: 450000, total: 5424.33 }, { ate: 475000, total: 5505.97 }, { ate: 500000, total: 5587.46 },
+      { ate: 600000, total: 5668.94 }, { ate: 700000, total: 5750.44 }, { ate: 800000, total: 5832.06 },
+      { ate: 900000, total: 5913.55 }, { ate: 1000000, total: 5995.05 }, { ate: 2000000, total: 6408.71 },
+      { ate: 3000000, total: 6903.88 }, { ate: 4000000, total: 7399.05 }, { ate: 5000000, total: 7894.20 },
+      { ate: 7000000, total: 8389.37 }, { ate: 9000000, total: 8884.52 }, { ate: Infinity, total: 9379.69 }
+    ];
+
+    // Tabela XI, item IV (Tabelionato de Notas - Escrituras). Base do emolumento (sem
+    // FADEP/ISS/selo). Tabela oficial "não é progressiva" e não define faixas acima de
+    // R$226.000,00 — para valores acima disso o app sinaliza que é extrapolação.
+    const TABELA_ESCRITURA_PR_2026 = [
+      { ate: 56000, base: 349.02 }, { ate: 66000, base: 411.34 }, { ate: 76000, base: 473.67 },
+      { ate: 86000, base: 535.99 }, { ate: 96000, base: 598.32 }, { ate: 106000, base: 660.64 },
+      { ate: 116000, base: 722.97 }, { ate: 126000, base: 785.29 }, { ate: 136000, base: 847.62 },
+      { ate: 146000, base: 909.94 }, { ate: 156000, base: 972.27 }, { ate: 166000, base: 1011.60 },
+      { ate: 176000, base: 1072.54 }, { ate: 186000, base: 1133.48 }, { ate: 196000, base: 1194.42 },
+      { ate: 206000, base: 1255.36 }, { ate: 216000, base: 1316.30 }, { ate: 226000, base: 1377.24 }
+    ];
+    const TETO_TABELA_ESCRITURA_PR = 226000;
+
+    const VIGENCIA_TABELAS_PR = '01/01/2026';
+
+    const buscarFaixa = (tabela, valor, campo) => {
+      const faixa = tabela.find(f => valor <= f.ate);
+      return faixa ? faixa[campo] : tabela[tabela.length - 1][campo];
     };
 
     const calcularRegistroPR = (valor) => {
       if (!valor) return 0;
-      const base = obterEmolumentoBasePR(valor);
-      const fadep = base * 0.05;
-      const selo = 8.00;
-      const prenotacaoEArq = 3.85 + 2.78;
-      const iss = (base + 2.77 + 1.94) * 0.03;
-      return base + fadep + selo + prenotacaoEArq + iss;
+      return buscarFaixa(TABELA_REGISTRO_PR_2026, valor, 'total');
     };
 
     const calcularEscrituraPR = (valor) => {
-      if (!valor) return 0;
-      const base = obterEmolumentoBasePR(valor) * 1.15; 
+      if (!valor) return { total: 0, extrapolado: false };
+      const base = buscarFaixa(TABELA_ESCRITURA_PR_2026, valor, 'base');
       const fadep = base * 0.05;
       const selo = 8.00;
       const iss = base * 0.03;
-      return base + fadep + selo + iss;
+      return { total: base + fadep + selo + iss, extrapolado: valor > TETO_TABELA_ESCRITURA_PR };
     };
 
     const calcularFunrejus = (valor) => {
@@ -304,9 +330,13 @@
     function App() {
       // Carregamento de Configurações da Memória Local
       const loadInitialState = () => {
-          const savedData = localStorage.getItem('central_calc_imob_v13');
-          if (savedData) {
-              return JSON.parse(savedData);
+          try {
+            const savedData = localStorage.getItem('central_calc_imob_v14');
+            if (savedData) {
+                return JSON.parse(savedData);
+            }
+          } catch (e) {
+            console.warn('Não foi possível carregar os dados salvos (localStorage corrompido).', e);
           }
           return null;
       };
@@ -317,44 +347,47 @@
       const [advName, setAdvName] = useState(initialState?.advName || "Thiago Reis - Assessoria Jurídica");
       const [advOab, setAdvOab] = useState(initialState?.advOab || "OAB/PR 115.608");
       const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+      const [isCasesOpen, setIsCasesOpen] = useState(false);
       const [darkMode, setDarkMode] = useState(initialState?.darkMode || false);
       const [activeTab, setActiveTab] = useState(initialState?.activeTab || 'leilao');
 
       // Estados: LEILÃO
-      const [assetType, setAssetType] = useState(initialState?.assetType || 'urbano'); 
+      const [assetType, setAssetType] = useState(initialState?.assetType || 'urbano');
       const [veiculoMode, setVeiculoMode] = useState(initialState?.veiculoMode || 'leilao');
       const [clienteNomeLeilao, setClienteNomeLeilao] = useState(initialState?.clienteNomeLeilao || '');
       const [imovelDescLeilao, setImovelDescLeilao] = useState(initialState?.imovelDescLeilao || '');
-      
-      const [valMode, setValMode] = useState(initialState?.valMode || 'total'); 
-      
+
+      const [valMode, setValMode] = useState(initialState?.valMode || 'total');
+
       const [evalValue, setEvalValue] = useState(initialState?.evalValue || '');
-      const [marketValue, setMarketValue] = useState(initialState?.marketValue || ''); 
+      const [marketValue, setMarketValue] = useState(initialState?.marketValue || '');
       const [bidValue, setBidValue] = useState(initialState?.bidValue || '');
 
       const [evalUnitValue, setEvalUnitValue] = useState(initialState?.evalUnitValue || '');
-      const [marketUnitValue, setMarketUnitValue] = useState(initialState?.marketUnitValue || ''); 
+      const [marketUnitValue, setMarketUnitValue] = useState(initialState?.marketUnitValue || '');
       const [bidUnitValue, setBidUnitValue] = useState(initialState?.bidUnitValue || '');
 
       const [maxBudget, setMaxBudget] = useState(initialState?.maxBudget || '');
-      
+
       const [assetSize, setAssetSize] = useState(initialState?.assetSize || '');
-      const [ruralUnit, setRuralUnit] = useState(initialState?.ruralUnit || 'ha'); 
-      
+      const [ruralUnit, setRuralUnit] = useState(initialState?.ruralUnit || 'ha');
+
       const [fipeDiscount, setFipeDiscount] = useState(initialState?.fipeDiscount || '30');
 
       const [leiloeiro, setLeiloeiro] = useState(initialState?.leiloeiro || { value: '5', type: 'percent' });
       const [itbi, setItbi] = useState(initialState?.itbi || { value: '2', type: 'percent' });
+      const [valorVenalLeilao, setValorVenalLeilao] = useState(initialState?.valorVenalLeilao || '');
       const [legal, setLegal] = useState(initialState?.legal || { value: '5', type: 'percent' });
       const [cartorioModeLeilao, setCartorioModeLeilao] = useState(initialState?.cartorioModeLeilao || 'pr');
       const [cartorioManualLeilao, setCartorioManualLeilao] = useState(initialState?.cartorioManualLeilao || { value: '2', type: 'percent' });
       const [debts, setDebts] = useState(initialState?.debts || '');
       const [renovation, setRenovation] = useState(initialState?.renovation || '');
-      
+
       // Estados: ESCRITURA
       const [clienteNome, setClienteNome] = useState(initialState?.clienteNome || '');
       const [imovelDesc, setImovelDesc] = useState(initialState?.imovelDesc || '');
       const [negocioValor, setNegocioValor] = useState(initialState?.negocioValor || '');
+      const [valorVenalEsc, setValorVenalEsc] = useState(initialState?.valorVenalEsc || '');
       const [incluirRgi, setIncluirRgi] = useState(initialState?.incluirRgi ?? true);
       const [escrituraMode, setEscrituraMode] = useState(initialState?.escrituraMode || 'pr');
       const [itbiEscritura, setItbiEscritura] = useState(initialState?.itbiEscritura || { value: '2', type: 'percent' });
@@ -363,16 +396,24 @@
       const [certidoesEsc, setCertidoesEsc] = useState(initialState?.certidoesEsc || '');
       const [diligenciasEsc, setDiligenciasEsc] = useState(initialState?.diligenciasEsc || '');
 
+      // Casos salvos (histórico multi-cliente)
+      const [savedCases, setSavedCases] = useState(() => {
+        try {
+          const raw = localStorage.getItem('central_calc_imob_casos_v1');
+          return raw ? JSON.parse(raw) : [];
+        } catch (e) { return []; }
+      });
+
       // Salvar Memória
       useEffect(() => {
           const stateToSave = {
-              advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, 
+              advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao,
               valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
-              assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, 
-              clienteNome, imovelDesc, negocioValor, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc
+              assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
+              clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc
           };
-          localStorage.setItem('central_calc_imob_v13', JSON.stringify(stateToSave));
-      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc]);
+          try { localStorage.setItem('central_calc_imob_v14', JSON.stringify(stateToSave)); } catch (e) {}
+      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc]);
 
       // Efeito Tema
       useEffect(() => {
@@ -387,6 +428,71 @@
          }
       }, [assetType, assetSize]);
 
+      const persistCases = (list) => {
+        setSavedCases(list);
+        try { localStorage.setItem('central_calc_imob_casos_v1', JSON.stringify(list)); } catch (e) {}
+      };
+
+      const buildCurrentState = () => ({
+        advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao,
+        valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
+        assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
+        clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc
+      });
+
+      const applyState = (s) => {
+        setAdvName(s.advName ?? advName); setAdvOab(s.advOab ?? advOab);
+        setActiveTab(s.activeTab || 'leilao');
+        setAssetType(s.assetType || 'urbano'); setVeiculoMode(s.veiculoMode || 'leilao');
+        setClienteNomeLeilao(s.clienteNomeLeilao || ''); setImovelDescLeilao(s.imovelDescLeilao || '');
+        setValMode(s.valMode || 'total');
+        setEvalValue(s.evalValue ?? ''); setMarketValue(s.marketValue ?? ''); setBidValue(s.bidValue ?? '');
+        setEvalUnitValue(s.evalUnitValue ?? ''); setMarketUnitValue(s.marketUnitValue ?? ''); setBidUnitValue(s.bidUnitValue ?? '');
+        setMaxBudget(s.maxBudget ?? '');
+        setAssetSize(s.assetSize ?? ''); setRuralUnit(s.ruralUnit || 'ha');
+        setFipeDiscount(s.fipeDiscount ?? '30');
+        setLeiloeiro(s.leiloeiro || { value: '5', type: 'percent' });
+        setItbi(s.itbi || { value: '2', type: 'percent' });
+        setValorVenalLeilao(s.valorVenalLeilao ?? '');
+        setLegal(s.legal || { value: '5', type: 'percent' });
+        setCartorioModeLeilao(s.cartorioModeLeilao || 'pr');
+        setCartorioManualLeilao(s.cartorioManualLeilao || { value: '2', type: 'percent' });
+        setDebts(s.debts ?? ''); setRenovation(s.renovation ?? '');
+        setClienteNome(s.clienteNome || ''); setImovelDesc(s.imovelDesc || '');
+        setNegocioValor(s.negocioValor ?? ''); setValorVenalEsc(s.valorVenalEsc ?? '');
+        setIncluirRgi(s.incluirRgi ?? true);
+        setEscrituraMode(s.escrituraMode || 'pr');
+        setItbiEscritura(s.itbiEscritura || { value: '2', type: 'percent' });
+        setEscrituraManual(s.escrituraManual || { value: '', type: 'fixed' });
+        setRgiManual(s.rgiManual || { value: '', type: 'fixed' });
+        setCertidoesEsc(s.certidoesEsc ?? ''); setDiligenciasEsc(s.diligenciasEsc ?? '');
+      };
+
+      const handleSaveCase = () => {
+        const nomeSugerido = (activeTab === 'leilao' ? clienteNomeLeilao : clienteNome) || 'Caso sem nome';
+        const nome = window.prompt('Nome para identificar este caso:', nomeSugerido);
+        if (!nome) return;
+        const novoCaso = {
+          id: Date.now().toString(36),
+          nome,
+          tipo: activeTab,
+          data: new Date().toLocaleDateString('pt-BR'),
+          state: buildCurrentState()
+        };
+        persistCases([novoCaso, ...savedCases]);
+      };
+
+      const handleLoadCase = (id) => {
+        const found = savedCases.find(c => c.id === id);
+        if (found) { applyState(found.state); setIsCasesOpen(false); }
+      };
+
+      const handleDeleteCase = (id) => {
+        if (window.confirm('Excluir este caso salvo?')) {
+          persistCases(savedCases.filter(c => c.id !== id));
+        }
+      };
+
       const handlePrint = () => {
         const wasDark = darkMode;
         if(wasDark) setDarkMode(false);
@@ -399,13 +505,13 @@
       const handleReset = () => {
         if(window.confirm("Zerar valores desta aba?")) {
             if(activeTab === 'leilao') {
-                setClienteNomeLeilao(''); setImovelDescLeilao(''); 
-                setEvalValue(''); setMarketValue(''); setBidValue(''); 
-                setEvalUnitValue(''); setMarketUnitValue(''); setBidUnitValue(''); 
-                setMaxBudget(''); setDebts(''); setRenovation(''); 
+                setClienteNomeLeilao(''); setImovelDescLeilao('');
+                setEvalValue(''); setMarketValue(''); setBidValue('');
+                setEvalUnitValue(''); setMarketUnitValue(''); setBidUnitValue('');
+                setMaxBudget(''); setDebts(''); setRenovation(''); setValorVenalLeilao('');
                 setAssetSize(''); setAssetType('urbano'); setVeiculoMode('leilao'); setRuralUnit('ha'); setValMode('total'); setFipeDiscount('30');
             } else {
-                setClienteNome(''); setImovelDesc(''); setNegocioValor('');
+                setClienteNome(''); setImovelDesc(''); setNegocioValor(''); setValorVenalEsc('');
                 setItbiEscritura({ value: '2', type: 'percent' });
                 setEscrituraManual({ value: '', type: 'fixed' });
                 setRgiManual({ value: '', type: 'fixed' });
@@ -428,7 +534,7 @@
       const handleValModeChange = (newMode) => {
         const size = safeNumber(assetSize);
         if (size <= 0 && newMode === 'unit') return;
-        
+
         if (newMode === 'unit' && valMode === 'total') {
             setBidUnitValue(safeNumber(bidValue) / size || '');
             setEvalUnitValue(safeNumber(evalValue) / size || '');
@@ -464,15 +570,17 @@
       const safeBid = valMode === 'total' ? safeNumber(bidValue) : safeNumber(bidUnitValue) * safeSize;
       const safeEval = valMode === 'total' ? safeNumber(evalValue) : safeNumber(evalUnitValue) * safeSize;
       const safeMarket = valMode === 'total' ? safeNumber(marketValue) : safeNumber(marketUnitValue) * safeSize;
-      
-      const discountedSaleValue = assetType === 'veiculo' ? safeMarket * (1 - safeNumber(fipeDiscount) / 100) : safeMarket;
+
+      const fipeDiscountClamped = Math.min(100, Math.max(0, safeNumber(fipeDiscount)));
+      const discountedSaleValue = assetType === 'veiculo' ? safeMarket * (1 - fipeDiscountClamped / 100) : safeMarket;
 
       const isRegularizacao = assetType === 'veiculo' && veiculoMode === 'regularizacao';
 
       const leiloeiroCost = isRegularizacao ? 0 : calcTax(leiloeiro, safeBid);
-      const itbiCostLeilao = assetType === 'veiculo' ? 0 : calcTax(itbi, safeBid);
+      const baseItbiLeilao = Math.max(safeBid, safeNumber(valorVenalLeilao));
+      const itbiCostLeilao = assetType === 'veiculo' ? 0 : calcTax(itbi, baseItbiLeilao);
       const legalCost = calcTax(legal, safeBid);
-      
+
       let cartorioCostLeilao = 0;
       if (assetType !== 'veiculo') {
         if (cartorioModeLeilao === 'pr') cartorioCostLeilao = calcularRegistroPR(safeBid);
@@ -481,10 +589,10 @@
 
       const fixedCostsLeilao = safeNumber(debts) + safeNumber(renovation);
       const finalLeilao = safeBid + leiloeiroCost + itbiCostLeilao + legalCost + cartorioCostLeilao + fixedCostsLeilao;
-      
+
       const lucroAbsoluto = discountedSaleValue > 0 ? discountedSaleValue - finalLeilao : 0;
       const margemLucroPorcentagem = discountedSaleValue > 0 && finalLeilao > 0 ? (lucroAbsoluto / finalLeilao) * 100 : 0;
-      
+
       const arremateFipePercent = safeMarket > 0 && safeBid > 0 ? (safeBid / safeMarket) * 100 : 0;
 
       let maxBidForProfit = 0;
@@ -499,6 +607,19 @@
               else { best = mid; low = mid; }
           }
           maxBidForProfit = Math.floor(best);
+      } else if (assetType !== 'veiculo' && safeMarket > 0) {
+          let low = 0, high = safeMarket, best = 0;
+          for(let i=0; i<50; i++) {
+              let mid = (low + high) / 2;
+              let lCost = leiloeiro.type === 'percent' ? mid * (safeNumber(leiloeiro.value)/100) : safeNumber(leiloeiro.value);
+              let iCost = itbi.type === 'percent' ? Math.max(mid, safeNumber(valorVenalLeilao)) * (safeNumber(itbi.value)/100) : safeNumber(itbi.value);
+              let legCost = legal.type === 'percent' ? mid * (safeNumber(legal.value)/100) : safeNumber(legal.value);
+              let cCost = cartorioModeLeilao === 'pr' ? calcularRegistroPR(mid) : (cartorioManualLeilao.type === 'percent' ? mid * (safeNumber(cartorioManualLeilao.value)/100) : safeNumber(cartorioManualLeilao.value));
+              let total = mid + lCost + iCost + legCost + cCost + fixedCostsLeilao;
+              if (total > safeMarket) high = mid;
+              else { best = mid; low = mid; }
+          }
+          maxBidForProfit = Math.floor(best);
       }
 
       const handleSuggestBid = () => {
@@ -508,9 +629,9 @@
         for (let i = 0; i < 50; i++) {
           let mid = (low + high) / 2;
           let lCost = isRegularizacao ? 0 : (leiloeiro.type === 'percent' ? mid * (safeNumber(leiloeiro.value)/100) : safeNumber(leiloeiro.value));
-          let iCost = assetType === 'veiculo' ? 0 : (itbi.type === 'percent' ? mid * (safeNumber(itbi.value)/100) : safeNumber(itbi.value));
+          let iCost = assetType === 'veiculo' ? 0 : (itbi.type === 'percent' ? Math.max(mid, safeNumber(valorVenalLeilao)) * (safeNumber(itbi.value)/100) : safeNumber(itbi.value));
           let legCost = legal.type === 'percent' ? mid * (safeNumber(legal.value)/100) : safeNumber(legal.value);
-          
+
           let cCost = 0;
           if (assetType !== 'veiculo') {
             if(cartorioModeLeilao === 'pr') cCost = calcularRegistroPR(mid);
@@ -521,7 +642,7 @@
           if (total > budget) high = mid;
           else { bestBid = mid; low = mid; }
         }
-        
+
         const finalBest = Math.floor(bestBid);
         if (valMode === 'total') {
             setBidValue(finalBest);
@@ -537,24 +658,24 @@
       if (assetType === 'urbano') {
           areaInM2 = safeSize;
       } else if (assetType === 'rural' && safeSize > 0) {
-        if (ruralUnit === 'm2') { 
-            areaInM2 = safeSize; 
-            areaInHa = safeSize / 10000; 
-            areaInAlq = safeSize / ALQUEIRES.alq_paulista.m2; 
+        if (ruralUnit === 'm2') {
+            areaInM2 = safeSize;
+            areaInHa = safeSize / 10000;
+            areaInAlq = safeSize / ALQUEIRES.alq_paulista.m2;
             alqName = "Alq. Paulista";
-        } 
-        else if (ruralUnit === 'ha') { 
-            areaInM2 = safeSize * 10000; 
-            areaInHa = safeSize; 
-            areaInAlq = safeSize / ALQUEIRES.alq_paulista.ha; 
+        }
+        else if (ruralUnit === 'ha') {
+            areaInM2 = safeSize * 10000;
+            areaInHa = safeSize;
+            areaInAlq = safeSize / ALQUEIRES.alq_paulista.ha;
             alqName = "Alq. Paulista";
-        } 
+        }
         else if (ALQUEIRES[ruralUnit]) {
             const config = ALQUEIRES[ruralUnit];
             areaInM2 = safeSize * config.m2;
             areaInHa = safeSize * config.ha;
             areaInAlq = safeSize;
-            alqName = config.name.split(" (")[0]; 
+            alqName = config.name.split(" (")[0];
         }
       }
 
@@ -573,27 +694,73 @@
 
       // --- Matemática: ESCRITURA ---
       const safeNegocio = safeNumber(negocioValor);
-      const itbiCostEsc = calcTax(itbiEscritura, safeNegocio);
+      const baseItbiEsc = Math.max(safeNegocio, safeNumber(valorVenalEsc));
+      const itbiCostEsc = calcTax(itbiEscritura, baseItbiEsc);
       const funrejusCost = calcularFunrejus(safeNegocio);
 
-      let lavraturaCost = 0, cartorioCostEsc = 0;
+      let lavraturaCost = 0, cartorioCostEsc = 0, escrituraExtrapolada = false;
       if (escrituraMode === 'pr') {
-          lavraturaCost = calcularEscrituraPR(safeNegocio);
+          const resultadoEscritura = calcularEscrituraPR(safeNegocio);
+          lavraturaCost = resultadoEscritura.total;
+          escrituraExtrapolada = resultadoEscritura.extrapolado;
           cartorioCostEsc = calcularRegistroPR(safeNegocio);
       } else {
           lavraturaCost = calcTax(escrituraManual, safeNegocio);
           cartorioCostEsc = calcTax(rgiManual, safeNegocio);
       }
-      
+
       const safeCertidoesEsc = safeNumber(certidoesEsc);
       const safeDiligenciasEsc = safeNumber(diligenciasEsc);
 
       const custoInicialEsc = itbiCostEsc + lavraturaCost + funrejusCost + safeCertidoesEsc + safeDiligenciasEsc;
       const totalEscrituraComRegistro = custoInicialEsc + cartorioCostEsc;
 
+      // --- Compartilhamento ---
+      const buildResumoTexto = () => {
+        if (activeTab === 'leilao') {
+          const linhas = [
+            `*${assetType === 'veiculo' ? (isRegularizacao ? 'Análise de Compra com Regularização' : 'Análise Veicular') : 'Análise Imobiliária'}*`,
+            advName + (advOab ? ` — ${advOab}` : ''),
+            clienteNomeLeilao ? `Cliente: ${clienteNomeLeilao}` : null,
+            imovelDescLeilao ? `Bem: ${imovelDescLeilao}` : null,
+            '',
+            `Lance/Compra: ${formatMoney(safeBid)}`,
+            `Custo Operacional Total: ${formatMoney(finalLeilao)}`,
+            discountedSaleValue > 0 ? `Lucro Estimado: ${formatMoney(lucroAbsoluto)} (${margemLucroPorcentagem > 0 ? '+' : ''}${formatCurrencyStr(margemLucroPorcentagem)}%)` : null,
+          ].filter(Boolean);
+          return linhas.join('\n');
+        }
+        const linhas = [
+          '*Memorial de Custas de Escrituração*',
+          advName + (advOab ? ` — ${advOab}` : ''),
+          clienteNome ? `Cliente: ${clienteNome}` : null,
+          imovelDesc ? `Imóvel: ${imovelDesc}` : null,
+          '',
+          `Valor do Negócio: ${formatMoney(safeNegocio)}`,
+          `Total sem Registro: ${formatMoney(custoInicialEsc)}`,
+          `Total com Registro (RGI): ${formatMoney(totalEscrituraComRegistro)}`,
+        ].filter(Boolean);
+        return linhas.join('\n');
+      };
+
+      const handleCopyResumo = async () => {
+        const texto = buildResumoTexto();
+        try {
+          await navigator.clipboard.writeText(texto);
+          alert('Resumo copiado para a área de transferência.');
+        } catch (e) {
+          window.prompt('Copie o resumo abaixo:', texto);
+        }
+      };
+
+      const handleShareWhatsapp = () => {
+        const texto = encodeURIComponent(buildResumoTexto());
+        window.open(`https://wa.me/?text=${texto}`, '_blank');
+      };
+
       return (
         <div className="min-h-screen pb-24 print-page-wrapper">
-          
+
           {/* Menu Superior e Configurações */}
           <div className="bg-slate-900 text-white print-hide pt-6 sm:pt-8 pb-10 sm:pb-12 px-3 sm:px-4">
             <div className="max-w-5xl mx-auto">
@@ -603,6 +770,9 @@
                   <p className="text-slate-400 font-medium text-xs sm:text-sm mt-1">{advOab}</p>
                 </div>
                 <div className="flex gap-2">
+                  <button onClick={() => setIsCasesOpen(!isCasesOpen)} className="px-3 py-3 sm:py-2 bg-slate-800 hover:bg-slate-700 rounded-xl sm:rounded-lg text-slate-300 shadow-sm text-xs font-bold uppercase tracking-wide">
+                    Casos
+                  </button>
                   <button onClick={() => setDarkMode(!darkMode)} className="p-3 sm:p-2 bg-slate-800 hover:bg-slate-700 rounded-xl sm:rounded-lg text-slate-300 shadow-sm">
                     {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                   </button>
@@ -619,6 +789,34 @@
                     <TextInput label="Nome do Profissional/Escritório" value={advName} onChange={setAdvName} />
                     <TextInput label="Registo Profissional (Ex: OAB/PR)" value={advOab} onChange={setAdvOab} />
                   </div>
+                  <p className="text-[11px] text-slate-400 mt-2">Tabelas de custas TJ-PR vigentes desde {VIGENCIA_TABELAS_PR}. Verifique atualizações anuais antes de confiar em valores altos.</p>
+                </div>
+              )}
+
+              {isCasesOpen && (
+                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-bold text-slate-200">Casos Salvos</h3>
+                    <button onClick={handleSaveCase} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg">Salvar Caso Atual</button>
+                  </div>
+                  {savedCases.length === 0 ? (
+                    <p className="text-xs text-slate-400">Nenhum caso salvo ainda. Preencha os dados e clique em "Salvar Caso Atual" para guardar este cálculo e voltar a ele depois.</p>
+                  ) : (
+                    <ul className="space-y-2 max-h-64 overflow-y-auto">
+                      {savedCases.map(c => (
+                        <li key={c.id} className="flex justify-between items-center bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-slate-200 truncate">{c.nome}</div>
+                            <div className="text-[10px] text-slate-400 uppercase">{c.tipo === 'leilao' ? 'Leilão' : 'Escritura'} • {c.data}</div>
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0 ml-2">
+                            <button onClick={() => handleLoadCase(c.id)} className="px-2.5 py-1 text-[11px] font-bold bg-slate-700 hover:bg-slate-600 text-white rounded-md">Abrir</button>
+                            <button onClick={() => handleDeleteCase(c.id)} className="px-2.5 py-1 text-[11px] font-bold bg-rose-900/60 hover:bg-rose-900 text-rose-200 rounded-md">Excluir</button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
             </div>
@@ -633,12 +831,12 @@
           </div>
 
           <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 print:mt-0 print:px-0">
-            
+
             {/* --- ABA LEILÃO --- */}
             {activeTab === 'leilao' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-4 sm:space-y-6 print-hide">
-                  
+
                   {/* Seletor Tipo de Bem */}
                   <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-3 flex gap-2">
                       <button onClick={() => setAssetType('urbano')} className={`flex-1 flex flex-col items-center py-3 rounded-xl border-2 transition-all ${assetType === 'urbano' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
@@ -685,8 +883,8 @@
                     </Card>
                   )}
 
-                  <Card 
-                    title={`Valores do ${assetType === 'veiculo' ? 'Veículo' : 'Imóvel'}`} 
+                  <Card
+                    title={`Valores do ${assetType === 'veiculo' ? 'Veículo' : 'Imóvel'}`}
                     icon={FileText}
                     extraHeader={assetType !== 'veiculo' && safeSize > 0 && (
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
@@ -696,38 +894,48 @@
                     )}
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <MoneyInput 
-                        label={valMode === 'total' ? (isRegularizacao ? "Valor de Compra Acordado" : "Valor do Lance / Arremate") : `Lance (Por ${getUnitLabel()})`} 
-                        value={valMode === 'total' ? bidValue : bidUnitValue} 
-                        onChange={valMode === 'total' ? setBidValue : setBidUnitValue} 
+                      <MoneyInput
+                        label={valMode === 'total' ? (isRegularizacao ? "Valor de Compra Acordado" : "Valor do Lance / Arremate") : `Lance (Por ${getUnitLabel()})`}
+                        value={valMode === 'total' ? bidValue : bidUnitValue}
+                        onChange={valMode === 'total' ? setBidValue : setBidUnitValue}
                         subText={assetType !== 'veiculo' ? getSubText(valMode === 'total', valMode === 'total' ? bidValue : bidUnitValue, safeSize) : undefined}
                       />
-                      <MoneyInput 
-                        label={valMode === 'total' ? "Valor de Avaliação" : `Avaliação (Por ${getUnitLabel()})`} 
-                        value={valMode === 'total' ? evalValue : evalUnitValue} 
-                        onChange={valMode === 'total' ? setEvalValue : setEvalUnitValue} 
+                      <MoneyInput
+                        label={valMode === 'total' ? "Valor de Avaliação" : `Avaliação (Por ${getUnitLabel()})`}
+                        value={valMode === 'total' ? evalValue : evalUnitValue}
+                        onChange={valMode === 'total' ? setEvalValue : setEvalUnitValue}
                         subText={assetType !== 'veiculo' ? getSubText(valMode === 'total', valMode === 'total' ? evalValue : evalUnitValue, safeSize) : undefined}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <MoneyInput 
-                        label={assetType === 'veiculo' ? "Valor Tabela FIPE (Cheia)" : (valMode === 'total' ? "Valor de Mercado Real" : `Mercado (Por ${getUnitLabel()})`)} 
-                        value={valMode === 'total' ? marketValue : marketUnitValue} 
-                        onChange={valMode === 'total' ? setMarketValue : setMarketUnitValue} 
+                      <MoneyInput
+                        label={assetType === 'veiculo' ? "Valor Tabela FIPE (Cheia)" : (valMode === 'total' ? "Valor de Mercado Real" : `Mercado (Por ${getUnitLabel()})`)}
+                        value={valMode === 'total' ? marketValue : marketUnitValue}
+                        onChange={valMode === 'total' ? setMarketValue : setMarketUnitValue}
                         subText={assetType !== 'veiculo' ? getSubText(valMode === 'total', valMode === 'total' ? marketValue : marketUnitValue, safeSize) : undefined}
                       />
-                      
+
                       {assetType === 'veiculo' && (
-                        <PercentInput 
-                            label="Desvalorização na Revenda" 
-                            value={fipeDiscount} 
-                            onChange={setFipeDiscount} 
+                        <PercentInput
+                            label="Desvalorização na Revenda"
+                            value={fipeDiscount}
+                            onChange={setFipeDiscount}
                             placeholder="30"
+                            max={100}
                             extraElement={<div className="text-[11px] font-bold text-amber-600 dark:text-amber-500">Venda Estimada: {formatMoney(discountedSaleValue)}</div>}
                         />
                       )}
                     </div>
+
+                    {assetType !== 'veiculo' && (
+                      <MoneyInput
+                        label="Valor Venal (opcional, para base do ITBI)"
+                        value={valorVenalLeilao}
+                        onChange={setValorVenalLeilao}
+                        subText="Se maior que o lance, o ITBI usa este valor como base — regra comum na maioria dos municípios"
+                      />
+                    )}
 
                     <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                       <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
@@ -736,9 +944,9 @@
                       </div>
                     </div>
                   </Card>
-                  
-                  <Card 
-                    title="Taxas e Custas de Entrada" 
+
+                  <Card
+                    title="Taxas e Custas de Entrada"
                     icon={FileText}
                     extraHeader={assetType !== 'veiculo' && (
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
@@ -751,19 +959,19 @@
                         {!isRegularizacao && (
                           <TaxInput label="Leiloeiro" value={leiloeiro.value} type={leiloeiro.type} onChangeValue={(val) => setLeiloeiro({ ...leiloeiro, value: val })} onChangeType={(t) => setLeiloeiro({ ...leiloeiro, type: t })} description="Padrão: 5%" />
                         )}
-                        
+
                         {assetType !== 'veiculo' && (
                           <TaxInput label="ITBI (Imposto)" value={itbi.value} type={itbi.type} onChangeValue={(val) => setItbi({ ...itbi, value: val })} onChangeType={(t) => setItbi({ ...itbi, type: t })} description="Padrão: 2%" />
                         )}
 
                         {assetType !== 'veiculo' && (
                           cartorioModeLeilao === 'pr' ? (
-                            <TaxInput label="Registo Imóveis" value={cartorioCostLeilao} type="fixed" disabled description="Calculado (Regra PR)" />
+                            <TaxInput label="Registo Imóveis" value={cartorioCostLeilao} type="fixed" disabled description="Tabela TJ-PR 2026" />
                           ) : (
                             <TaxInput label="Registo Imóveis" value={cartorioManualLeilao.value} type={cartorioManualLeilao.type} onChangeValue={(val) => setCartorioManualLeilao({ ...cartorioManualLeilao, value: val })} onChangeType={(t) => setCartorioManualLeilao({ ...cartorioManualLeilao, type: t })} description="Custas manuais" />
                           )
                         )}
-                        
+
                         <TaxInput label={isRegularizacao ? "Honorários Judiciais" : "Assessoria Reis"} value={legal.value} type={legal.type} onChangeValue={(val) => setLegal({ ...legal, value: val })} onChangeType={(t) => setLegal({ ...legal, type: t })} description={isRegularizacao ? "Regularização" : "Honorários"} />
                     </div>
                   </Card>
@@ -778,8 +986,8 @@
 
                 {/* VISUALIZAÇÃO DO PDF / RESULTADO (LEILÃO) */}
                 <div className="space-y-4 sm:space-y-6 mt-6 lg:mt-0">
-                  <div id="pdf-leilao" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl sm:shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print-no-shadow print:border-none print:p-0">
-                    
+                  <div id="pdf-leilao" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl sm:shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0">
+
                     {/* Header do Relatório */}
                     <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0">
                       <div>
@@ -813,8 +1021,8 @@
                            <span className="text-xs font-bold uppercase text-amber-800 dark:text-amber-400 block mb-1">Tabela FIPE Base</span>
                            <span className="text-xl font-extrabold text-amber-600 dark:text-amber-500 line-through opacity-60">{formatMoney(safeMarket)}</span>
                            <div className="mt-1.5 text-sm font-bold text-emerald-700 dark:text-emerald-400 flex flex-wrap gap-2 items-center">
-                              Venda Estimada: {formatMoney(discountedSaleValue)} 
-                              {safeNumber(fipeDiscount) > 0 && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-0.5 rounded text-emerald-800 dark:text-emerald-200">-{safeNumber(fipeDiscount)}% desval.</span>}
+                              Venda Estimada: {formatMoney(discountedSaleValue)}
+                              {fipeDiscountClamped > 0 && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-0.5 rounded text-emerald-800 dark:text-emerald-200">-{formatCurrencyStr(fipeDiscountClamped)}% desval.</span>}
                            </div>
                         </div>
                         <div className="text-left sm:text-right w-full sm:w-auto">
@@ -836,7 +1044,7 @@
                             {assetType === 'rural' ? `Área: ${formatCurrencyStr(safeSize)} ${ruralUnit === 'm2' ? 'm²' : ruralUnit === 'ha' ? 'ha' : alqName}` : `Área Total: ${formatCurrencyStr(safeSize)} m²`}
                           </span>
                         </div>
-                        
+
                         {assetType === 'rural' ? (
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-xs">
                             <div className="bg-white/80 dark:bg-slate-800 p-3 sm:p-2 rounded-lg flex sm:block justify-between items-center">
@@ -872,48 +1080,51 @@
                           <span className={`text-[10px] uppercase font-bold block ${lucroAbsoluto >= 0 ? 'text-indigo-500' : 'text-rose-500'}`}>Retorno / Margem (ROI)</span>
                           <span className={`text-xl font-extrabold ${margemLucroPorcentagem >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600'}`}>{margemLucroPorcentagem > 0 ? '+' : ''}{formatCurrencyStr(margemLucroPorcentagem)}%</span>
                         </div>
+                        {assetType !== 'veiculo' && maxBidForProfit > 0 && (
+                          <div className="sm:col-span-2 text-xs font-bold text-rose-600 dark:text-rose-400 pt-2 border-t border-indigo-100 dark:border-indigo-900/30">Teto de Lance p/ Lucro Zero: {formatMoney(maxBidForProfit)}</div>
+                        )}
                       </div>
                     )}
 
                     <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 text-xs uppercase tracking-wider text-slate-500">Detalhamento Financeiro</h4>
                     <ul className="space-y-3 text-sm">
                       <li className="flex justify-between font-bold text-base pb-2 border-b border-slate-100 dark:border-slate-800">
-                        <span>{isRegularizacao ? "Valor da Compra Acordada" : "Valor de Aquisição (Lance)"}</span> 
+                        <span>{isRegularizacao ? "Valor da Compra Acordada" : "Valor de Aquisição (Lance)"}</span>
                         <span className="text-slate-900 dark:text-white">{formatMoney(safeBid)}</span>
                       </li>
-                      
+
                       {!isRegularizacao && (
                         <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                          <span>Comissão do Leiloeiro</span> 
+                          <span>Comissão do Leiloeiro</span>
                           <span className="text-rose-500 font-medium">+{formatMoney(leiloeiroCost)}</span>
                         </li>
                       )}
-                      
+
                       {assetType !== 'veiculo' && (
                         <>
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                            <span>ITBI Arrematação</span> 
+                            <span>ITBI Arrematação{safeNumber(valorVenalLeilao) > safeBid ? ' (s/ valor venal)' : ''}</span>
                             <span className="text-rose-500 font-medium">+{formatMoney(itbiCostLeilao)}</span>
                           </li>
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                            <span>Cartório de Registo</span> 
+                            <span>Cartório de Registo</span>
                             <span className="text-rose-500 font-medium">+{formatMoney(cartorioCostLeilao)}</span>
                           </li>
                         </>
                       )}
-                      
+
                       <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                        <span>{isRegularizacao ? "Honorários Judiciais e Custas" : "Assessoria Jurídica"}</span> 
+                        <span>{isRegularizacao ? "Honorários Judiciais e Custas" : "Assessoria Jurídica"}</span>
                         <span className="text-rose-500 font-medium">+{formatMoney(legalCost)}</span>
                       </li>
                       {(safeNumber(debts) > 0 || safeNumber(renovation) > 0) && (
                         <li className="flex justify-between text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
-                          <span>{isRegularizacao ? "Multas, Doc. e Reparos" : "Passivos & Custos Extras"}</span> 
+                          <span>{isRegularizacao ? "Multas, Doc. e Reparos" : "Passivos & Custos Extras"}</span>
                           <span className="text-amber-500 font-medium">+{formatMoney(fixedCostsLeilao)}</span>
                         </li>
                       )}
                       <li className="flex justify-between font-extrabold text-lg pt-4 mt-2 border-t border-slate-200 dark:border-slate-800">
-                        <span>Custo Operacional Total</span> 
+                        <span>Custo Operacional Total</span>
                         <span className="text-indigo-700 dark:text-indigo-400">{formatMoney(finalLeilao)}</span>
                       </li>
                     </ul>
@@ -962,11 +1173,13 @@
                     )}
 
                     <div className="mt-8 text-[9px] text-slate-400 text-justify leading-relaxed">
-                      <strong>Nota Legal:</strong> Documento de caráter puramente estimativo e consultivo visando planejamento financeiro. {assetType !== 'veiculo' ? 'Custas notariais seguem a legislação estadual vigente.' : 'Tabela FIPE e débitos são informativos e sujeitos a variação de mercado.'}
+                      <strong>Nota Legal:</strong> Documento de caráter puramente estimativo e consultivo visando planejamento financeiro. {assetType !== 'veiculo' ? `Custas notariais calculadas pela Tabela III-C do TJ-PR, vigente desde ${VIGENCIA_TABELAS_PR}, sujeita a atualização anual.` : 'Tabela FIPE e débitos são informativos e sujeitos a variação de mercado.'}
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3 mt-8 print-hide">
                       <button onClick={handleReset} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all">Limpar</button>
+                      <button onClick={handleCopyResumo} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all">Copiar Resumo</button>
+                      <button onClick={handleShareWhatsapp} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all">WhatsApp</button>
                       <button onClick={handlePrint} className="w-full flex-1 flex items-center justify-center gap-2 py-4 sm:py-3 bg-slate-900 text-white font-bold rounded-xl transition-all shadow-lg">
                         <Printer className="w-5 h-5" /> Gerar Relatório PDF
                       </button>
@@ -984,10 +1197,11 @@
                     <TextInput label="Nome do Adquirente" value={clienteNome} onChange={setClienteNome} placeholder="Ex: João Silva" />
                     <TextInput label="Descrição Detalhada do Imóvel" value={imovelDesc} onChange={setImovelDesc} placeholder="Ex: Chácara São Pedro - Loanda/PR" />
                     <MoneyInput label="Valor Real da Negociação" value={negocioValor} onChange={setNegocioValor} />
+                    <MoneyInput label="Valor Venal (opcional, para base do ITBI)" value={valorVenalEsc} onChange={setValorVenalEsc} subText="Se maior que o valor do negócio, o ITBI usa este valor como base" />
                   </Card>
-                  
-                  <Card 
-                    title="Configurações de Custas" 
+
+                  <Card
+                    title="Configurações de Custas"
                     icon={FileText}
                     extraHeader={
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
@@ -998,12 +1212,12 @@
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <TaxInput label="ITBI (%)" value={itbiEscritura.value} type={itbiEscritura.type} onChangeValue={(val) => setItbiEscritura({ ...itbiEscritura, value: val })} onChangeType={(t) => setItbiEscritura({ ...itbiEscritura, type: t })} description="Imposto de Transmissão" />
-                        
+
                         {escrituraMode === 'pr' ? (
                           <>
-                            <TaxInput label="Escritura de Compra" value={Math.round(lavraturaCost * 100) / 100} type="fixed" disabled description="Cálculo (Regra PR)" />
+                            <TaxInput label="Escritura de Compra" value={Math.round(lavraturaCost * 100) / 100} type="fixed" disabled description={escrituraExtrapolada ? "Acima do teto da tabela (226 mil) — confirme no tabelionato" : "Tabela XI/TJ-PR 2026"} />
                             <TaxInput label="Funrejus Obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Automático (0.2% Teto PR)" />
-                            <TaxInput label="Registo de Imóveis" value={Math.round(cartorioCostEsc * 100) / 100} type="fixed" disabled description="Cálculo (Regra PR)" />
+                            <TaxInput label="Registo de Imóveis" value={Math.round(cartorioCostEsc * 100) / 100} type="fixed" disabled description="Tabela III-C/TJ-PR 2026" />
                           </>
                         ) : (
                           <>
@@ -1013,6 +1227,11 @@
                           </>
                         )}
                     </div>
+                    {escrituraMode === 'pr' && escrituraExtrapolada && (
+                      <div className="mt-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-[11px] text-amber-800 dark:text-amber-300 font-medium">
+                        A tabela oficial de emolumentos do Tabelionato de Notas (Tabela XI) não define faixas para valores acima de R$226.000,00. O valor exibido usa a última faixa conhecida como estimativa mínima — confirme o valor exato diretamente com o tabelionato.
+                      </div>
+                    )}
 
                     <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
                         <label className="flex items-start sm:items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer">
@@ -1032,8 +1251,8 @@
 
                 {/* VISUALIZAÇÃO DO PDF / RESULTADO (ESCRITURA) */}
                 <div className="space-y-4 sm:space-y-6 mt-6 lg:mt-0">
-                  <div id="pdf-escritura" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl sm:shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print-no-shadow print:border-none print:p-0">
-                    
+                  <div id="pdf-escritura" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl sm:shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0">
+
                     {/* Header Limpo Sem Dados de Controle ou Configuração */}
                     <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0">
                       <div>
@@ -1064,43 +1283,43 @@
                     )}
 
                     <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 text-xs uppercase tracking-wider text-slate-500">Detalhamento Financeiro</h4>
-                    
+
                     {/* Bloco 1: Inicial */}
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 mb-4">
                       <h5 className="text-xs font-bold uppercase text-slate-500 mb-3">Passo 1: Lavratura, Impostos e Acessórios</h5>
                       <ul className="space-y-3 text-sm">
                         <li className="flex justify-between pb-2 border-b border-dashed border-slate-200 dark:border-slate-700">
-                          <span>Base da Transação</span> 
+                          <span>Base da Transação</span>
                           <span className="font-bold text-slate-900 dark:text-white">{formatMoney(safeNegocio)}</span>
                         </li>
                         <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                          <span>Imposto de Transmissão (ITBI)</span> 
+                          <span>Imposto de Transmissão (ITBI){safeNumber(valorVenalEsc) > safeNegocio ? ' (s/ valor venal)' : ''}</span>
                           <span className="font-medium">+{formatMoney(itbiCostEsc)}</span>
                         </li>
                         <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                          <span>Ato de Escrituração Imobiliária</span> 
+                          <span>Ato de Escrituração Imobiliária</span>
                           <span className="font-medium">+{formatMoney(lavraturaCost)}</span>
                         </li>
                         <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                          <span>Funrejus Compulsório (0.2% - TJPR)</span> 
+                          <span>Funrejus Compulsório (0.2% - TJPR)</span>
                           <span className="font-medium">+{formatMoney(funrejusCost)}</span>
                         </li>
-                        
+
                         {safeNumber(certidoesEsc) > 0 && (
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                            <span>Certidões e Buscas</span> 
+                            <span>Certidões e Buscas</span>
                             <span className="font-medium">+{formatMoney(safeNumber(certidoesEsc))}</span>
                           </li>
                         )}
                         {safeNumber(diligenciasEsc) > 0 && (
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                            <span>Diligências / Assessoria</span> 
+                            <span>Diligências / Assessoria</span>
                             <span className="font-medium">+{formatMoney(safeNumber(diligenciasEsc))}</span>
                           </li>
                         )}
 
                         <li className="flex justify-between font-bold pt-3 mt-2 border-t border-slate-200 dark:border-slate-700">
-                          <span className="text-slate-800 dark:text-slate-200">Subtotal Sem Registro</span> 
+                          <span className="text-slate-800 dark:text-slate-200">Subtotal Sem Registro</span>
                           <span className="text-indigo-600 dark:text-indigo-400">{formatMoney(custoInicialEsc)}</span>
                         </li>
                       </ul>
@@ -1112,7 +1331,7 @@
                         <h5 className="text-xs font-bold uppercase text-slate-500 mb-2">Passo 2: Registro de Imóveis (RGI)</h5>
                         <ul className="space-y-2 text-sm">
                           <li className="flex justify-between font-medium">
-                            <span className="text-indigo-900 dark:text-indigo-300">Emolumento de Registro</span> 
+                            <span className="text-indigo-900 dark:text-indigo-300">Emolumento de Registro</span>
                             <span className="text-indigo-700 dark:text-indigo-400">+{formatMoney(cartorioCostEsc)}</span>
                           </li>
                         </ul>
@@ -1122,24 +1341,26 @@
                     {/* Resumo Final Múltiplo para PDF */}
                     <div className="bg-slate-900 text-white rounded-xl p-4 sm:p-5 mt-6">
                         <h5 className="text-[10px] font-bold uppercase text-slate-400 mb-4 text-center tracking-widest">Apurado Geral do Orçamento</h5>
-                        
+
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm mb-3 pb-3 border-b border-slate-800 gap-1 sm:gap-0">
-                            <span className="text-slate-400">Total Documentação Inicial (Passo 1)</span> 
+                            <span className="text-slate-400">Total Documentação Inicial (Passo 1)</span>
                             <span className="font-semibold text-lg sm:text-sm">{formatMoney(custoInicialEsc)}</span>
                         </div>
-                        
+
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center font-extrabold text-xl sm:text-lg text-emerald-400 gap-1 sm:gap-0">
-                            <span>Apurado Final Com Registro (RGI)</span> 
+                            <span>Apurado Final Com Registro (RGI)</span>
                             <span>{formatMoney(totalEscrituraComRegistro)}</span>
                         </div>
                     </div>
 
                     <div className="mt-8 text-[9px] text-slate-400 text-justify leading-relaxed">
-                      <strong>Nota Legal:</strong> Este relatório é de natureza estimativa e consultiva para fins de planejamento financeiro. As custas notariais e de registo seguem a lei de emolumentos paranaense vigente e podem variar conforme o cartório competente.
+                      <strong>Nota Legal:</strong> Este relatório é de natureza estimativa e consultiva para fins de planejamento financeiro. As custas notariais e de registo seguem as tabelas de emolumentos do TJ-PR vigentes desde {VIGENCIA_TABELAS_PR} e podem variar conforme o cartório competente ou reajuste anual.
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3 mt-8 print-hide">
                       <button onClick={handleReset} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all">Limpar</button>
+                      <button onClick={handleCopyResumo} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all">Copiar Resumo</button>
+                      <button onClick={handleShareWhatsapp} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all">WhatsApp</button>
                       <button onClick={handlePrint} className="w-full flex-1 flex items-center justify-center gap-2 py-4 sm:py-3 bg-slate-900 text-white font-bold rounded-xl transition-all shadow-lg">
                         <Printer className="w-5 h-5" /> Gerar PDF do Orçamento
                       </button>
