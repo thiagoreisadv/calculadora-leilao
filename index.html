@@ -383,6 +383,9 @@
       const [showFunrejusEsc, setShowFunrejusEsc] = useState(initialState?.showFunrejusEsc ?? true);
       const [showCertidoesEsc, setShowCertidoesEsc] = useState(initialState?.showCertidoesEsc ?? true);
       const [showDiligenciasEsc, setShowDiligenciasEsc] = useState(initialState?.showDiligenciasEsc ?? true);
+      const [outrosDescEsc, setOutrosDescEsc] = useState(initialState?.outrosDescEsc || '');
+      const [outrosValorEsc, setOutrosValorEsc] = useState(initialState?.outrosValorEsc || '');
+      const [showOutrosEsc, setShowOutrosEsc] = useState(initialState?.showOutrosEsc ?? true);
 
       // Casos salvos (histórico multi-cliente)
       const [savedCases, setSavedCases] = useState(() => {
@@ -399,10 +402,10 @@
               valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
               assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
               clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc,
-              showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc
+              showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc
           };
           try { localStorage.setItem('central_calc_imob_v14', JSON.stringify(stateToSave)); } catch (e) {}
-      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc, showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc]);
+      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc, showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc]);
 
       // Efeito Tema
       useEffect(() => {
@@ -427,7 +430,7 @@
         valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
         assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
         clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc,
-        showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc
+        showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc
       });
 
       const applyState = (s) => {
@@ -458,6 +461,7 @@
         setCertidoesEsc(s.certidoesEsc ?? ''); setDiligenciasEsc(s.diligenciasEsc ?? '');
         setShowItbiEsc(s.showItbiEsc ?? true); setShowLavraturaEsc(s.showLavraturaEsc ?? true); setShowFunrejusEsc(s.showFunrejusEsc ?? true);
         setShowCertidoesEsc(s.showCertidoesEsc ?? true); setShowDiligenciasEsc(s.showDiligenciasEsc ?? true);
+        setOutrosDescEsc(s.outrosDescEsc || ''); setOutrosValorEsc(s.outrosValorEsc ?? ''); setShowOutrosEsc(s.showOutrosEsc ?? true);
       };
 
       const handleSaveCase = () => {
@@ -703,9 +707,20 @@
 
       const safeCertidoesEsc = safeNumber(certidoesEsc);
       const safeDiligenciasEsc = safeNumber(diligenciasEsc);
+      const safeOutrosEsc = safeNumber(outrosValorEsc);
 
-      const custoInicialEsc = itbiCostEsc + lavraturaCost + funrejusCost + safeCertidoesEsc + safeDiligenciasEsc;
+      const custoInicialEsc = itbiCostEsc + lavraturaCost + funrejusCost + safeCertidoesEsc + safeDiligenciasEsc + safeOutrosEsc;
       const totalEscrituraComRegistro = custoInicialEsc + cartorioCostEsc;
+
+      // Itens ocultos do orçamento não desaparecem: seu valor é embutido no Ato de
+      // Escrituração para que a soma das linhas exibidas continue batendo com o subtotal.
+      const valorEmbutidoNoAtoEsc =
+        (!showItbiEsc ? itbiCostEsc : 0) +
+        (!showFunrejusEsc ? funrejusCost : 0) +
+        (!showCertidoesEsc ? safeCertidoesEsc : 0) +
+        (!showDiligenciasEsc ? safeDiligenciasEsc : 0) +
+        (!showOutrosEsc ? safeOutrosEsc : 0);
+      const lavraturaCostExibido = showLavraturaEsc ? lavraturaCost + valorEmbutidoNoAtoEsc : lavraturaCost;
 
       // --- Compartilhamento ---
       const buildResumoTexto = () => {
@@ -1410,6 +1425,13 @@
                         <MoneyInput label="Diligências / Assessoria" value={diligenciasEsc} onChange={setDiligenciasEsc} />
                         <ShowInBudgetToggle checked={showDiligenciasEsc} onChange={setShowDiligenciasEsc} />
                       </div>
+                      <div className="sm:col-span-2">
+                        <TextInput label="Outros (especifique)" value={outrosDescEsc} onChange={setOutrosDescEsc} placeholder="Ex: Averbação de óbito, diligência extra..." />
+                      </div>
+                      <div>
+                        <MoneyInput label="Valor de Outros" value={outrosValorEsc} onChange={setOutrosValorEsc} />
+                        <ShowInBudgetToggle checked={showOutrosEsc} onChange={setShowOutrosEsc} />
+                      </div>
                     </div>
                   </Card>
                 </div>
@@ -1466,7 +1488,7 @@
                         {showLavraturaEsc && (
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
                             <span>Ato de Escrituração Imobiliária</span>
-                            <span className="font-medium">+{formatMoney(lavraturaCost)}</span>
+                            <span className="font-medium">+{formatMoney(lavraturaCostExibido)}</span>
                           </li>
                         )}
                         {showFunrejusEsc && (
@@ -1486,6 +1508,12 @@
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
                             <span>Diligências / Assessoria</span>
                             <span className="font-medium">+{formatMoney(safeNumber(diligenciasEsc))}</span>
+                          </li>
+                        )}
+                        {showOutrosEsc && safeOutrosEsc > 0 && (
+                          <li className="flex justify-between text-slate-600 dark:text-slate-400">
+                            <span>{outrosDescEsc || 'Outros'}</span>
+                            <span className="font-medium">+{formatMoney(safeOutrosEsc)}</span>
                           </li>
                         )}
 
@@ -1564,10 +1592,11 @@
                         <tbody>
                           <tr className="border-b border-gray-300"><td className="py-1.5 font-bold">Base da Transação</td><td className="py-1.5 text-right font-bold">{formatMoney(safeNegocio)}</td></tr>
                           {showItbiEsc && <tr className="border-b border-gray-300"><td className="py-1.5">Imposto de Transmissão (ITBI){safeNumber(valorVenalEsc) > safeNegocio ? ' (s/ valor venal)' : ''}</td><td className="py-1.5 text-right">{formatMoney(itbiCostEsc)}</td></tr>}
-                          {showLavraturaEsc && <tr className="border-b border-gray-300"><td className="py-1.5">Ato de Escrituração Imobiliária{escrituraExtrapolada ? ' *' : ''}</td><td className="py-1.5 text-right">{formatMoney(lavraturaCost)}</td></tr>}
+                          {showLavraturaEsc && <tr className="border-b border-gray-300"><td className="py-1.5">Ato de Escrituração Imobiliária{escrituraExtrapolada ? ' *' : ''}</td><td className="py-1.5 text-right">{formatMoney(lavraturaCostExibido)}</td></tr>}
                           {showFunrejusEsc && <tr className="border-b border-gray-300"><td className="py-1.5">Funrejus Compulsório (0,2% — TJPR)</td><td className="py-1.5 text-right">{formatMoney(funrejusCost)}</td></tr>}
                           {showCertidoesEsc && safeCertidoesEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">Certidões e Buscas</td><td className="py-1.5 text-right">{formatMoney(safeCertidoesEsc)}</td></tr>}
                           {showDiligenciasEsc && safeDiligenciasEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">Diligências / Assessoria</td><td className="py-1.5 text-right">{formatMoney(safeDiligenciasEsc)}</td></tr>}
+                          {showOutrosEsc && safeOutrosEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">{outrosDescEsc || 'Outros'}</td><td className="py-1.5 text-right">{formatMoney(safeOutrosEsc)}</td></tr>}
                           <tr className="border-t-2 border-black"><td className="py-2 font-bold uppercase">Subtotal Sem Registro</td><td className="py-2 text-right font-bold">{formatMoney(custoInicialEsc)}</td></tr>
                         </tbody>
                       </table>
