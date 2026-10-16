@@ -212,6 +212,13 @@
       );
     };
 
+    const ShowInBudgetToggle = ({ checked, onChange }) => (
+      <label className="flex items-center gap-1.5 mt-1.5 ml-1 cursor-pointer select-none w-fit">
+        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-3.5 h-3.5 text-indigo-600 rounded" />
+        <span className="text-[11px] text-slate-500 dark:text-slate-400">Mostrar no orçamento</span>
+      </label>
+    );
+
     const Card = ({ title, icon: Icon, children, extraHeader }) => (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-6 relative">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3 sm:gap-0">
@@ -371,6 +378,11 @@
       const [rgiManual, setRgiManual] = useState(initialState?.rgiManual || { value: '', type: 'fixed' });
       const [certidoesEsc, setCertidoesEsc] = useState(initialState?.certidoesEsc || '');
       const [diligenciasEsc, setDiligenciasEsc] = useState(initialState?.diligenciasEsc || '');
+      const [showItbiEsc, setShowItbiEsc] = useState(initialState?.showItbiEsc ?? true);
+      const [showLavraturaEsc, setShowLavraturaEsc] = useState(initialState?.showLavraturaEsc ?? true);
+      const [showFunrejusEsc, setShowFunrejusEsc] = useState(initialState?.showFunrejusEsc ?? true);
+      const [showCertidoesEsc, setShowCertidoesEsc] = useState(initialState?.showCertidoesEsc ?? true);
+      const [showDiligenciasEsc, setShowDiligenciasEsc] = useState(initialState?.showDiligenciasEsc ?? true);
 
       // Casos salvos (histórico multi-cliente)
       const [savedCases, setSavedCases] = useState(() => {
@@ -386,10 +398,11 @@
               advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao,
               valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
               assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
-              clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc
+              clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc,
+              showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc
           };
           try { localStorage.setItem('central_calc_imob_v14', JSON.stringify(stateToSave)); } catch (e) {}
-      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc]);
+      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc, showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc]);
 
       // Efeito Tema
       useEffect(() => {
@@ -413,7 +426,8 @@
         advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao,
         valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
         assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
-        clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc
+        clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc,
+        showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc
       });
 
       const applyState = (s) => {
@@ -442,6 +456,8 @@
         setEscrituraManual(s.escrituraManual || { value: '', type: 'fixed' });
         setRgiManual(s.rgiManual || { value: '', type: 'fixed' });
         setCertidoesEsc(s.certidoesEsc ?? ''); setDiligenciasEsc(s.diligenciasEsc ?? '');
+        setShowItbiEsc(s.showItbiEsc ?? true); setShowLavraturaEsc(s.showLavraturaEsc ?? true); setShowFunrejusEsc(s.showFunrejusEsc ?? true);
+        setShowCertidoesEsc(s.showCertidoesEsc ?? true); setShowDiligenciasEsc(s.showDiligenciasEsc ?? true);
       };
 
       const handleSaveCase = () => {
@@ -1339,18 +1355,33 @@
                     }
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <TaxInput label="ITBI (%)" value={itbiEscritura.value} type={itbiEscritura.type} onChangeValue={(val) => setItbiEscritura({ ...itbiEscritura, value: val })} onChangeType={(t) => setItbiEscritura({ ...itbiEscritura, type: t })} description="Imposto de Transmissão" />
+                        <div>
+                          <TaxInput label="ITBI (%)" value={itbiEscritura.value} type={itbiEscritura.type} onChangeValue={(val) => setItbiEscritura({ ...itbiEscritura, value: val })} onChangeType={(t) => setItbiEscritura({ ...itbiEscritura, type: t })} description="Imposto de Transmissão" />
+                          <ShowInBudgetToggle checked={showItbiEsc} onChange={setShowItbiEsc} />
+                        </div>
 
                         {escrituraMode === 'pr' ? (
                           <>
-                            <TaxInput label="Escritura de Compra" value={Math.round(lavraturaCost * 100) / 100} type="fixed" disabled description={escrituraExtrapolada ? "Acima do teto da tabela (226 mil) — confirme no tabelionato" : "Tabela XI/TJ-PR 2026"} />
-                            <TaxInput label="Funrejus Obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Automático (0.2% Teto PR)" />
+                            <div>
+                              <TaxInput label="Escritura de Compra" value={Math.round(lavraturaCost * 100) / 100} type="fixed" disabled description={escrituraExtrapolada ? "Acima do teto da tabela (226 mil) — confirme no tabelionato" : "Tabela XI/TJ-PR 2026"} />
+                              <ShowInBudgetToggle checked={showLavraturaEsc} onChange={setShowLavraturaEsc} />
+                            </div>
+                            <div>
+                              <TaxInput label="Funrejus Obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Automático (0.2% Teto PR)" />
+                              <ShowInBudgetToggle checked={showFunrejusEsc} onChange={setShowFunrejusEsc} />
+                            </div>
                             <TaxInput label="Registo de Imóveis" value={Math.round(cartorioCostEsc * 100) / 100} type="fixed" disabled description="Tabela III-C/TJ-PR 2026" />
                           </>
                         ) : (
                           <>
-                            <TaxInput label="Escritura de Compra" value={escrituraManual.value} type={escrituraManual.type} onChangeValue={(val) => setEscrituraManual({ ...escrituraManual, value: val })} onChangeType={(t) => setEscrituraManual({ ...escrituraManual, type: t })} description="Tabelionato" />
-                            <TaxInput label="Funrejus Obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Compulsório (0.2% Teto PR)" />
+                            <div>
+                              <TaxInput label="Escritura de Compra" value={escrituraManual.value} type={escrituraManual.type} onChangeValue={(val) => setEscrituraManual({ ...escrituraManual, value: val })} onChangeType={(t) => setEscrituraManual({ ...escrituraManual, type: t })} description="Tabelionato" />
+                              <ShowInBudgetToggle checked={showLavraturaEsc} onChange={setShowLavraturaEsc} />
+                            </div>
+                            <div>
+                              <TaxInput label="Funrejus Obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Compulsório (0.2% Teto PR)" />
+                              <ShowInBudgetToggle checked={showFunrejusEsc} onChange={setShowFunrejusEsc} />
+                            </div>
                             <TaxInput label="Registo de Imóveis" value={rgiManual.value} type={rgiManual.type} onChangeValue={(val) => setRgiManual({ ...rgiManual, value: val })} onChangeType={(t) => setRgiManual({ ...rgiManual, type: t })} description="Cartório de Registo" />
                           </>
                         )}
@@ -1371,8 +1402,14 @@
 
                   <Card title="Custos Acessórios" icon={FileText}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <MoneyInput label="Certidões e Buscas" value={certidoesEsc} onChange={setCertidoesEsc} />
-                      <MoneyInput label="Diligências / Assessoria" value={diligenciasEsc} onChange={setDiligenciasEsc} />
+                      <div>
+                        <MoneyInput label="Certidões e Buscas" value={certidoesEsc} onChange={setCertidoesEsc} />
+                        <ShowInBudgetToggle checked={showCertidoesEsc} onChange={setShowCertidoesEsc} />
+                      </div>
+                      <div>
+                        <MoneyInput label="Diligências / Assessoria" value={diligenciasEsc} onChange={setDiligenciasEsc} />
+                        <ShowInBudgetToggle checked={showDiligenciasEsc} onChange={setShowDiligenciasEsc} />
+                      </div>
                     </div>
                   </Card>
                 </div>
@@ -1420,26 +1457,32 @@
                           <span>Base da Transação</span>
                           <span className="font-bold text-slate-900 dark:text-white">{formatMoney(safeNegocio)}</span>
                         </li>
-                        <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                          <span>Imposto de Transmissão (ITBI){safeNumber(valorVenalEsc) > safeNegocio ? ' (s/ valor venal)' : ''}</span>
-                          <span className="font-medium">+{formatMoney(itbiCostEsc)}</span>
-                        </li>
-                        <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                          <span>Ato de Escrituração Imobiliária</span>
-                          <span className="font-medium">+{formatMoney(lavraturaCost)}</span>
-                        </li>
-                        <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                          <span>Funrejus Compulsório (0.2% - TJPR)</span>
-                          <span className="font-medium">+{formatMoney(funrejusCost)}</span>
-                        </li>
+                        {showItbiEsc && (
+                          <li className="flex justify-between text-slate-600 dark:text-slate-400">
+                            <span>Imposto de Transmissão (ITBI){safeNumber(valorVenalEsc) > safeNegocio ? ' (s/ valor venal)' : ''}</span>
+                            <span className="font-medium">+{formatMoney(itbiCostEsc)}</span>
+                          </li>
+                        )}
+                        {showLavraturaEsc && (
+                          <li className="flex justify-between text-slate-600 dark:text-slate-400">
+                            <span>Ato de Escrituração Imobiliária</span>
+                            <span className="font-medium">+{formatMoney(lavraturaCost)}</span>
+                          </li>
+                        )}
+                        {showFunrejusEsc && (
+                          <li className="flex justify-between text-slate-600 dark:text-slate-400">
+                            <span>Funrejus Compulsório (0.2% - TJPR)</span>
+                            <span className="font-medium">+{formatMoney(funrejusCost)}</span>
+                          </li>
+                        )}
 
-                        {safeNumber(certidoesEsc) > 0 && (
+                        {showCertidoesEsc && safeNumber(certidoesEsc) > 0 && (
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
                             <span>Certidões e Buscas</span>
                             <span className="font-medium">+{formatMoney(safeNumber(certidoesEsc))}</span>
                           </li>
                         )}
-                        {safeNumber(diligenciasEsc) > 0 && (
+                        {showDiligenciasEsc && safeNumber(diligenciasEsc) > 0 && (
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
                             <span>Diligências / Assessoria</span>
                             <span className="font-medium">+{formatMoney(safeNumber(diligenciasEsc))}</span>
@@ -1466,17 +1509,12 @@
                       </div>
                     )}
 
-                    {/* Resumo Final Múltiplo para PDF */}
+                    {/* Resumo Final para PDF */}
                     <div className="bg-slate-900 text-white rounded-xl p-4 sm:p-5 mt-6">
                         <h5 className="text-[10px] font-bold uppercase text-slate-400 mb-4 text-center tracking-widest">Apurado Geral do Orçamento</h5>
 
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm mb-3 pb-3 border-b border-slate-800 gap-1 sm:gap-0">
-                            <span className="text-slate-400">Total Documentação Inicial (Passo 1)</span>
-                            <span className="font-semibold text-lg sm:text-sm">{formatMoney(custoInicialEsc)}</span>
-                        </div>
-
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center font-extrabold text-xl sm:text-lg text-emerald-400 gap-1 sm:gap-0">
-                            <span>Apurado Final Com Registro (RGI)</span>
+                            <span>Total Estimado{incluirRgi ? ' (com Registro RGI)' : ''}</span>
                             <span>{formatMoney(totalEscrituraComRegistro)}</span>
                         </div>
                     </div>
@@ -1525,11 +1563,11 @@
                         </thead>
                         <tbody>
                           <tr className="border-b border-gray-300"><td className="py-1.5 font-bold">Base da Transação</td><td className="py-1.5 text-right font-bold">{formatMoney(safeNegocio)}</td></tr>
-                          <tr className="border-b border-gray-300"><td className="py-1.5">Imposto de Transmissão (ITBI){safeNumber(valorVenalEsc) > safeNegocio ? ' (s/ valor venal)' : ''}</td><td className="py-1.5 text-right">{formatMoney(itbiCostEsc)}</td></tr>
-                          <tr className="border-b border-gray-300"><td className="py-1.5">Ato de Escrituração Imobiliária{escrituraExtrapolada ? ' *' : ''}</td><td className="py-1.5 text-right">{formatMoney(lavraturaCost)}</td></tr>
-                          <tr className="border-b border-gray-300"><td className="py-1.5">Funrejus Compulsório (0,2% — TJPR)</td><td className="py-1.5 text-right">{formatMoney(funrejusCost)}</td></tr>
-                          {safeCertidoesEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">Certidões e Buscas</td><td className="py-1.5 text-right">{formatMoney(safeCertidoesEsc)}</td></tr>}
-                          {safeDiligenciasEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">Diligências / Assessoria</td><td className="py-1.5 text-right">{formatMoney(safeDiligenciasEsc)}</td></tr>}
+                          {showItbiEsc && <tr className="border-b border-gray-300"><td className="py-1.5">Imposto de Transmissão (ITBI){safeNumber(valorVenalEsc) > safeNegocio ? ' (s/ valor venal)' : ''}</td><td className="py-1.5 text-right">{formatMoney(itbiCostEsc)}</td></tr>}
+                          {showLavraturaEsc && <tr className="border-b border-gray-300"><td className="py-1.5">Ato de Escrituração Imobiliária{escrituraExtrapolada ? ' *' : ''}</td><td className="py-1.5 text-right">{formatMoney(lavraturaCost)}</td></tr>}
+                          {showFunrejusEsc && <tr className="border-b border-gray-300"><td className="py-1.5">Funrejus Compulsório (0,2% — TJPR)</td><td className="py-1.5 text-right">{formatMoney(funrejusCost)}</td></tr>}
+                          {showCertidoesEsc && safeCertidoesEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">Certidões e Buscas</td><td className="py-1.5 text-right">{formatMoney(safeCertidoesEsc)}</td></tr>}
+                          {showDiligenciasEsc && safeDiligenciasEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">Diligências / Assessoria</td><td className="py-1.5 text-right">{formatMoney(safeDiligenciasEsc)}</td></tr>}
                           <tr className="border-t-2 border-black"><td className="py-2 font-bold uppercase">Subtotal Sem Registro</td><td className="py-2 text-right font-bold">{formatMoney(custoInicialEsc)}</td></tr>
                         </tbody>
                       </table>
@@ -1547,8 +1585,7 @@
 
                       <table className="w-full text-[11px] border-collapse mb-5 avoid-break">
                         <tbody>
-                          <tr className="border-b border-gray-300"><td className="py-1.5">Total Documentação Inicial (Passo 1)</td><td className="py-1.5 text-right">{formatMoney(custoInicialEsc)}</td></tr>
-                          <tr className="border-t-2 border-black"><td className="py-2 font-bold uppercase">Apurado Final {incluirRgi ? 'Com Registro (RGI)' : ''}</td><td className="py-2 text-right font-bold">{formatMoney(totalEscrituraComRegistro)}</td></tr>
+                          <tr className="border-t-2 border-black"><td className="py-2 font-bold uppercase">Total Estimado{incluirRgi ? ' (com Registro RGI)' : ''}</td><td className="py-2 text-right font-bold">{formatMoney(totalEscrituraComRegistro)}</td></tr>
                         </tbody>
                       </table>
 
