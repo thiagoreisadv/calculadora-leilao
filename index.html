@@ -386,6 +386,7 @@
       const [outrosDescEsc, setOutrosDescEsc] = useState(initialState?.outrosDescEsc || '');
       const [outrosValorEsc, setOutrosValorEsc] = useState(initialState?.outrosValorEsc || '');
       const [showOutrosEsc, setShowOutrosEsc] = useState(initialState?.showOutrosEsc ?? true);
+      const [outrosNoTotal, setOutrosNoTotal] = useState(initialState?.outrosNoTotal ?? true);
 
       // Casos salvos (histórico multi-cliente)
       const [savedCases, setSavedCases] = useState(() => {
@@ -402,10 +403,10 @@
               valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
               assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
               clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc,
-              showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc
+              showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal
           };
           try { localStorage.setItem('central_calc_imob_v14', JSON.stringify(stateToSave)); } catch (e) {}
-      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc, showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc]);
+      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc, showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal]);
 
       // Efeito Tema
       useEffect(() => {
@@ -430,7 +431,7 @@
         valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
         assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
         clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc,
-        showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc
+        showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal
       });
 
       const applyState = (s) => {
@@ -462,6 +463,7 @@
         setShowItbiEsc(s.showItbiEsc ?? true); setShowLavraturaEsc(s.showLavraturaEsc ?? true); setShowFunrejusEsc(s.showFunrejusEsc ?? true);
         setShowCertidoesEsc(s.showCertidoesEsc ?? true); setShowDiligenciasEsc(s.showDiligenciasEsc ?? true);
         setOutrosDescEsc(s.outrosDescEsc || ''); setOutrosValorEsc(s.outrosValorEsc ?? ''); setShowOutrosEsc(s.showOutrosEsc ?? true);
+        setOutrosNoTotal(s.outrosNoTotal ?? true);
       };
 
       const handleSaveCase = () => {
@@ -709,17 +711,18 @@
       const safeDiligenciasEsc = safeNumber(diligenciasEsc);
       const safeOutrosEsc = safeNumber(outrosValorEsc);
 
-      const custoInicialEsc = itbiCostEsc + lavraturaCost + funrejusCost + safeCertidoesEsc + safeDiligenciasEsc + safeOutrosEsc;
+      const custoInicialEsc = itbiCostEsc + lavraturaCost + funrejusCost + safeCertidoesEsc + safeDiligenciasEsc + (outrosNoTotal ? safeOutrosEsc : 0);
       const totalEscrituraComRegistro = custoInicialEsc + cartorioCostEsc;
 
       // Itens ocultos do orçamento não desaparecem: seu valor é embutido no Ato de
       // Escrituração para que a soma das linhas exibidas continue batendo com o subtotal.
+      // "Outros" só entra aqui quando está marcado para somar ao total.
       const valorEmbutidoNoAtoEsc =
         (!showItbiEsc ? itbiCostEsc : 0) +
         (!showFunrejusEsc ? funrejusCost : 0) +
         (!showCertidoesEsc ? safeCertidoesEsc : 0) +
         (!showDiligenciasEsc ? safeDiligenciasEsc : 0) +
-        (!showOutrosEsc ? safeOutrosEsc : 0);
+        (outrosNoTotal && !showOutrosEsc ? safeOutrosEsc : 0);
       const lavraturaCostExibido = showLavraturaEsc ? lavraturaCost + valorEmbutidoNoAtoEsc : lavraturaCost;
 
       // --- Compartilhamento ---
@@ -1430,7 +1433,15 @@
                       </div>
                       <div>
                         <MoneyInput label="Valor de Outros" value={outrosValorEsc} onChange={setOutrosValorEsc} />
-                        <ShowInBudgetToggle checked={showOutrosEsc} onChange={setShowOutrosEsc} />
+                        <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1 w-fit mt-1.5">
+                          <button onClick={() => setOutrosNoTotal(true)} className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors ${outrosNoTotal ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Somar ao Total</button>
+                          <button onClick={() => setOutrosNoTotal(false)} className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors ${!outrosNoTotal ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Valor à Parte</button>
+                        </div>
+                        {outrosNoTotal ? (
+                          <ShowInBudgetToggle checked={showOutrosEsc} onChange={setShowOutrosEsc} />
+                        ) : (
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 ml-1">Exibido à parte, fora do total do orçamento</div>
+                        )}
                       </div>
                     </div>
                   </Card>
@@ -1510,7 +1521,7 @@
                             <span className="font-medium">+{formatMoney(safeNumber(diligenciasEsc))}</span>
                           </li>
                         )}
-                        {showOutrosEsc && safeOutrosEsc > 0 && (
+                        {outrosNoTotal && showOutrosEsc && safeOutrosEsc > 0 && (
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
                             <span>{outrosDescEsc || 'Outros'}</span>
                             <span className="font-medium">+{formatMoney(safeOutrosEsc)}</span>
@@ -1523,6 +1534,19 @@
                         </li>
                       </ul>
                     </div>
+
+                    {/* Valor à parte: não entra no total do orçamento */}
+                    {!outrosNoTotal && safeOutrosEsc > 0 && (
+                      <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/10 mb-4">
+                        <h5 className="text-xs font-bold uppercase text-amber-700 dark:text-amber-400 mb-2">Valor à Parte (não incluído no total)</h5>
+                        <ul className="space-y-2 text-sm">
+                          <li className="flex justify-between font-medium">
+                            <span className="text-amber-900 dark:text-amber-300">{outrosDescEsc || 'Outros'}</span>
+                            <span className="text-amber-700 dark:text-amber-400">{formatMoney(safeOutrosEsc)}</span>
+                          </li>
+                        </ul>
+                      </div>
+                    )}
 
                     {/* Bloco 2: Registro */}
                     {incluirRgi && (
@@ -1596,10 +1620,21 @@
                           {showFunrejusEsc && <tr className="border-b border-gray-300"><td className="py-1.5">Funrejus Compulsório (0,2% — TJPR)</td><td className="py-1.5 text-right">{formatMoney(funrejusCost)}</td></tr>}
                           {showCertidoesEsc && safeCertidoesEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">Certidões e Buscas</td><td className="py-1.5 text-right">{formatMoney(safeCertidoesEsc)}</td></tr>}
                           {showDiligenciasEsc && safeDiligenciasEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">Diligências / Assessoria</td><td className="py-1.5 text-right">{formatMoney(safeDiligenciasEsc)}</td></tr>}
-                          {showOutrosEsc && safeOutrosEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">{outrosDescEsc || 'Outros'}</td><td className="py-1.5 text-right">{formatMoney(safeOutrosEsc)}</td></tr>}
+                          {outrosNoTotal && showOutrosEsc && safeOutrosEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">{outrosDescEsc || 'Outros'}</td><td className="py-1.5 text-right">{formatMoney(safeOutrosEsc)}</td></tr>}
                           <tr className="border-t-2 border-black"><td className="py-2 font-bold uppercase">Subtotal Sem Registro</td><td className="py-2 text-right font-bold">{formatMoney(custoInicialEsc)}</td></tr>
                         </tbody>
                       </table>
+
+                      {!outrosNoTotal && safeOutrosEsc > 0 && (
+                        <table className="w-full text-[10px] border-collapse mb-5 avoid-break">
+                          <thead>
+                            <tr className="border-b-2 border-black"><th colSpan="2" className="text-left py-1.5 font-bold uppercase">Valor à Parte (não incluído no total)</th></tr>
+                          </thead>
+                          <tbody>
+                            <tr><td className="py-1.5">{outrosDescEsc || 'Outros'}</td><td className="py-1.5 text-right">{formatMoney(safeOutrosEsc)}</td></tr>
+                          </tbody>
+                        </table>
+                      )}
 
                       {incluirRgi && (
                         <table className="w-full text-[10px] border-collapse mb-5 avoid-break">
