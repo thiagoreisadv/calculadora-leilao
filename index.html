@@ -82,6 +82,7 @@
     const Tree = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2L3 9h3v10h12V9h3L12 2z"/><path d="M12 22V19"/></svg>;
     const Car = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a2 2 0 0 0-1.6-.8H9.3a2 2 0 0 0-1.6.8L5 11l-5.16.86a1 1 0 0 0-.84.99V16h3m10 0a2 2 0 1 1-4 0m4 0a2 2 0 1 0-4 0m-7 0a2 2 0 1 1-4 0m4 0a2 2 0 1 0-4 0"/></svg>;
     const Home = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+    const ChevronDown = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"/></svg>;
 
     // --- Helpers Core ---
     const formatCurrencyStr = (value) => {
@@ -250,17 +251,37 @@
       </label>
     );
 
-    const Card = ({ title, icon: Icon, children, extraHeader }) => (
-      <div className="bg-white dark:bg-[#141414] rounded-lg border border-slate-200 dark:border-slate-800 p-4 sm:p-6 relative">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3 sm:gap-0">
-            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-            {Icon && <Icon className="w-5 h-5 text-slate-400" />} {title}
-            </h3>
+    // step/activeStep/onStepChange/isLast turn the card into a mobile-only accordion step;
+    // omit them (or pass step={null}) to keep the card always open, as on desktop.
+    const Card = ({ title, icon: Icon, children, extraHeader, step, activeStep, onStepChange, isLast }) => {
+      const steppable = step != null;
+      const isOpen = !steppable || step === activeStep;
+      return (
+        <div className="bg-white dark:bg-[#141414] rounded-lg border border-slate-200 dark:border-slate-800 relative">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 p-4 sm:p-6 sm:pb-0">
+            {steppable ? (
+              <button type="button" onClick={() => onStepChange(isOpen ? -1 : step)} className="w-full flex items-center justify-between gap-2 text-left sm:w-auto sm:pointer-events-none" aria-expanded={isOpen}>
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 min-w-0">
+                  {Icon && <Icon className="w-5 h-5 text-slate-400 flex-shrink-0" />} <span className="truncate">{title}</span>
+                </h3>
+                <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 sm:hidden transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              </button>
+            ) : (
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                {Icon && <Icon className="w-5 h-5 text-slate-400" />} {title}
+              </h3>
+            )}
             {extraHeader}
+          </div>
+          <div className={`${isOpen ? 'block' : 'hidden'} sm:block px-4 sm:px-6 pb-4 sm:pb-6 pt-5`}>
+            {children}
+            {steppable && !isLast && (
+              <button type="button" onClick={() => onStepChange(step + 1)} className="sm:hidden mt-2 w-full py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm rounded-md transition-colors">Continuar</button>
+            )}
+          </div>
         </div>
-        {children}
-      </div>
-    );
+      );
+    };
 
     // --- Matemática Paraná (TJ-PR - Lei 6.183/2023 e Lei 21.869/2023, atualizada 2026) ---
 
@@ -365,6 +386,10 @@
       const [darkMode, setDarkMode] = useState(initialState?.darkMode || false);
       const [activeTab, setActiveTab] = useState(initialState?.activeTab || 'leilao');
 
+      // Acordeão de preenchimento (só tem efeito visual no celular; no desktop os cartões ficam sempre abertos)
+      const [leilaoStep, setLeilaoStep] = useState(0);
+      const [escrituraStep, setEscrituraStep] = useState(0);
+
       // Estados: LEILÃO
       const [assetType, setAssetType] = useState(initialState?.assetType || 'urbano');
       const [veiculoMode, setVeiculoMode] = useState(initialState?.veiculoMode || 'leilao');
@@ -391,6 +416,7 @@
       const [leiloeiro, setLeiloeiro] = useState(initialState?.leiloeiro || { value: '5', type: 'percent' });
       const [itbi, setItbi] = useState(initialState?.itbi || { value: '2', type: 'percent' });
       const [valorVenalLeilao, setValorVenalLeilao] = useState(initialState?.valorVenalLeilao || '');
+      const [segundaPracaValue, setSegundaPracaValue] = useState(initialState?.segundaPracaValue || '');
       const [legal, setLegal] = useState(initialState?.legal || { value: '5', type: 'percent' });
       const [cartorioModeLeilao, setCartorioModeLeilao] = useState(initialState?.cartorioModeLeilao || 'pr');
       const [cartorioManualLeilao, setCartorioManualLeilao] = useState(initialState?.cartorioManualLeilao || { value: '2', type: 'percent' });
@@ -432,12 +458,12 @@
           const stateToSave = {
               advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao,
               valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
-              assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
+              assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, segundaPracaValue, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
               clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc,
               showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal
           };
           try { localStorage.setItem('central_calc_imob_v14', JSON.stringify(stateToSave)); } catch (e) {}
-      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc, showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal]);
+      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, segundaPracaValue, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc, showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal]);
 
       // Efeito Tema
       useEffect(() => {
@@ -452,6 +478,9 @@
          }
       }, [assetType, assetSize]);
 
+      // Reinicia o acordeão de preenchimento ao trocar o tipo de bem (os cartões mudam)
+      useEffect(() => { setLeilaoStep(0); }, [assetType]);
+
       const persistCases = (list) => {
         setSavedCases(list);
         try { localStorage.setItem('central_calc_imob_casos_v1', JSON.stringify(list)); } catch (e) {}
@@ -460,7 +489,7 @@
       const buildCurrentState = () => ({
         advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao,
         valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
-        assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
+        assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, segundaPracaValue, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
         clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc,
         showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal
       });
@@ -479,6 +508,7 @@
         setLeiloeiro(s.leiloeiro || { value: '5', type: 'percent' });
         setItbi(s.itbi || { value: '2', type: 'percent' });
         setValorVenalLeilao(s.valorVenalLeilao ?? '');
+        setSegundaPracaValue(s.segundaPracaValue ?? '');
         setLegal(s.legal || { value: '5', type: 'percent' });
         setCartorioModeLeilao(s.cartorioModeLeilao || 'pr');
         setCartorioManualLeilao(s.cartorioManualLeilao || { value: '2', type: 'percent' });
@@ -621,6 +651,20 @@
 
       const lucroAbsoluto = discountedSaleValue > 0 ? discountedSaleValue - finalLeilao : 0;
       const margemLucroPorcentagem = discountedSaleValue > 0 && finalLeilao > 0 ? (lucroAbsoluto / finalLeilao) * 100 : 0;
+
+      // Comparativo opcional com a 2ª praça (mesma fórmula do lance, com outro valor-base)
+      const safeSegundaPraca = safeNumber(segundaPracaValue);
+      const computeLeilaoTotal = (bid) => {
+        const lCost = isRegularizacao ? 0 : calcTax(leiloeiro, bid);
+        const iCost = assetType === 'veiculo' ? 0 : calcTax(itbi, Math.max(bid, safeNumber(valorVenalLeilao)));
+        const legCost = calcTax(legal, bid);
+        const cCost = assetType === 'veiculo' ? 0 : (cartorioModeLeilao === 'pr' ? calcularRegistroPR(bid) : calcTax(cartorioManualLeilao, bid));
+        const total = bid + lCost + iCost + legCost + cCost + fixedCostsLeilao;
+        const lucro = discountedSaleValue > 0 ? discountedSaleValue - total : 0;
+        return { total, lucro };
+      };
+      const segundaPracaResult = safeSegundaPraca > 0 ? computeLeilaoTotal(safeSegundaPraca) : null;
+      const economiaSegundaPraca = segundaPracaResult ? finalLeilao - segundaPracaResult.total : 0;
 
       const arremateFipePercent = safeMarket > 0 && safeBid > 0 ? (safeBid / safeMarket) * 100 : 0;
 
@@ -768,6 +812,10 @@
             `Lance/Compra: ${formatMoney(safeBid)}`,
             `Custo Operacional Total: ${formatMoney(finalLeilao)}`,
             discountedSaleValue > 0 ? `Lucro Estimado: ${formatMoney(lucroAbsoluto)} (${margemLucroPorcentagem > 0 ? '+' : ''}${formatCurrencyStr(margemLucroPorcentagem)}%)` : null,
+            segundaPracaResult ? '' : null,
+            segundaPracaResult ? `Lance na 2ª Praça: ${formatMoney(safeSegundaPraca)}` : null,
+            segundaPracaResult ? `Custo Operacional (2ª Praça): ${formatMoney(segundaPracaResult.total)}` : null,
+            segundaPracaResult && discountedSaleValue > 0 ? `Lucro Estimado (2ª Praça): ${formatMoney(segundaPracaResult.lucro)}` : null,
           ].filter(Boolean);
           return linhas.join('\n');
         }
@@ -798,6 +846,10 @@
         const texto = encodeURIComponent(buildResumoTexto());
         window.open(`https://wa.me/?text=${texto}`, '_blank');
       };
+
+      const leilaoLastStep = assetType === 'veiculo' ? 3 : 4;
+      const valoresStep = assetType === 'veiculo' ? 1 : 2;
+      const taxasStep = assetType === 'veiculo' ? 2 : 3;
 
       return (
         <div className="min-h-screen pb-24 print-page-wrapper">
@@ -900,14 +952,14 @@
                     </div>
                   )}
 
-                  <Card title="Dados do Arrematante" icon={Building}>
+                  <Card title="Dados do Arrematante" icon={Building} step={0} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={leilaoLastStep === 0}>
                     <TextInput label="Nome do Cliente" value={clienteNomeLeilao} onChange={setClienteNomeLeilao} placeholder="Ex: Thiago de Souza Reis" />
                     <TextInput label={assetType === 'veiculo' ? "Identificação do Veículo" : "Identificação do Imóvel"} value={imovelDescLeilao} onChange={setImovelDescLeilao} placeholder={assetType === 'veiculo' ? "Ex: Toyota Corolla 2022" : "Ex: Casa - Centro, Loanda/PR"} />
                   </Card>
 
                   {/* Dimensão (Esconde se for veículo) */}
                   {assetType !== 'veiculo' && (
-                    <Card title="Dimensões do Imóvel" icon={assetType === 'rural' ? Tree : Home}>
+                    <Card title="Dimensões do Imóvel" icon={assetType === 'rural' ? Tree : Home} step={1} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={leilaoLastStep === 1}>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <DecimalInput label={assetType === 'urbano' ? "Área Total (m²)" : "Tamanho Total"} value={assetSize} onChange={setAssetSize} placeholder="Ex: 250,50" />
                         {assetType === 'rural' && (
@@ -929,6 +981,10 @@
                   <Card
                     title={`Valores do ${assetType === 'veiculo' ? 'Veículo' : 'Imóvel'}`}
                     icon={FileText}
+                    step={valoresStep}
+                    activeStep={leilaoStep}
+                    onStepChange={setLeilaoStep}
+                    isLast={leilaoLastStep === valoresStep}
                     extraHeader={assetType !== 'veiculo' && safeSize > 0 && (
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
                         <button onClick={() => handleValModeChange('total')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${valMode === 'total' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Total</button>
@@ -980,6 +1036,13 @@
                       />
                     )}
 
+                    <MoneyInput
+                      label="Lance na 2ª Praça (opcional, para comparar)"
+                      value={segundaPracaValue}
+                      onChange={setSegundaPracaValue}
+                      subText="Preencha para ver o comparativo de custo e lucro lado a lado com a 1ª praça"
+                    />
+
                     <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                       <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
                         <MoneyInput label="Orçamento Máximo Total (Teto Pessoal)" value={maxBudget} onChange={setMaxBudget} />
@@ -991,6 +1054,10 @@
                   <Card
                     title="Taxas e Custas de Entrada"
                     icon={FileText}
+                    step={taxasStep}
+                    activeStep={leilaoStep}
+                    onStepChange={setLeilaoStep}
+                    isLast={leilaoLastStep === taxasStep}
                     extraHeader={assetType !== 'veiculo' && (
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
                         <button onClick={() => setCartorioModeLeilao('pr')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${cartorioModeLeilao === 'pr' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Auto PR</button>
@@ -1019,7 +1086,7 @@
                     </div>
                   </Card>
 
-                  <Card title={assetType === 'veiculo' ? (isRegularizacao ? "Débitos / Documentação / Reparos" : "Débitos e Reparos Extras") : "Custos Extras / Reformas"} icon={FileText}>
+                  <Card title={assetType === 'veiculo' ? (isRegularizacao ? "Débitos / Documentação / Reparos" : "Débitos e Reparos Extras") : "Custos Extras / Reformas"} icon={FileText} step={leilaoLastStep} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={true}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <MoneyInput label={assetType === 'veiculo' ? "Multas / IPVA / Débitos" : "Dívidas do Imóvel"} value={debts} onChange={setDebts} />
                       <MoneyInput label={assetType === 'veiculo' ? "Mecânica / Reparos" : "Reformas / Outros"} value={renovation} onChange={setRenovation} />
@@ -1171,6 +1238,29 @@
                         <span className="text-2xl sm:text-3xl tabular-nums text-[#1d5fbf] dark:text-[#5b9bf2]">{formatMoney(finalLeilao)}</span>
                       </li>
                     </ul>
+
+                    {/* Comparativo com a 2ª Praça */}
+                    {segundaPracaResult && (
+                      <div className="mt-6 p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-white/5">
+                        <h4 className="font-bold text-slate-600 dark:text-slate-300 mb-3 text-xs">Comparativo com a 2ª Praça</h4>
+                        <ul className="space-y-2 text-sm">
+                          <li className="flex justify-between">
+                            <span className="text-slate-600 dark:text-slate-400">Custo Operacional (2ª Praça)</span>
+                            <span className="font-bold text-slate-900 dark:text-white tabular-nums">{formatMoney(segundaPracaResult.total)}</span>
+                          </li>
+                          <li className="flex justify-between">
+                            <span className="text-slate-600 dark:text-slate-400">{economiaSegundaPraca >= 0 ? 'Economia na 2ª praça' : 'Custo a mais na 2ª praça'}</span>
+                            <span className={`font-bold tabular-nums ${economiaSegundaPraca >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatMoney(Math.abs(economiaSegundaPraca))}</span>
+                          </li>
+                          {discountedSaleValue > 0 && (
+                            <li className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
+                              <span className="text-slate-600 dark:text-slate-400">Lucro estimado (2ª Praça)</span>
+                              <span className={`font-bold tabular-nums ${segundaPracaResult.lucro >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatMoney(segundaPracaResult.lucro)}</span>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
 
                     {/* Comparativo de Preço por Unidade (Imóveis) */}
                     {assetType !== 'veiculo' && safeSize > 0 && (
@@ -1329,6 +1419,24 @@
                         </table>
                       )}
 
+                      {segundaPracaResult && (
+                        <table className="w-full text-[11px] border-collapse mb-5 avoid-break">
+                          <thead>
+                            <tr className="border-b-2 border-black">
+                              <th className="text-left py-1.5 font-bold uppercase" colSpan="2">Comparativo com a 2ª Praça</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="border-b border-gray-300"><td className="py-1.5">Lance na 2ª Praça</td><td className="py-1.5 text-right">{formatMoney(safeSegundaPraca)}</td></tr>
+                            <tr className="border-b border-gray-300"><td className="py-1.5 font-semibold">Custo Operacional (2ª Praça)</td><td className="py-1.5 text-right font-bold">{formatMoney(segundaPracaResult.total)}</td></tr>
+                            <tr className="border-b border-gray-300"><td className="py-1.5">{economiaSegundaPraca >= 0 ? 'Economia na 2ª praça' : 'Custo a mais na 2ª praça'}</td><td className="py-1.5 text-right">{formatMoney(Math.abs(economiaSegundaPraca))}</td></tr>
+                            {discountedSaleValue > 0 && (
+                              <tr><td className="py-1.5 font-semibold">Lucro Estimado (2ª Praça)</td><td className="py-1.5 text-right font-bold">{formatMoney(segundaPracaResult.lucro)}</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      )}
+
                       {assetType !== 'veiculo' && safeSize > 0 && (safeEval > 0 || safeMarket > 0) && (
                         <table className="w-full text-[9px] border-collapse mb-5 avoid-break">
                           <thead>
@@ -1390,7 +1498,7 @@
             {activeTab === 'escritura' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-4 sm:space-y-6 print-hide">
-                  <Card title="Dados da Escritura" icon={Building}>
+                  <Card title="Dados da Escritura" icon={Building} step={0} activeStep={escrituraStep} onStepChange={setEscrituraStep} isLast={false}>
                     <TextInput label="Nome do Adquirente" value={clienteNome} onChange={setClienteNome} placeholder="Ex: João Silva" />
                     <TextInput label="Descrição Detalhada do Imóvel" value={imovelDesc} onChange={setImovelDesc} placeholder="Ex: Chácara São Pedro - Loanda/PR" />
                     <MoneyInput label="Valor Real da Negociação" value={negocioValor} onChange={setNegocioValor} />
@@ -1400,6 +1508,10 @@
                   <Card
                     title="Configurações de Custas"
                     icon={FileText}
+                    step={1}
+                    activeStep={escrituraStep}
+                    onStepChange={setEscrituraStep}
+                    isLast={false}
                     extraHeader={
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
                         <button onClick={() => setEscrituraMode('pr')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${escrituraMode === 'pr' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Auto PR</button>
@@ -1453,7 +1565,7 @@
                     </div>
                   </Card>
 
-                  <Card title="Custos Acessórios" icon={FileText}>
+                  <Card title="Custos Acessórios" icon={FileText} step={2} activeStep={escrituraStep} onStepChange={setEscrituraStep} isLast={true}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <MoneyInput label="Certidões e Buscas" value={certidoesEsc} onChange={setCertidoesEsc} />
