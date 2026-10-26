@@ -5,12 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
   <title>Central de Cálculos de Leilões e Imóveis</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js" crossorigin="anonymous"></script>
 
   <style>
+    :root {
+      --ground: #f8f8f8;
+      --surface: #ffffff;
+      --border: #e6e6e6;
+      --text: #0a0a0a;
+      --muted: #6b6b6b;
+      --accent: #0f8a7a;
+    }
+    html.dark {
+      --ground: #0a0a0a;
+      --surface: #141414;
+      --border: #272727;
+      --text: #f5f5f5;
+      --muted: #9a9a9a;
+      --accent: #2fb8a5;
+    }
+    html, body {
+      font-family: "Geist", Inter, system-ui, sans-serif;
+      background: var(--ground);
+    }
     /* Layout de impressão dedicado: documento formal (tabelas, cabeçalho, assinatura),
        não uma cópia com CSS forçado do dashboard da tela. */
     @page {
@@ -32,6 +56,17 @@
   <script>
     tailwind.config = {
       darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Geist', 'Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            brand: { 100: '#e6f2f1', 500: '#0f8a7a', 700: '#1e4142', 900: '#132a2b' },
+            gold: { 500: '#d9a846', 600: '#c9972e', 100: '#f8efdb' },
+          },
+        },
+      },
     }
   </script>
 </head>
@@ -51,6 +86,7 @@
     const Tree = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2L3 9h3v10h12V9h3L12 2z"/><path d="M12 22V19"/></svg>;
     const Car = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a2 2 0 0 0-1.6-.8H9.3a2 2 0 0 0-1.6.8L5 11l-5.16.86a1 1 0 0 0-.84.99V16h3m10 0a2 2 0 1 1-4 0m4 0a2 2 0 1 0-4 0m-7 0a2 2 0 1 1-4 0m4 0a2 2 0 1 0-4 0"/></svg>;
     const Home = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+    const ChevronDown = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"/></svg>;
 
     // --- Helpers Core ---
     const formatCurrencyStr = (value) => {
@@ -77,7 +113,7 @@
     const TextInput = ({ label, value, onChange, placeholder }) => (
       <div className="mb-4">
         <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
-        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none" />
       </div>
     );
 
@@ -92,7 +128,7 @@
       return (
         <div className="mb-4">
           <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
-          <input type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <input type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none" />
         </div>
       );
     };
@@ -111,8 +147,8 @@
       return (
         <div className="mb-4">
           <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
-          <div className="relative rounded-xl shadow-sm">
-            <input type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className="block w-full pl-4 pr-10 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <div className="relative rounded-xl">
+            <input type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className="block w-full pl-4 pr-10 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none" />
             <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">%</span></div>
           </div>
           {extraElement && <div className="mt-1">{extraElement}</div>}
@@ -141,9 +177,9 @@
       return (
         <div className="mb-4">
           <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 truncate">{label}</label>
-          <div className="relative rounded-xl shadow-sm">
+          <div className="relative rounded-xl">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">R$</span></div>
-            <input type="text" inputMode="numeric" value={displayValue} onChange={handleChange} className="block w-full pl-10 pr-4 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder={placeholder || "0,00"} />
+            <input type="text" inputMode="numeric" value={displayValue} onChange={handleChange} className="block w-full pl-10 pr-4 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none" placeholder={placeholder || "0,00"} />
           </div>
           <div className="text-xs text-slate-500 mt-1 ml-1 font-medium min-h-[16px]">
             {subText ? subText : ''}
@@ -185,12 +221,12 @@
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
             {!disabled && (
               <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1 w-fit">
-                <button onClick={() => onChangeType('percent')} className={`px-3 py-1 text-xs uppercase font-bold rounded-md transition-colors ${type === 'percent' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>%</button>
-                <button onClick={() => onChangeType('fixed')} className={`px-3 py-1 text-xs uppercase font-bold rounded-md transition-colors ${type === 'fixed' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>R$</button>
+                <button onClick={() => onChangeType('percent')} className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${type === 'percent' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>%</button>
+                <button onClick={() => onChangeType('fixed')} className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${type === 'fixed' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>R$</button>
               </div>
             )}
           </div>
-          <div className="relative rounded-xl shadow-sm">
+          <div className="relative rounded-xl">
             {(type === 'fixed' || disabled) && (
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">R$</span></div>
             )}
@@ -198,7 +234,7 @@
               type="text" inputMode={type === 'fixed' || disabled ? "numeric" : "decimal"} disabled={disabled}
               value={displayValue}
               onChange={handleChange}
-              className={`block w-full ${(type === 'fixed' || disabled) ? 'pl-10 pr-4' : 'pl-4 pr-10'} py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all disabled:opacity-75`}
+              className={`block w-full ${(type === 'fixed' || disabled) ? 'pl-10 pr-4' : 'pl-4 pr-10'} py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none transition-colors disabled:opacity-75`}
               placeholder="0"
             />
             {type === 'percent' && !disabled && (
@@ -214,22 +250,42 @@
 
     const ShowInBudgetToggle = ({ checked, onChange }) => (
       <label className="flex items-center gap-1.5 mt-1.5 ml-1 cursor-pointer select-none w-fit">
-        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-3.5 h-3.5 text-indigo-600 rounded" />
+        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-3.5 h-3.5 text-slate-900 rounded" />
         <span className="text-[11px] text-slate-500 dark:text-slate-400">Mostrar no orçamento</span>
       </label>
     );
 
-    const Card = ({ title, icon: Icon, children, extraHeader }) => (
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-6 relative">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3 sm:gap-0">
-            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-            {Icon && <Icon className="w-5 h-5 text-indigo-600" />} {title}
-            </h3>
+    // step/activeStep/onStepChange/isLast turn the card into a mobile-only accordion step;
+    // omit them (or pass step={null}) to keep the card always open, as on desktop.
+    const Card = ({ title, icon: Icon, children, extraHeader, step, activeStep, onStepChange, isLast }) => {
+      const steppable = step != null;
+      const isOpen = !steppable || step === activeStep;
+      return (
+        <div className="bg-white dark:bg-[#141414] rounded-lg border border-slate-200 dark:border-slate-800 relative">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 p-4 sm:p-6 sm:pb-0">
+            {steppable ? (
+              <button type="button" onClick={() => onStepChange(isOpen ? -1 : step)} className="w-full flex items-center justify-between gap-2 text-left sm:w-auto sm:pointer-events-none" aria-expanded={isOpen}>
+                <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 min-w-0">
+                  {Icon && <Icon className="w-5 h-5 text-slate-400 flex-shrink-0" />} <span className="truncate">{title}</span>
+                </h3>
+                <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 sm:hidden transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              </button>
+            ) : (
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                {Icon && <Icon className="w-5 h-5 text-slate-400" />} {title}
+              </h3>
+            )}
             {extraHeader}
+          </div>
+          <div className={`${isOpen ? 'block' : 'hidden'} sm:block px-4 sm:px-6 pb-4 sm:pb-6 pt-5`}>
+            {children}
+            {steppable && !isLast && (
+              <button type="button" onClick={() => onStepChange(step + 1)} className="sm:hidden mt-2 w-full py-2.5 bg-brand-900 dark:bg-gold-600 text-white dark:text-brand-900 font-bold text-sm rounded-md transition-colors">Continuar</button>
+            )}
+          </div>
         </div>
-        {children}
-      </div>
-    );
+      );
+    };
 
     // --- Matemática Paraná (TJ-PR - Lei 6.183/2023 e Lei 21.869/2023, atualizada 2026) ---
 
@@ -334,6 +390,10 @@
       const [darkMode, setDarkMode] = useState(initialState?.darkMode || false);
       const [activeTab, setActiveTab] = useState(initialState?.activeTab || 'leilao');
 
+      // Acordeão de preenchimento (só tem efeito visual no celular; no desktop os cartões ficam sempre abertos)
+      const [leilaoStep, setLeilaoStep] = useState(0);
+      const [escrituraStep, setEscrituraStep] = useState(0);
+
       // Estados: LEILÃO
       const [assetType, setAssetType] = useState(initialState?.assetType || 'urbano');
       const [veiculoMode, setVeiculoMode] = useState(initialState?.veiculoMode || 'leilao');
@@ -360,6 +420,7 @@
       const [leiloeiro, setLeiloeiro] = useState(initialState?.leiloeiro || { value: '5', type: 'percent' });
       const [itbi, setItbi] = useState(initialState?.itbi || { value: '2', type: 'percent' });
       const [valorVenalLeilao, setValorVenalLeilao] = useState(initialState?.valorVenalLeilao || '');
+      const [segundaPracaValue, setSegundaPracaValue] = useState(initialState?.segundaPracaValue || '');
       const [legal, setLegal] = useState(initialState?.legal || { value: '5', type: 'percent' });
       const [cartorioModeLeilao, setCartorioModeLeilao] = useState(initialState?.cartorioModeLeilao || 'pr');
       const [cartorioManualLeilao, setCartorioManualLeilao] = useState(initialState?.cartorioManualLeilao || { value: '2', type: 'percent' });
@@ -401,12 +462,12 @@
           const stateToSave = {
               advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao,
               valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
-              assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
+              assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, segundaPracaValue, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
               clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc,
               showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal
           };
           try { localStorage.setItem('central_calc_imob_v14', JSON.stringify(stateToSave)); } catch (e) {}
-      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc, showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal]);
+      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, segundaPracaValue, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc, showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal]);
 
       // Efeito Tema
       useEffect(() => {
@@ -421,6 +482,9 @@
          }
       }, [assetType, assetSize]);
 
+      // Reinicia o acordeão de preenchimento ao trocar o tipo de bem (os cartões mudam)
+      useEffect(() => { setLeilaoStep(0); }, [assetType]);
+
       const persistCases = (list) => {
         setSavedCases(list);
         try { localStorage.setItem('central_calc_imob_casos_v1', JSON.stringify(list)); } catch (e) {}
@@ -429,7 +493,7 @@
       const buildCurrentState = () => ({
         advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao,
         valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
-        assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
+        assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, segundaPracaValue, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
         clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc,
         showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal
       });
@@ -448,6 +512,7 @@
         setLeiloeiro(s.leiloeiro || { value: '5', type: 'percent' });
         setItbi(s.itbi || { value: '2', type: 'percent' });
         setValorVenalLeilao(s.valorVenalLeilao ?? '');
+        setSegundaPracaValue(s.segundaPracaValue ?? '');
         setLegal(s.legal || { value: '5', type: 'percent' });
         setCartorioModeLeilao(s.cartorioModeLeilao || 'pr');
         setCartorioManualLeilao(s.cartorioManualLeilao || { value: '2', type: 'percent' });
@@ -590,6 +655,20 @@
 
       const lucroAbsoluto = discountedSaleValue > 0 ? discountedSaleValue - finalLeilao : 0;
       const margemLucroPorcentagem = discountedSaleValue > 0 && finalLeilao > 0 ? (lucroAbsoluto / finalLeilao) * 100 : 0;
+
+      // Comparativo opcional com a 2ª praça (mesma fórmula do lance, com outro valor-base)
+      const safeSegundaPraca = safeNumber(segundaPracaValue);
+      const computeLeilaoTotal = (bid) => {
+        const lCost = isRegularizacao ? 0 : calcTax(leiloeiro, bid);
+        const iCost = assetType === 'veiculo' ? 0 : calcTax(itbi, Math.max(bid, safeNumber(valorVenalLeilao)));
+        const legCost = calcTax(legal, bid);
+        const cCost = assetType === 'veiculo' ? 0 : (cartorioModeLeilao === 'pr' ? calcularRegistroPR(bid) : calcTax(cartorioManualLeilao, bid));
+        const total = bid + lCost + iCost + legCost + cCost + fixedCostsLeilao;
+        const lucro = discountedSaleValue > 0 ? discountedSaleValue - total : 0;
+        return { total, lucro };
+      };
+      const segundaPracaResult = safeSegundaPraca > 0 ? computeLeilaoTotal(safeSegundaPraca) : null;
+      const economiaSegundaPraca = segundaPracaResult ? finalLeilao - segundaPracaResult.total : 0;
 
       const arremateFipePercent = safeMarket > 0 && safeBid > 0 ? (safeBid / safeMarket) * 100 : 0;
 
@@ -737,6 +816,10 @@
             `Lance/Compra: ${formatMoney(safeBid)}`,
             `Custo Operacional Total: ${formatMoney(finalLeilao)}`,
             discountedSaleValue > 0 ? `Lucro Estimado: ${formatMoney(lucroAbsoluto)} (${margemLucroPorcentagem > 0 ? '+' : ''}${formatCurrencyStr(margemLucroPorcentagem)}%)` : null,
+            segundaPracaResult ? '' : null,
+            segundaPracaResult ? `Lance na 2ª Praça: ${formatMoney(safeSegundaPraca)}` : null,
+            segundaPracaResult ? `Custo Operacional (2ª Praça): ${formatMoney(segundaPracaResult.total)}` : null,
+            segundaPracaResult && discountedSaleValue > 0 ? `Lucro Estimado (2ª Praça): ${formatMoney(segundaPracaResult.lucro)}` : null,
           ].filter(Boolean);
           return linhas.join('\n');
         }
@@ -768,79 +851,89 @@
         window.open(`https://wa.me/?text=${texto}`, '_blank');
       };
 
+      const leilaoLastStep = assetType === 'veiculo' ? 3 : 4;
+      const valoresStep = assetType === 'veiculo' ? 1 : 2;
+      const taxasStep = assetType === 'veiculo' ? 2 : 3;
+
       return (
         <div className="min-h-screen pb-24 print-page-wrapper">
 
-          {/* Menu Superior e Configurações */}
-          <div className="bg-slate-900 text-white print-hide pt-6 sm:pt-8 pb-10 sm:pb-12 px-3 sm:px-4">
-            <div className="max-w-5xl mx-auto">
-              <div className="flex flex-col sm:flex-row justify-between items-center sm:items-start mb-6 gap-4 sm:gap-0">
-                <div className="text-center sm:text-left">
-                  <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">{advName}</h1>
-                  <p className="text-slate-400 font-medium text-xs sm:text-sm mt-1">{advOab}</p>
+          {/* Barra superior: sem bloco escuro, o nome do produto fica na própria tela */}
+          <div className="sticky top-0 z-40 bg-white dark:bg-[#141414] print-hide border-b border-slate-200 dark:border-slate-800">
+            <div className="max-w-5xl mx-auto px-4 sm:px-4">
+              <div className="flex justify-between items-center h-14 sm:h-16 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <img src="img/logo-thiago-reis.svg" alt="Thiago Reis, advogado" className="h-7 sm:h-8 w-auto flex-shrink-0 dark:hidden" />
+                  <img src="img/logo-thiago-reis-fundo-escuro.svg" alt="Thiago Reis, advogado" className="hidden h-7 sm:h-8 w-auto flex-shrink-0 dark:block" />
+                  <div className="min-w-0">
+                  <h1 className="text-sm sm:text-base font-bold text-brand-900 dark:text-white truncate">Central de Cálculos de Leilões e Imóveis</h1>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{advName}{advOab ? ` · ${advOab}` : ''}</div>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => setIsCasesOpen(!isCasesOpen)} className="px-3 py-3 sm:py-2 bg-slate-800 hover:bg-slate-700 rounded-xl sm:rounded-lg text-slate-300 shadow-sm text-xs font-bold uppercase tracking-wide">
+                <div className="flex gap-1 flex-shrink-0">
+                  <button onClick={() => setIsCasesOpen(!isCasesOpen)} className="px-3 h-9 rounded-md text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5">
                     Casos
                   </button>
-                  <button onClick={() => setDarkMode(!darkMode)} className="p-3 sm:p-2 bg-slate-800 hover:bg-slate-700 rounded-xl sm:rounded-lg text-slate-300 shadow-sm">
-                    {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                  <button onClick={() => setDarkMode(!darkMode)} className="w-9 h-9 flex items-center justify-center rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5" aria-label="Alternar tema">
+                    {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                   </button>
-                  <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="p-3 sm:p-2 bg-slate-800 hover:bg-slate-700 rounded-xl sm:rounded-lg text-slate-300 shadow-sm">
-                    <Settings className="w-5 h-5" />
+                  <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="w-9 h-9 flex items-center justify-center rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5" aria-label="Configurações">
+                    <Settings className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              {isSettingsOpen && (
-                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6">
-                  <h3 className="text-sm font-bold mb-3 text-slate-200">Configurações de Identidade</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <TextInput label="Nome do Profissional/Escritório" value={advName} onChange={setAdvName} />
-                    <TextInput label="Registo Profissional (Ex: OAB/PR)" value={advOab} onChange={setAdvOab} />
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-2">Tabelas de custas TJ-PR vigentes desde {VIGENCIA_TABELAS_PR}. Verifique atualizações anuais antes de confiar em valores altos.</p>
-                </div>
-              )}
-
-              {isCasesOpen && (
-                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-sm font-bold text-slate-200">Casos Salvos</h3>
-                    <button onClick={handleSaveCase} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg">Salvar Caso Atual</button>
-                  </div>
-                  {savedCases.length === 0 ? (
-                    <p className="text-xs text-slate-400">Nenhum caso salvo ainda. Preencha os dados e clique em "Salvar Caso Atual" para guardar este cálculo e voltar a ele depois.</p>
-                  ) : (
-                    <ul className="space-y-2 max-h-64 overflow-y-auto">
-                      {savedCases.map(c => (
-                        <li key={c.id} className="flex justify-between items-center bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2">
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold text-slate-200 truncate">{c.nome}</div>
-                            <div className="text-[10px] text-slate-400 uppercase">{c.tipo === 'leilao' ? 'Leilão' : 'Escritura'} • {c.data}</div>
-                          </div>
-                          <div className="flex gap-2 flex-shrink-0 ml-2">
-                            <button onClick={() => handleLoadCase(c.id)} className="px-2.5 py-1 text-[11px] font-bold bg-slate-700 hover:bg-slate-600 text-white rounded-md">Abrir</button>
-                            <button onClick={() => handleDeleteCase(c.id)} className="px-2.5 py-1 text-[11px] font-bold bg-rose-900/60 hover:bg-rose-900 text-rose-200 rounded-md">Excluir</button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
+              {/* Abas sublinhadas no mesmo filete da barra */}
+              <div className="flex gap-6 -mb-px overflow-x-auto no-scrollbar">
+                <button onClick={() => setActiveTab('leilao')} className={`whitespace-nowrap py-3 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'leilao' ? 'border-gold-600 dark:border-gold-500 text-slate-900 dark:text-white' : 'border-transparent text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Arrematação (Leilão)</button>
+                <button onClick={() => setActiveTab('escritura')} className={`whitespace-nowrap py-3 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'escritura' ? 'border-gold-600 dark:border-gold-500 text-slate-900 dark:text-white' : 'border-transparent text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Compra, Venda e RGI</button>
+              </div>
             </div>
           </div>
 
-          {/* Abas com Menos padding lateral no mobile e Sticky */}
-          <div className="sticky top-0 z-40 bg-slate-50 dark:bg-slate-950/90 backdrop-blur-md px-3 sm:px-4 pt-3 pb-3 shadow-sm border-b border-slate-200 dark:border-slate-800 mb-6 print-hide">
-             <div className="max-w-5xl mx-auto flex gap-2 overflow-x-auto snap-x no-scrollbar pb-1">
-                <button onClick={() => setActiveTab('leilao')} className={`snap-start whitespace-nowrap px-6 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'leilao' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'}`}>Arrematação (Leilão)</button>
-                <button onClick={() => setActiveTab('escritura')} className={`snap-start whitespace-nowrap px-6 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'escritura' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'}`}>Compra, Venda e RGI</button>
-             </div>
+          <div className="max-w-5xl mx-auto px-4 sm:px-4 print-hide">
+            {isSettingsOpen && (
+              <div className="bg-white dark:bg-[#141414] p-4 rounded-lg border border-slate-200 dark:border-slate-800 mt-4">
+                <h3 className="text-sm font-bold mb-3 text-slate-800 dark:text-slate-200">Configurações de Identidade</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <TextInput label="Nome do Profissional/Escritório" value={advName} onChange={setAdvName} />
+                  <TextInput label="Registo Profissional (Ex: OAB/PR)" value={advOab} onChange={setAdvOab} />
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">Tabelas de custas TJ-PR vigentes desde {VIGENCIA_TABELAS_PR}. Verifique atualizações anuais antes de confiar em valores altos.</p>
+              </div>
+            )}
+
+            {isCasesOpen && (
+              <div className="bg-white dark:bg-[#141414] p-4 rounded-lg border border-slate-200 dark:border-slate-800 mt-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Casos Salvos</h3>
+                  <button onClick={handleSaveCase} className="px-3 py-1.5 bg-brand-900 hover:bg-brand-700 dark:bg-gold-600 dark:hover:bg-gold-500 text-white dark:text-brand-900 text-xs font-bold rounded-md">Salvar Caso Atual</button>
+                </div>
+                {savedCases.length === 0 ? (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Nenhum caso salvo ainda. Preencha os dados e clique em "Salvar Caso Atual" para guardar este cálculo e voltar a ele depois.</p>
+                ) : (
+                  <ul className="space-y-2 max-h-64 overflow-y-auto">
+                    {savedCases.map(c => (
+                      <li key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-2">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{c.nome}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">{c.tipo === 'leilao' ? 'Leilão' : 'Escritura'} · {c.data}</div>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0 ml-2">
+                          <button onClick={() => handleLoadCase(c.id)} className="px-2.5 py-1 text-[11px] font-bold bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white rounded-md">Abrir</button>
+                          <button onClick={() => handleDeleteCase(c.id)} className="px-2.5 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-md">Excluir</button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
-          <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 print:mt-0 print:px-0">
+          <div className="h-6 print-hide" />
+
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 print:mt-0 print:px-0">
 
             {/* --- ABA LEILÃO --- */}
             {activeTab === 'leilao' && (
@@ -848,39 +941,39 @@
                 <div className="space-y-4 sm:space-y-6 print-hide">
 
                   {/* Seletor Tipo de Bem */}
-                  <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-3 flex gap-2">
-                      <button onClick={() => setAssetType('urbano')} className={`flex-1 flex flex-col items-center py-3 rounded-xl border-2 transition-all ${assetType === 'urbano' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                          <Home className="w-5 h-5 mb-1" /> <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Urbano</span>
+                  <div className="bg-white dark:bg-[#141414] rounded-lg border border-slate-200 dark:border-slate-800 p-3 flex gap-2">
+                      <button onClick={() => setAssetType('urbano')} className={`flex-1 flex flex-col items-center py-3 rounded-md border transition-colors ${assetType === 'urbano' ? 'border-gold-600 dark:border-gold-500 bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                          <Home className="w-5 h-5 mb-1" /> <span className="text-[11px] sm:text-xs font-bold">Urbano</span>
                       </button>
-                      <button onClick={() => setAssetType('rural')} className={`flex-1 flex flex-col items-center py-3 rounded-xl border-2 transition-all ${assetType === 'rural' ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                          <Tree className="w-5 h-5 mb-1" /> <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Rural</span>
+                      <button onClick={() => setAssetType('rural')} className={`flex-1 flex flex-col items-center py-3 rounded-md border transition-colors ${assetType === 'rural' ? 'border-gold-600 dark:border-gold-500 bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                          <Tree className="w-5 h-5 mb-1" /> <span className="text-[11px] sm:text-xs font-bold">Rural</span>
                       </button>
-                      <button onClick={() => setAssetType('veiculo')} className={`flex-1 flex flex-col items-center py-3 rounded-xl border-2 transition-all ${assetType === 'veiculo' ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                          <Car className="w-5 h-5 mb-1" /> <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Veículo</span>
+                      <button onClick={() => setAssetType('veiculo')} className={`flex-1 flex flex-col items-center py-3 rounded-md border transition-colors ${assetType === 'veiculo' ? 'border-gold-600 dark:border-gold-500 bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                          <Car className="w-5 h-5 mb-1" /> <span className="text-[11px] sm:text-xs font-bold">Veículo</span>
                       </button>
                   </div>
 
                   {assetType === 'veiculo' && (
-                    <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl flex gap-1 mb-6 border border-slate-200 dark:border-slate-700 mt-2">
-                        <button onClick={() => setVeiculoMode('leilao')} className={`flex-1 py-2.5 sm:py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${veiculoMode === 'leilao' ? 'bg-amber-500 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>Arrematação em Leilão</button>
-                        <button onClick={() => setVeiculoMode('regularizacao')} className={`flex-1 py-2.5 sm:py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${veiculoMode === 'regularizacao' ? 'bg-amber-500 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>Compra c/ Regularização Judicial</button>
+                    <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg flex gap-1 mb-6 border border-slate-200 dark:border-slate-700 mt-2">
+                        <button onClick={() => setVeiculoMode('leilao')} className={`flex-1 py-2.5 sm:py-2 text-[11px] sm:text-xs font-bold rounded-md transition-colors ${veiculoMode === 'leilao' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>Arrematação em Leilão</button>
+                        <button onClick={() => setVeiculoMode('regularizacao')} className={`flex-1 py-2.5 sm:py-2 text-[11px] sm:text-xs font-bold rounded-md transition-colors ${veiculoMode === 'regularizacao' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>Compra c/ Regularização Judicial</button>
                     </div>
                   )}
 
-                  <Card title="Dados do Arrematante" icon={Building}>
+                  <Card title="Dados do Arrematante" icon={Building} step={0} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={leilaoLastStep === 0}>
                     <TextInput label="Nome do Cliente" value={clienteNomeLeilao} onChange={setClienteNomeLeilao} placeholder="Ex: Thiago de Souza Reis" />
                     <TextInput label={assetType === 'veiculo' ? "Identificação do Veículo" : "Identificação do Imóvel"} value={imovelDescLeilao} onChange={setImovelDescLeilao} placeholder={assetType === 'veiculo' ? "Ex: Toyota Corolla 2022" : "Ex: Casa - Centro, Loanda/PR"} />
                   </Card>
 
                   {/* Dimensão (Esconde se for veículo) */}
                   {assetType !== 'veiculo' && (
-                    <Card title="Dimensões do Imóvel" icon={assetType === 'rural' ? Tree : Home}>
+                    <Card title="Dimensões do Imóvel" icon={assetType === 'rural' ? Tree : Home} step={1} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={leilaoLastStep === 1}>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <DecimalInput label={assetType === 'urbano' ? "Área Total (m²)" : "Tamanho Total"} value={assetSize} onChange={setAssetSize} placeholder="Ex: 250,50" />
                         {assetType === 'rural' && (
                           <div>
                             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Unidade</label>
-                            <select value={ruralUnit} onChange={(e) => setRuralUnit(e.target.value)} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <select value={ruralUnit} onChange={(e) => setRuralUnit(e.target.value)} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none">
                               <option value="m2">Metro Quadrado (m²)</option>
                               <option value="ha">Hectares (ha)</option>
                               {Object.entries(ALQUEIRES).map(([key, val]) => (
@@ -896,10 +989,14 @@
                   <Card
                     title={`Valores do ${assetType === 'veiculo' ? 'Veículo' : 'Imóvel'}`}
                     icon={FileText}
+                    step={valoresStep}
+                    activeStep={leilaoStep}
+                    onStepChange={setLeilaoStep}
+                    isLast={leilaoLastStep === valoresStep}
                     extraHeader={assetType !== 'veiculo' && safeSize > 0 && (
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
-                        <button onClick={() => handleValModeChange('total')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${valMode === 'total' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>Total</button>
-                        <button onClick={() => handleValModeChange('unit')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${valMode === 'unit' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>Por {getUnitLabel()}</button>
+                        <button onClick={() => handleValModeChange('total')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${valMode === 'total' ? 'bg-brand-900 dark:bg-gold-600 text-white dark:text-brand-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Total</button>
+                        <button onClick={() => handleValModeChange('unit')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${valMode === 'unit' ? 'bg-brand-900 dark:bg-gold-600 text-white dark:text-brand-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Por {getUnitLabel()}</button>
                       </div>
                     )}
                   >
@@ -933,7 +1030,7 @@
                             onChange={setFipeDiscount}
                             placeholder="30"
                             max={100}
-                            extraElement={<div className="text-[11px] font-bold text-amber-600 dark:text-amber-500">Venda Estimada: {formatMoney(discountedSaleValue)}</div>}
+                            extraElement={<div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">Venda Estimada: {formatMoney(discountedSaleValue)}</div>}
                         />
                       )}
                     </div>
@@ -947,10 +1044,17 @@
                       />
                     )}
 
+                    <MoneyInput
+                      label="Lance na 2ª Praça (opcional, para comparar)"
+                      value={segundaPracaValue}
+                      onChange={setSegundaPracaValue}
+                      subText="Preencha para ver o comparativo de custo e lucro lado a lado com a 1ª praça"
+                    />
+
                     <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                      <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
+                      <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
                         <MoneyInput label="Orçamento Máximo Total (Teto Pessoal)" value={maxBudget} onChange={setMaxBudget} />
-                        <button onClick={handleSuggestBid} className="w-full py-3 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition-colors">Calcular Lance Ideal Baseado no Orçamento</button>
+                        <button onClick={handleSuggestBid} className="w-full py-3 sm:py-2 bg-brand-900 hover:bg-brand-700 dark:bg-gold-600 dark:hover:bg-gold-500 text-white dark:text-brand-900 font-bold rounded-md text-sm transition-colors">Calcular Lance Ideal Baseado no Orçamento</button>
                       </div>
                     </div>
                   </Card>
@@ -958,10 +1062,14 @@
                   <Card
                     title="Taxas e Custas de Entrada"
                     icon={FileText}
+                    step={taxasStep}
+                    activeStep={leilaoStep}
+                    onStepChange={setLeilaoStep}
+                    isLast={leilaoLastStep === taxasStep}
                     extraHeader={assetType !== 'veiculo' && (
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
-                        <button onClick={() => setCartorioModeLeilao('pr')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${cartorioModeLeilao === 'pr' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>Auto PR</button>
-                        <button onClick={() => setCartorioModeLeilao('manual')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${cartorioModeLeilao === 'manual' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>Manual</button>
+                        <button onClick={() => setCartorioModeLeilao('pr')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${cartorioModeLeilao === 'pr' ? 'bg-brand-900 dark:bg-gold-600 text-white dark:text-brand-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Auto PR</button>
+                        <button onClick={() => setCartorioModeLeilao('manual')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${cartorioModeLeilao === 'manual' ? 'bg-brand-900 dark:bg-gold-600 text-white dark:text-brand-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Manual</button>
                       </div>
                     )}
                   >
@@ -986,7 +1094,7 @@
                     </div>
                   </Card>
 
-                  <Card title={assetType === 'veiculo' ? (isRegularizacao ? "Débitos / Documentação / Reparos" : "Débitos e Reparos Extras") : "Custos Extras / Reformas"} icon={FileText}>
+                  <Card title={assetType === 'veiculo' ? (isRegularizacao ? "Débitos / Documentação / Reparos" : "Débitos e Reparos Extras") : "Custos Extras / Reformas"} icon={FileText} step={leilaoLastStep} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={true}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <MoneyInput label={assetType === 'veiculo' ? "Multas / IPVA / Débitos" : "Dívidas do Imóvel"} value={debts} onChange={setDebts} />
                       <MoneyInput label={assetType === 'veiculo' ? "Mecânica / Reparos" : "Reformas / Outros"} value={renovation} onChange={setRenovation} />
@@ -996,7 +1104,7 @@
 
                 {/* VISUALIZAÇÃO DO PDF / RESULTADO (LEILÃO) */}
                 <div className="space-y-4 sm:space-y-6 mt-6 lg:mt-0">
-                  <div id="pdf-leilao" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl sm:shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0 print:shadow-none">
+                  <div id="pdf-leilao" className="bg-white dark:bg-[#141414] rounded-lg border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0">
                     <div className="print:hidden">
                     {/* Header do Relatório */}
                     <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0">
@@ -1011,13 +1119,13 @@
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 mb-6">
                         {clienteNomeLeilao && (
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 block">{assetType === 'veiculo' && isRegularizacao ? 'Comprador / Cliente' : 'Arrematante / Cliente'}</span>
+                            <span className="text-[11px] font-bold text-slate-400 block">{assetType === 'veiculo' && isRegularizacao ? 'Comprador / Cliente' : 'Arrematante / Cliente'}</span>
                             <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{clienteNomeLeilao}</span>
                           </div>
                         )}
                         {imovelDescLeilao && (
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 block">{assetType === 'veiculo' ? (isRegularizacao ? "Veículo para Regularizar" : "Veículo Avaliado") : "Imóvel Avaliado"}</span>
+                            <span className="text-[11px] font-bold text-slate-400 block">{assetType === 'veiculo' ? (isRegularizacao ? "Veículo para Regularizar" : "Veículo Avaliado") : "Imóvel Avaliado"}</span>
                             <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{imovelDescLeilao}</span>
                           </div>
                         )}
@@ -1026,17 +1134,17 @@
 
                     {/* Bloco Resumo Veicular (Tabela FIPE) */}
                     {assetType === 'veiculo' && safeMarket > 0 && (
-                      <div className="mb-6 p-4 sm:p-5 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
+                      <div className="mb-6 p-4 sm:p-5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-slate-800 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
                         <div>
-                           <span className="text-xs font-bold uppercase text-amber-800 dark:text-amber-400 block mb-1">Tabela FIPE Base</span>
-                           <span className="text-xl font-extrabold text-amber-600 dark:text-amber-500 line-through opacity-60">{formatMoney(safeMarket)}</span>
+                           <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">Tabela FIPE Base</span>
+                           <span className="text-xl font-extrabold text-slate-500 dark:text-slate-400 line-through opacity-60">{formatMoney(safeMarket)}</span>
                            <div className="mt-1.5 text-sm font-bold text-emerald-700 dark:text-emerald-400 flex flex-wrap gap-2 items-center">
                               Venda Estimada: {formatMoney(discountedSaleValue)}
-                              {fipeDiscountClamped > 0 && <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-0.5 rounded text-emerald-800 dark:text-emerald-200">-{formatCurrencyStr(fipeDiscountClamped)}% desval.</span>}
+                              {fipeDiscountClamped > 0 && <span className="text-[11px] bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-0.5 rounded text-emerald-800 dark:text-emerald-200">-{formatCurrencyStr(fipeDiscountClamped)}% desval.</span>}
                            </div>
                         </div>
                         <div className="text-left sm:text-right w-full sm:w-auto">
-                           <div className="inline-block px-3 py-1.5 bg-amber-200 dark:bg-amber-800/50 text-amber-800 dark:text-amber-300 rounded-md text-xs font-bold mb-2">
+                           <div className="inline-block px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-md text-xs font-bold mb-2">
                              {isRegularizacao ? 'Compra' : 'Arremate'} = {arremateFipePercent.toFixed(1)}% da FIPE
                            </div>
                            {safeEval > 0 && <div className="text-xs text-slate-500 font-medium mb-1">Avaliação {isRegularizacao ? 'Atual' : 'Judicial'}: {formatMoney(safeEval)}</div>}
@@ -1047,10 +1155,10 @@
 
                     {/* Dimensões Imóvel no PDF (Urbano ou Rural) */}
                     {assetType !== 'veiculo' && safeSize > 0 && (
-                      <div className={`mb-6 p-4 border rounded-xl ${assetType === 'rural' ? 'bg-emerald-50/40 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30' : 'bg-slate-50/40 border-slate-100 dark:bg-slate-800/20 dark:border-slate-800/50'}`}>
+                      <div className="mb-6 p-4 border rounded-lg bg-slate-50/40 border-slate-100 dark:bg-slate-800/20 dark:border-slate-800/50">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-1 sm:gap-0">
-                          <span className={`text-xs font-bold uppercase ${assetType === 'rural' ? 'text-emerald-800 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>Dimensões da Área</span>
-                          <span className={`text-xs font-bold ${assetType === 'rural' ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-300'}`}>
+                          <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Dimensões da Área</span>
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                             {assetType === 'rural' ? `Área: ${formatCurrencyStr(safeSize)} ${ruralUnit === 'm2' ? 'm²' : ruralUnit === 'ha' ? 'ha' : alqName}` : `Área Total: ${formatCurrencyStr(safeSize)} m²`}
                           </span>
                         </div>
@@ -1058,21 +1166,21 @@
                         {assetType === 'rural' ? (
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-xs">
                             <div className="bg-white/80 dark:bg-slate-800 p-3 sm:p-2 rounded-lg flex sm:block justify-between items-center">
-                              <span className="text-[10px] sm:block text-slate-500 sm:text-slate-400 uppercase font-bold">Total m²</span>
+                              <span className="text-[11px] sm:block text-slate-500 sm:text-slate-400 uppercase font-bold">Total m²</span>
                               <strong className="text-slate-800 dark:text-slate-200 text-sm sm:text-xs">{formatCurrencyStr(areaInM2)} m²</strong>
                             </div>
                             <div className="bg-white/80 dark:bg-slate-800 p-3 sm:p-2 rounded-lg flex sm:block justify-between items-center">
-                              <span className="text-[10px] sm:block text-slate-500 sm:text-slate-400 uppercase font-bold">Total Hectares</span>
+                              <span className="text-[11px] sm:block text-slate-500 sm:text-slate-400 uppercase font-bold">Total Hectares</span>
                               <strong className="text-slate-800 dark:text-slate-200 text-sm sm:text-xs">{formatCurrencyStr(areaInHa)} ha</strong>
                             </div>
                             <div className="bg-white/80 dark:bg-slate-800 p-3 sm:p-2 rounded-lg flex sm:block justify-between items-center">
-                              <span className="text-[10px] sm:block text-slate-500 sm:text-slate-400 uppercase font-bold">Total {alqName}</span>
+                              <span className="text-[11px] sm:block text-slate-500 sm:text-slate-400 uppercase font-bold">Total {alqName}</span>
                               <strong className="text-slate-800 dark:text-slate-200 text-sm sm:text-xs">{formatCurrencyStr(areaInAlq)} alq</strong>
                             </div>
                           </div>
                         ) : (
                           <div className="bg-white/80 dark:bg-slate-800 p-3 sm:p-2 rounded-lg text-center flex sm:block justify-between items-center">
-                              <span className="text-[10px] sm:block text-slate-500 sm:text-slate-400 uppercase font-bold">Área Total</span>
+                              <span className="text-[11px] sm:block text-slate-500 sm:text-slate-400 uppercase font-bold">Área Total</span>
                               <strong className="text-slate-800 dark:text-slate-200 text-sm">{formatCurrencyStr(areaInM2)} m²</strong>
                           </div>
                         )}
@@ -1081,22 +1189,22 @@
 
                     {/* Bloco de Margem de Lucro e ROI */}
                     {discountedSaleValue > 0 && finalLeilao > 0 && (
-                      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-xl mb-6 ${lucroAbsoluto >= 0 ? 'bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900/30' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/30'}`}>
+                      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-lg mb-6 ${lucroAbsoluto >= 0 ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/30'}`}>
                         <div className="flex sm:block justify-between items-center">
-                          <span className={`text-[10px] uppercase font-bold block ${lucroAbsoluto >= 0 ? 'text-indigo-500' : 'text-rose-500'}`}>{lucroAbsoluto >= 0 ? 'Lucro Absoluto Estimado' : 'Prejuízo Estimado'}</span>
+                          <span className={`text-[11px] font-bold block ${lucroAbsoluto >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-500'}`}>{lucroAbsoluto >= 0 ? 'Lucro Absoluto Estimado' : 'Prejuízo Estimado'}</span>
                           <span className={`text-xl font-extrabold ${lucroAbsoluto >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatMoney(lucroAbsoluto)}</span>
                         </div>
                         <div className="flex sm:block justify-between items-center">
-                          <span className={`text-[10px] uppercase font-bold block ${lucroAbsoluto >= 0 ? 'text-indigo-500' : 'text-rose-500'}`}>Retorno / Margem (ROI)</span>
-                          <span className={`text-xl font-extrabold ${margemLucroPorcentagem >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600'}`}>{margemLucroPorcentagem > 0 ? '+' : ''}{formatCurrencyStr(margemLucroPorcentagem)}%</span>
+                          <span className={`text-[11px] font-bold block ${lucroAbsoluto >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-500'}`}>Retorno / Margem (ROI)</span>
+                          <span className={`text-xl font-extrabold ${margemLucroPorcentagem >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{margemLucroPorcentagem > 0 ? '+' : ''}{formatCurrencyStr(margemLucroPorcentagem)}%</span>
                         </div>
                         {assetType !== 'veiculo' && maxBidForProfit > 0 && (
-                          <div className="sm:col-span-2 text-xs font-bold text-rose-600 dark:text-rose-400 pt-2 border-t border-indigo-100 dark:border-indigo-900/30">Teto de Lance p/ Lucro Zero: {formatMoney(maxBidForProfit)}</div>
+                          <div className={`sm:col-span-2 text-xs font-bold text-rose-600 dark:text-rose-400 pt-2 border-t ${lucroAbsoluto >= 0 ? 'border-emerald-100 dark:border-emerald-900/30' : 'border-rose-100 dark:border-rose-900/30'}`}>Teto de Lance p/ Lucro Zero: {formatMoney(maxBidForProfit)}</div>
                         )}
                       </div>
                     )}
 
-                    <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 text-xs uppercase tracking-wider text-slate-500">Detalhamento Financeiro</h4>
+                    <h4 className="font-bold text-slate-600 dark:text-slate-300 mb-4 text-xs">Detalhamento Financeiro</h4>
                     <ul className="space-y-3 text-sm">
                       <li className="flex justify-between font-bold text-base pb-2 border-b border-slate-100 dark:border-slate-800">
                         <span>{isRegularizacao ? "Valor da Compra Acordada" : "Valor de Aquisição (Lance)"}</span>
@@ -1106,7 +1214,7 @@
                       {!isRegularizacao && (
                         <li className="flex justify-between text-slate-600 dark:text-slate-400">
                           <span>Comissão do Leiloeiro</span>
-                          <span className="text-rose-500 font-medium">+{formatMoney(leiloeiroCost)}</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(leiloeiroCost)}</span>
                         </li>
                       )}
 
@@ -1114,35 +1222,58 @@
                         <>
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
                             <span>ITBI Arrematação{safeNumber(valorVenalLeilao) > safeBid ? ' (s/ valor venal)' : ''}</span>
-                            <span className="text-rose-500 font-medium">+{formatMoney(itbiCostLeilao)}</span>
+                            <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(itbiCostLeilao)}</span>
                           </li>
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
                             <span>Cartório de Registo</span>
-                            <span className="text-rose-500 font-medium">+{formatMoney(cartorioCostLeilao)}</span>
+                            <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(cartorioCostLeilao)}</span>
                           </li>
                         </>
                       )}
 
                       <li className="flex justify-between text-slate-600 dark:text-slate-400">
                         <span>{isRegularizacao ? "Honorários Judiciais e Custas" : "Assessoria Jurídica"}</span>
-                        <span className="text-rose-500 font-medium">+{formatMoney(legalCost)}</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(legalCost)}</span>
                       </li>
                       {(safeNumber(debts) > 0 || safeNumber(renovation) > 0) && (
                         <li className="flex justify-between text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
                           <span>{isRegularizacao ? "Multas, Doc. e Reparos" : "Passivos & Custos Extras"}</span>
-                          <span className="text-amber-500 font-medium">+{formatMoney(fixedCostsLeilao)}</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(fixedCostsLeilao)}</span>
                         </li>
                       )}
-                      <li className="flex justify-between font-extrabold text-lg pt-4 mt-2 border-t border-slate-200 dark:border-slate-800">
-                        <span>Custo Operacional Total</span>
-                        <span className="text-indigo-700 dark:text-indigo-400">{formatMoney(finalLeilao)}</span>
+                      <li className="flex flex-col sm:flex-row justify-between sm:items-baseline font-extrabold text-sm sm:text-base pt-4 mt-2 border-t border-slate-200 dark:border-slate-800">
+                        <span className="text-slate-700 dark:text-slate-300">Custo Operacional Total</span>
+                        <span className="text-2xl sm:text-3xl tabular-nums text-[#1d5fbf] dark:text-[#5b9bf2]">{formatMoney(finalLeilao)}</span>
                       </li>
                     </ul>
+
+                    {/* Comparativo com a 2ª Praça */}
+                    {segundaPracaResult && (
+                      <div className="mt-6 p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-white/5">
+                        <h4 className="font-bold text-slate-600 dark:text-slate-300 mb-3 text-xs">Comparativo com a 2ª Praça</h4>
+                        <ul className="space-y-2 text-sm">
+                          <li className="flex justify-between">
+                            <span className="text-slate-600 dark:text-slate-400">Custo Operacional (2ª Praça)</span>
+                            <span className="font-bold text-slate-900 dark:text-white tabular-nums">{formatMoney(segundaPracaResult.total)}</span>
+                          </li>
+                          <li className="flex justify-between">
+                            <span className="text-slate-600 dark:text-slate-400">{economiaSegundaPraca >= 0 ? 'Economia na 2ª praça' : 'Custo a mais na 2ª praça'}</span>
+                            <span className={`font-bold tabular-nums ${economiaSegundaPraca >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatMoney(Math.abs(economiaSegundaPraca))}</span>
+                          </li>
+                          {discountedSaleValue > 0 && (
+                            <li className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
+                              <span className="text-slate-600 dark:text-slate-400">Lucro estimado (2ª Praça)</span>
+                              <span className={`font-bold tabular-nums ${segundaPracaResult.lucro >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatMoney(segundaPracaResult.lucro)}</span>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
 
                     {/* Comparativo de Preço por Unidade (Imóveis) */}
                     {assetType !== 'veiculo' && safeSize > 0 && (
                       <div className="mt-8">
-                        <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-3 text-xs uppercase tracking-wider text-slate-500">Comparação de Custos por Área</h4>
+                        <h4 className="font-bold text-slate-600 dark:text-slate-300 mb-3 text-xs">Comparação de Custos por Área</h4>
                         <div className="overflow-x-auto no-scrollbar pb-2">
                           <table className="w-full text-left text-xs border-collapse min-w-[400px]">
                             <thead>
@@ -1164,10 +1295,10 @@
                               )}
                               {safeMarket > 0 && (
                                 <tr className="border-b border-slate-100 dark:border-slate-800/50">
-                                  <td className="py-3 font-semibold text-indigo-600 dark:text-indigo-400">Mercado Real ({formatMoney(safeMarket)})</td>
-                                  <td className="py-3 text-right font-extrabold text-indigo-600 dark:text-indigo-400">{formatMoney(ratesMarket.m2)}</td>
-                                  {assetType === 'rural' && <td className="py-3 text-right font-extrabold text-indigo-600 dark:text-indigo-400">{formatMoney(ratesMarket.ha)}</td>}
-                                  {assetType === 'rural' && <td className="py-3 text-right font-extrabold text-indigo-600 dark:text-indigo-400">{formatMoney(ratesMarket.alq)}</td>}
+                                  <td className="py-3 font-semibold text-slate-900 dark:text-white">Mercado Real ({formatMoney(safeMarket)})</td>
+                                  <td className="py-3 text-right font-extrabold text-slate-900 dark:text-white">{formatMoney(ratesMarket.m2)}</td>
+                                  {assetType === 'rural' && <td className="py-3 text-right font-extrabold text-slate-900 dark:text-white">{formatMoney(ratesMarket.ha)}</td>}
+                                  {assetType === 'rural' && <td className="py-3 text-right font-extrabold text-slate-900 dark:text-white">{formatMoney(ratesMarket.alq)}</td>}
                                 </tr>
                               )}
                               <tr className="border-b border-slate-200 dark:border-slate-800">
@@ -1182,16 +1313,18 @@
                       </div>
                     )}
 
-                    <div className="mt-8 text-[9px] text-slate-400 text-justify leading-relaxed">
+                    <div className="mt-8 text-[11px] text-slate-500 dark:text-slate-400 text-justify leading-relaxed">
                       <strong>Nota Legal:</strong> Documento de caráter puramente estimativo e consultivo visando planejamento financeiro. {assetType !== 'veiculo' ? `Custas notariais calculadas pela Tabela III-C do TJ-PR, vigente desde ${VIGENCIA_TABELAS_PR}, sujeita a atualização anual.` : 'Tabela FIPE e débitos são informativos e sujeitos a variação de mercado.'}
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3 mt-8 print-hide">
-                      <button onClick={handleReset} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all">Limpar</button>
-                      <button onClick={handleCopyResumo} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all">Copiar Resumo</button>
-                      <button onClick={handleShareWhatsapp} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all">WhatsApp</button>
-                      <button onClick={handlePrint} className="w-full flex-1 flex items-center justify-center gap-2 py-4 sm:py-3 bg-slate-900 text-white font-bold rounded-xl transition-all shadow-lg">
-                        <Printer className="w-5 h-5" /> Gerar Relatório PDF
+                    <div className="mt-8 print-hide">
+                      <div className="grid grid-cols-3 gap-2">
+                        <button onClick={handleReset} className="px-2 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-lg transition-colors">Limpar</button>
+                        <button onClick={handleCopyResumo} className="px-2 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-lg transition-colors">Copiar Resumo</button>
+                        <button onClick={handleShareWhatsapp} className="px-2 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm rounded-lg transition-colors border border-slate-200 dark:border-slate-700">WhatsApp</button>
+                      </div>
+                      <button onClick={handlePrint} className="w-full flex items-center justify-center gap-2 py-3.5 mt-2 bg-brand-900 hover:bg-brand-700 dark:bg-gold-600 dark:hover:bg-gold-500 text-white dark:text-brand-900 font-bold rounded-lg transition-colors">
+                        <Printer className="w-5 h-5 flex-shrink-0" /> Gerar Relatório PDF
                       </button>
                     </div>
                     </div>{/* fim do bloco de tela (print:hidden) */}
@@ -1201,7 +1334,7 @@
                       <div className="flex justify-between items-end border-b-2 border-black pb-3 mb-5">
                         <div>
                           <div className="text-base font-bold uppercase tracking-tight">{advName}</div>
-                          <div className="text-[10px]">{advOab}</div>
+                          <div className="text-[11px]">{advOab}</div>
                         </div>
                         <div className="text-right text-[9px] text-gray-600">
                           Documento gerado em {formatDateTime(new Date())}
@@ -1214,7 +1347,7 @@
                       <p className="text-[9px] text-center text-gray-500 mb-5">Relatório estimativo de custos e retorno financeiro</p>
 
                       {(clienteNomeLeilao || imovelDescLeilao) && (
-                        <table className="w-full text-[10px] mb-5 border-collapse avoid-break">
+                        <table className="w-full text-[11px] mb-5 border-collapse avoid-break">
                           <tbody>
                             {clienteNomeLeilao && (
                               <tr><td className="py-1 pr-3 font-bold uppercase w-1/4 align-top">{assetType === 'veiculo' && isRegularizacao ? 'Comprador' : 'Arrematante'}</td><td className="py-1 align-top">{clienteNomeLeilao}</td></tr>
@@ -1227,7 +1360,7 @@
                       )}
 
                       {assetType === 'veiculo' && safeMarket > 0 && (
-                        <table className="w-full text-[10px] mb-5 border-collapse avoid-break">
+                        <table className="w-full text-[11px] mb-5 border-collapse avoid-break">
                           <tbody>
                             <tr className="border-b border-gray-300"><td className="py-1">Tabela FIPE (Cheia)</td><td className="py-1 text-right">{formatMoney(safeMarket)}</td></tr>
                             <tr className="border-b border-gray-300"><td className="py-1">Venda Estimada (desvalorização de {formatCurrencyStr(fipeDiscountClamped)}%)</td><td className="py-1 text-right">{formatMoney(discountedSaleValue)}</td></tr>
@@ -1239,7 +1372,7 @@
                       )}
 
                       {assetType !== 'veiculo' && safeSize > 0 && (
-                        <table className="w-full text-[10px] mb-5 border-collapse avoid-break">
+                        <table className="w-full text-[11px] mb-5 border-collapse avoid-break">
                           <tbody>
                             <tr>
                               <td className="py-1 font-bold uppercase w-1/4">Dimensões</td>
@@ -1253,7 +1386,7 @@
                         </table>
                       )}
 
-                      <table className="w-full text-[10px] border-collapse mb-5 avoid-break">
+                      <table className="w-full text-[11px] border-collapse mb-5 avoid-break">
                         <thead>
                           <tr className="border-b-2 border-black">
                             <th className="text-left py-1.5 font-bold uppercase">Descrição</th>
@@ -1286,10 +1419,28 @@
                       </table>
 
                       {discountedSaleValue > 0 && (
-                        <table className="w-full text-[10px] border-collapse mb-5 avoid-break">
+                        <table className="w-full text-[11px] border-collapse mb-5 avoid-break">
                           <tbody>
                             <tr className="border-b border-gray-300"><td className="py-1.5 font-semibold">{lucroAbsoluto >= 0 ? 'Lucro Absoluto Estimado' : 'Prejuízo Estimado'}</td><td className="py-1.5 text-right font-bold">{formatMoney(lucroAbsoluto)}</td></tr>
                             <tr><td className="py-1.5 font-semibold">Retorno / Margem (ROI)</td><td className="py-1.5 text-right font-bold">{margemLucroPorcentagem > 0 ? '+' : ''}{formatCurrencyStr(margemLucroPorcentagem)}%</td></tr>
+                          </tbody>
+                        </table>
+                      )}
+
+                      {segundaPracaResult && (
+                        <table className="w-full text-[11px] border-collapse mb-5 avoid-break">
+                          <thead>
+                            <tr className="border-b-2 border-black">
+                              <th className="text-left py-1.5 font-bold uppercase" colSpan="2">Comparativo com a 2ª Praça</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="border-b border-gray-300"><td className="py-1.5">Lance na 2ª Praça</td><td className="py-1.5 text-right">{formatMoney(safeSegundaPraca)}</td></tr>
+                            <tr className="border-b border-gray-300"><td className="py-1.5 font-semibold">Custo Operacional (2ª Praça)</td><td className="py-1.5 text-right font-bold">{formatMoney(segundaPracaResult.total)}</td></tr>
+                            <tr className="border-b border-gray-300"><td className="py-1.5">{economiaSegundaPraca >= 0 ? 'Economia na 2ª praça' : 'Custo a mais na 2ª praça'}</td><td className="py-1.5 text-right">{formatMoney(Math.abs(economiaSegundaPraca))}</td></tr>
+                            {discountedSaleValue > 0 && (
+                              <tr><td className="py-1.5 font-semibold">Lucro Estimado (2ª Praça)</td><td className="py-1.5 text-right font-bold">{formatMoney(segundaPracaResult.lucro)}</td></tr>
+                            )}
                           </tbody>
                         </table>
                       )}
@@ -1355,7 +1506,7 @@
             {activeTab === 'escritura' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-4 sm:space-y-6 print-hide">
-                  <Card title="Dados da Escritura" icon={Building}>
+                  <Card title="Dados da Escritura" icon={Building} step={0} activeStep={escrituraStep} onStepChange={setEscrituraStep} isLast={false}>
                     <TextInput label="Nome do Adquirente" value={clienteNome} onChange={setClienteNome} placeholder="Ex: João Silva" />
                     <TextInput label="Descrição Detalhada do Imóvel" value={imovelDesc} onChange={setImovelDesc} placeholder="Ex: Chácara São Pedro - Loanda/PR" />
                     <MoneyInput label="Valor Real da Negociação" value={negocioValor} onChange={setNegocioValor} />
@@ -1365,10 +1516,14 @@
                   <Card
                     title="Configurações de Custas"
                     icon={FileText}
+                    step={1}
+                    activeStep={escrituraStep}
+                    onStepChange={setEscrituraStep}
+                    isLast={false}
                     extraHeader={
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
-                        <button onClick={() => setEscrituraMode('pr')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${escrituraMode === 'pr' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>Auto PR</button>
-                        <button onClick={() => setEscrituraMode('manual')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${escrituraMode === 'manual' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>Manual</button>
+                        <button onClick={() => setEscrituraMode('pr')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${escrituraMode === 'pr' ? 'bg-brand-900 dark:bg-gold-600 text-white dark:text-brand-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Auto PR</button>
+                        <button onClick={() => setEscrituraMode('manual')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${escrituraMode === 'manual' ? 'bg-brand-900 dark:bg-gold-600 text-white dark:text-brand-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Manual</button>
                       </div>
                     }
                   >
@@ -1412,13 +1567,13 @@
 
                     <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
                         <label className="flex items-start sm:items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer">
-                          <input type="checkbox" checked={incluirRgi} onChange={(e) => setIncluirRgi(e.target.checked)} className="w-5 h-5 mt-0.5 sm:mt-0 text-indigo-600 rounded" />
+                          <input type="checkbox" checked={incluirRgi} onChange={(e) => setIncluirRgi(e.target.checked)} className="w-5 h-5 mt-0.5 sm:mt-0 text-slate-900 rounded" />
                           <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Incluir Registo de Imóveis (RGI) no extrato final</span>
                         </label>
                     </div>
                   </Card>
 
-                  <Card title="Custos Acessórios" icon={FileText}>
+                  <Card title="Custos Acessórios" icon={FileText} step={2} activeStep={escrituraStep} onStepChange={setEscrituraStep} isLast={true}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <MoneyInput label="Certidões e Buscas" value={certidoesEsc} onChange={setCertidoesEsc} />
@@ -1434,8 +1589,8 @@
                       <div>
                         <MoneyInput label="Valor de Outros" value={outrosValorEsc} onChange={setOutrosValorEsc} />
                         <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1 w-fit mt-1.5">
-                          <button onClick={() => setOutrosNoTotal(true)} className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors ${outrosNoTotal ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Somar ao Total</button>
-                          <button onClick={() => setOutrosNoTotal(false)} className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors ${!outrosNoTotal ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Valor à Parte</button>
+                          <button onClick={() => setOutrosNoTotal(true)} className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors ${outrosNoTotal ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>Somar ao Total</button>
+                          <button onClick={() => setOutrosNoTotal(false)} className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors ${!outrosNoTotal ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>Valor à Parte</button>
                         </div>
                         {outrosNoTotal ? (
                           <ShowInBudgetToggle checked={showOutrosEsc} onChange={setShowOutrosEsc} />
@@ -1449,7 +1604,7 @@
 
                 {/* VISUALIZAÇÃO DO PDF / RESULTADO (ESCRITURA) */}
                 <div className="space-y-4 sm:space-y-6 mt-6 lg:mt-0">
-                  <div id="pdf-escritura" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl sm:shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0 print:shadow-none">
+                  <div id="pdf-escritura" className="bg-white dark:bg-[#141414] rounded-lg border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0">
                     <div className="print:hidden">
                     {/* Header Limpo Sem Dados de Controle ou Configuração */}
                     <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0">
@@ -1457,7 +1612,7 @@
                         <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">Memorial de Custas de Escrituração</h2>
                         <p className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 mt-0.5">{advName} — {advOab}</p>
                       </div>
-                      <div className="text-left sm:text-right text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+                      <div className="text-left sm:text-right text-[11px] text-slate-400 uppercase tracking-wider font-bold">
                         Simulação Estimativa
                       </div>
                     </div>
@@ -1467,20 +1622,20 @@
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 mb-6">
                         {clienteNome && (
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Adquirente / Outorgado</span>
+                            <span className="text-[11px] font-bold text-slate-400 block">Adquirente / Outorgado</span>
                             <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{clienteNome}</span>
                           </div>
                         )}
                         {imovelDesc && (
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-slate-400 block">Objeto / Imóvel</span>
+                            <span className="text-[11px] font-bold text-slate-400 block">Objeto / Imóvel</span>
                             <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{imovelDesc}</span>
                           </div>
                         )}
                       </div>
                     )}
 
-                    <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 text-xs uppercase tracking-wider text-slate-500">Detalhamento Financeiro</h4>
+                    <h4 className="font-bold text-slate-600 dark:text-slate-300 mb-4 text-xs">Detalhamento Financeiro</h4>
 
                     {/* Bloco 1: Inicial */}
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 mb-4">
@@ -1530,14 +1685,14 @@
 
                         <li className="flex justify-between font-bold pt-3 mt-2 border-t border-slate-200 dark:border-slate-700">
                           <span className="text-slate-800 dark:text-slate-200">Subtotal Sem Registro</span>
-                          <span className="text-indigo-600 dark:text-indigo-400">{formatMoney(custoInicialEsc)}</span>
+                          <span className="text-slate-900 dark:text-white">{formatMoney(custoInicialEsc)}</span>
                         </li>
                       </ul>
                     </div>
 
                     {/* Valor à parte: não entra no total do orçamento */}
                     {!outrosNoTotal && safeOutrosEsc > 0 && (
-                      <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/10 mb-4">
+                      <div className="p-4 rounded-lg border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/10 mb-4">
                         <h5 className="text-xs font-bold uppercase text-amber-700 dark:text-amber-400 mb-2">Valor à Parte (não incluído no total)</h5>
                         <ul className="space-y-2 text-sm">
                           <li className="flex justify-between font-medium">
@@ -1550,37 +1705,39 @@
 
                     {/* Bloco 2: Registro */}
                     {incluirRgi && (
-                      <div className="p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-950/10 mb-4">
+                      <div className="p-4 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 mb-4">
                         <h5 className="text-xs font-bold uppercase text-slate-500 mb-2">Passo 2: Registro de Imóveis (RGI)</h5>
                         <ul className="space-y-2 text-sm">
                           <li className="flex justify-between font-medium">
-                            <span className="text-indigo-900 dark:text-indigo-300">Emolumento de Registro</span>
-                            <span className="text-indigo-700 dark:text-indigo-400">+{formatMoney(cartorioCostEsc)}</span>
+                            <span className="text-slate-700 dark:text-slate-300">Emolumento de Registro</span>
+                            <span className="text-slate-900 dark:text-white">+{formatMoney(cartorioCostEsc)}</span>
                           </li>
                         </ul>
                       </div>
                     )}
 
                     {/* Resumo Final para PDF */}
-                    <div className="bg-slate-900 text-white rounded-xl p-4 sm:p-5 mt-6">
-                        <h5 className="text-[10px] font-bold uppercase text-slate-400 mb-4 text-center tracking-widest">Apurado Geral do Orçamento</h5>
+                    <div className="bg-brand-900 text-white rounded-xl p-4 sm:p-5 mt-6">
+                        <h5 className="text-xs font-bold text-slate-400 mb-4 text-center">Apurado Geral do Orçamento</h5>
 
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center font-extrabold text-xl sm:text-lg text-emerald-400 gap-1 sm:gap-0">
-                            <span>Total Estimado{incluirRgi ? ' (com Registro RGI)' : ''}</span>
-                            <span>{formatMoney(totalEscrituraComRegistro)}</span>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline font-extrabold gap-1 sm:gap-0">
+                            <span className="text-sm sm:text-base text-slate-300">Total Estimado{incluirRgi ? ' (com Registro RGI)' : ''}</span>
+                            <span className="text-2xl sm:text-3xl tabular-nums text-[#5b9bf2]">{formatMoney(totalEscrituraComRegistro)}</span>
                         </div>
                     </div>
 
-                    <div className="mt-8 text-[9px] text-slate-400 text-justify leading-relaxed">
+                    <div className="mt-8 text-[11px] text-slate-500 dark:text-slate-400 text-justify leading-relaxed">
                       <strong>Nota Legal:</strong> Este relatório é de natureza estimativa e consultiva para fins de planejamento financeiro. As custas notariais e de registo seguem as tabelas de emolumentos do TJ-PR vigentes desde {VIGENCIA_TABELAS_PR} e podem variar conforme o cartório competente ou reajuste anual.
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3 mt-8 print-hide">
-                      <button onClick={handleReset} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all">Limpar</button>
-                      <button onClick={handleCopyResumo} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all">Copiar Resumo</button>
-                      <button onClick={handleShareWhatsapp} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all">WhatsApp</button>
-                      <button onClick={handlePrint} className="w-full flex-1 flex items-center justify-center gap-2 py-4 sm:py-3 bg-slate-900 text-white font-bold rounded-xl transition-all shadow-lg">
-                        <Printer className="w-5 h-5" /> Gerar PDF do Orçamento
+                    <div className="mt-8 print-hide">
+                      <div className="grid grid-cols-3 gap-2">
+                        <button onClick={handleReset} className="px-2 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-lg transition-colors">Limpar</button>
+                        <button onClick={handleCopyResumo} className="px-2 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-lg transition-colors">Copiar Resumo</button>
+                        <button onClick={handleShareWhatsapp} className="px-2 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm rounded-lg transition-colors border border-slate-200 dark:border-slate-700">WhatsApp</button>
+                      </div>
+                      <button onClick={handlePrint} className="w-full flex items-center justify-center gap-2 py-3.5 mt-2 bg-brand-900 hover:bg-brand-700 dark:bg-gold-600 dark:hover:bg-gold-500 text-white dark:text-brand-900 font-bold rounded-lg transition-colors">
+                        <Printer className="w-5 h-5 flex-shrink-0" /> Gerar PDF do Orçamento
                       </button>
                     </div>
                     </div>{/* fim do bloco de tela (print:hidden) */}
@@ -1590,7 +1747,7 @@
                       <div className="flex justify-between items-end border-b-2 border-black pb-3 mb-5">
                         <div>
                           <div className="text-base font-bold uppercase tracking-tight">{advName}</div>
-                          <div className="text-[10px]">{advOab}</div>
+                          <div className="text-[11px]">{advOab}</div>
                         </div>
                         <div className="text-right text-[9px] text-gray-600">
                           Documento gerado em {formatDateTime(new Date())}
@@ -1601,7 +1758,7 @@
                       <p className="text-[9px] text-center text-gray-500 mb-5">Simulação estimativa de custos de transmissão imobiliária</p>
 
                       {(clienteNome || imovelDesc) && (
-                        <table className="w-full text-[10px] mb-5 border-collapse avoid-break">
+                        <table className="w-full text-[11px] mb-5 border-collapse avoid-break">
                           <tbody>
                             {clienteNome && <tr><td className="py-1 pr-3 font-bold uppercase w-1/4 align-top">Adquirente</td><td className="py-1 align-top">{clienteNome}</td></tr>}
                             {imovelDesc && <tr><td className="py-1 pr-3 font-bold uppercase w-1/4 align-top">Imóvel</td><td className="py-1 align-top">{imovelDesc}</td></tr>}
@@ -1609,7 +1766,7 @@
                         </table>
                       )}
 
-                      <table className="w-full text-[10px] border-collapse mb-5 avoid-break">
+                      <table className="w-full text-[11px] border-collapse mb-5 avoid-break">
                         <thead>
                           <tr className="border-b-2 border-black"><th colSpan="2" className="text-left py-1.5 font-bold uppercase">Passo 1 — Lavratura, Impostos e Acessórios</th></tr>
                         </thead>
@@ -1626,7 +1783,7 @@
                       </table>
 
                       {!outrosNoTotal && safeOutrosEsc > 0 && (
-                        <table className="w-full text-[10px] border-collapse mb-5 avoid-break">
+                        <table className="w-full text-[11px] border-collapse mb-5 avoid-break">
                           <thead>
                             <tr className="border-b-2 border-black"><th colSpan="2" className="text-left py-1.5 font-bold uppercase">Valor à Parte (não incluído no total)</th></tr>
                           </thead>
@@ -1637,7 +1794,7 @@
                       )}
 
                       {incluirRgi && (
-                        <table className="w-full text-[10px] border-collapse mb-5 avoid-break">
+                        <table className="w-full text-[11px] border-collapse mb-5 avoid-break">
                           <thead>
                             <tr className="border-b-2 border-black"><th colSpan="2" className="text-left py-1.5 font-bold uppercase">Passo 2 — Registro de Imóveis (RGI)</th></tr>
                           </thead>
