@@ -123,6 +123,10 @@
       B.gerarPlanilhaCalculo(entrada(), f.descricao || 'debito');
     }
 
+    function gerarPdf() {
+      B.gerarPdfCalculo(entrada(), f.descricao || 'debito');
+    }
+
     const x = resultado;
     return (
       <Pagina titulo="Atualização de débitos" descricao="Atualize uma dívida com a correção monetária que você informar, mais juros, multa, honorários e pagamentos parciais.">
@@ -199,7 +203,8 @@
                 </dl>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo</Botao>
+                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo (Excel)</Botao>
+                <Botao variante="verde" icone="baixar" onClick={gerarPdf}>Gerar planilha de cálculo (PDF)</Botao>
                 <Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao>
               </div>
             </div>

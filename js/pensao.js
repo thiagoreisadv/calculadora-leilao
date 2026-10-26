@@ -200,6 +200,10 @@
       B.gerarPlanilhaCalculo(entrada(), f.descricao || 'pensao');
     }
 
+    function gerarPdf() {
+      B.gerarPdfCalculo(entrada(), f.descricao || 'pensao');
+    }
+
     const x = resultado;
     const m = R.formatarMoeda;
     return (
@@ -318,7 +322,8 @@
                 </div>
               </details>
               <div className="flex flex-wrap gap-2">
-                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo</Botao>
+                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo (Excel)</Botao>
+                <Botao variante="verde" icone="baixar" onClick={gerarPdf}>Gerar planilha de cálculo (PDF)</Botao>
                 <Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao>
               </div>
             </div>

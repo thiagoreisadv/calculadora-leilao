@@ -132,6 +132,10 @@
       B.gerarPlanilhaCalculo(entrada(), f.titulo || 'planilha-debitos');
     }
 
+    function gerarPdf() {
+      B.gerarPdfCalculo(entrada(), f.titulo || 'planilha-debitos');
+    }
+
     return (
       <Pagina titulo="Planilha consolidada de débitos" descricao="Gerencie várias obrigações numa única tela, informe a correção monetária e os pagamentos de cada uma e veja o total consolidado.">
         <Cartao titulo="1. Identificação" descricao="Nomes e descrições ficam apenas neste navegador e aparecem no demonstrativo.">
@@ -184,7 +188,8 @@
                 rodape={['', 'Totais', '', '', m(res.totais.original), m(res.totais.correcao), m(res.totais.juros), m(res.totais.multa), m(res.totais.encargosNominais), res.totais.pagamentos ? `-${m(res.totais.pagamentos)}` : '—', m(res.totais.saldoFinal)]} />
               <p className="text-xs text-slate-500 dark:text-slate-400">O saldo de cada linha inclui honorários em percentual, quando aplicados. Honorários de valor fixo entram uma única vez no total.</p>
               <div className="flex flex-wrap gap-2">
-                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo</Botao>
+                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo (Excel)</Botao>
+                <Botao variante="verde" icone="baixar" onClick={gerarPdf}>Gerar planilha de cálculo (PDF)</Botao>
                 <Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao>
                 <Botao icone="baixar" onClick={exportarCsv}>Exportar CSV</Botao>
               </div>

@@ -23,6 +23,8 @@ Ao final de **cada** calculador (leilões, escritura, débitos, pensão, alugué
 - aba **Memória**: o passo a passo de cada parcela;
 - aba **Critérios**: os parâmetros utilizados.
 
+Cada calculador oferece também **Gerar planilha de cálculo (PDF)**: um PDF real (não depende do diálogo de impressão) com identificação, critérios, discriminação dos valores, tabela por parcela, memória de cálculo e total.
+
 As memórias guardadas em **Memórias de cálculo** também podem ter a planilha baixada de novo. O arquivo é gerado no navegador, sem bibliotecas (`js/xlsx.js`).
 
 ## Correção monetária (sempre informada pelo usuário)
@@ -51,6 +53,7 @@ js/calculo.js         Motor de cálculo local (correção informada, juros, mult
 js/historico.js       Histórico local (localStorage) com exportação/importação JSON
 js/registro.js        Monta o registro da memória de cálculo e a planilha de cálculo
 js/xlsx.js            Gerador de planilhas .xlsx sem dependências
+js/pdf.js             Gerador de PDF sem dependências (tabelas, quebra de linha, paginação)
 js/demonstrativo.js   Gera o HTML do demonstrativo (imprimível / salvar em PDF)
 js/componentes.js     Componentes de interface compartilhados
 js/blocos.js          Correção manual, critérios de cálculo, resumo, visualizador de documentos
@@ -71,7 +74,7 @@ O GitHub Pages é hospedagem estática, sem banco de dados. Por isso:
 ## Testes
 
 ```bash
-node --test test/regras.test.js test/calculo.test.js test/xlsx.test.js
+node --test test/regras.test.js test/calculo.test.js test/xlsx.test.js test/pdf.test.js
 ```
 
 Cobrem as três modalidades de correção, a ausência de aplicação dupla, juros simples e compostos (ao mês e ao ano), multa, honorários, pagamentos nos dois modos de abatimento, validações, ritos do art. 528 e a garantia de que os arquivos de cálculo não fazem chamadas de rede.

@@ -148,6 +148,10 @@
       B.gerarPlanilhaCalculo(entrada(), f.descricao || p.titulo);
     }
 
+    function gerarPdf() {
+      B.gerarPdfCalculo(entrada(), f.descricao || p.titulo);
+    }
+
     function exportarCsv() {
       const r = resultado;
       const linhas = r.resultados.map((x, i) => [i + 1, r.parcelas[i].descricao, r.parcelas[i].competencia, r.parcelas[i].vencimento, R.numeroCSV(x.original), R.numeroCSV(x.correcao.valorCorrecao), R.numeroCSV(x.principalCorrigido), R.numeroCSV(x.juros), R.numeroCSV(x.multa), R.numeroCSV(x.honorarios), R.numeroCSV(-x.pagamentos), R.numeroCSV(x.saldo)]);
@@ -246,7 +250,8 @@
                 </div>
               </details>
               <div className="flex flex-wrap gap-2">
-                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo</Botao>
+                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo (Excel)</Botao>
+                <Botao variante="verde" icone="baixar" onClick={gerarPdf}>Gerar planilha de cálculo (PDF)</Botao>
                 <Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao>
                 <Botao icone="baixar" onClick={exportarCsv}>Exportar CSV</Botao>
               </div>

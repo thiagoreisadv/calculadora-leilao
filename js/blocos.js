@@ -209,8 +209,29 @@
     }
   }
 
+  // Gera e baixa o PDF da planilha de cálculo do resultado atual.
+  function gerarPdfCalculo(entrada, nomeBase) {
+    try {
+      const { bytes, nome } = window.CentralRegistro.baixarPdf(entrada, nomeBase);
+      UI.baixarArquivo(nome, bytes, 'application/pdf');
+      UI.avisar('PDF da planilha de cálculo gerado.');
+    } catch (e) {
+      UI.avisar('Não foi possível gerar o PDF.', 'erro');
+    }
+  }
+
+  function gerarPdfRegistro(registro) {
+    try {
+      const { bytes, nome } = window.CentralRegistro.baixarPdfRegistro(registro, registro.subtitulo || registro.titulo);
+      UI.baixarArquivo(nome, bytes, 'application/pdf');
+      UI.avisar('PDF gerado.');
+    } catch (e) {
+      UI.avisar('Não foi possível gerar o PDF.', 'erro');
+    }
+  }
+
   window.CentralBlocos = {
     descreverCriterios, CorrecaoManual, CriteriosCalculo, ResumoConsolidado, ListaAlertas,
-    textoCorrecao, VisualizadorDocumento, guardarMemoria, gerarPlanilhaCalculo,
+    textoCorrecao, VisualizadorDocumento, guardarMemoria, gerarPlanilhaCalculo, gerarPdfCalculo, gerarPdfRegistro,
   };
 })();

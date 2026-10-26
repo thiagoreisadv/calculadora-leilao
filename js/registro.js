@@ -191,10 +191,93 @@
     return { bytes: X.gerar({ abas }), nome };
   }
 
+
+  // ---------- PDF ----------
+  const dataHora = () => new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+
+  // PDF do demonstrativo completo a partir de um registro (saída de montarCalculo).
+  function pdfDeRegistro(reg) {
+    const doc = root.CentralPdf.criar({ orientacao: 'paisagem', titulo: reg.titulo, rodape: `${reg.titulo} — gerado em ${dataHora()}` });
+    doc.titulo(reg.titulo);
+    if (reg.subtitulo) doc.subtitulo(reg.subtitulo);
+    (reg.alertas || []).forEach((a) => doc.alerta(a.mensagem));
+    doc.secao('Identificação');
+    const prof = reg.profissional && reg.profissional.nome ? `${reg.profissional.nome}${reg.profissional.registro ? ` — ${reg.profissional.registro}` : ''}` : '';
+    [...(reg.identificacao || []), ['Data de referência do cálculo', reg.dataReferencia], ['Gerado em', dataHora()], ['Profissional', prof]]
+      .filter((p) => p[1] && String(p[1]).trim()).forEach((p) => doc.par(p[0], p[1]));
+    if (reg.criterios && reg.criterios.length) { doc.secao('Critérios de cálculo utilizados'); reg.criterios.forEach((p) => doc.par(p[0], p[1])); }
+    if (reg.resumo && reg.resumo.length) { doc.secao('Discriminação dos valores'); reg.resumo.forEach((p) => doc.par(p[0], p[1])); }
+    if (reg.total) doc.destaque(reg.total.rotulo, reg.total.valor);
+    (reg.secoes || []).forEach((sec) => {
+      doc.secao(sec.titulo);
+      const nums = new Set(sec.numericas || []);
+      doc.tabela({
+        colunas: sec.colunas.map((c, i) => ({ titulo: c, peso: i === 0 ? 0.5 : (/^Descri/.test(c) ? 2.2 : (/Vencimento|Compet/.test(c) ? 1.1 : 1.3)), alinhar: nums.has(i) ? 'd' : 'e' })),
+        linhas: sec.linhas, rodape: sec.rodape,
+      });
+    });
+    const memorias = (reg.memorias || []).filter((x) => x.texto);
+    if (memorias.length) {
+      doc.secao('Memória de cálculo');
+      memorias.forEach((x) => { doc.paragrafo(x.rotulo, { cor: '0.078 0.141 0.227' }); doc.lista(String(x.texto).split('\n')); doc.espaco(4); });
+    }
+    if (reg.observacoes) { doc.secao('Observações'); doc.paragrafo(reg.observacoes); }
+    doc.espaco(8);
+    doc.paragrafo(`Fonte dos dados: ${reg.fonte || ''}. Este demonstrativo informa os critérios efetivamente utilizados para permitir a conferência profissional; o valor calculado não substitui a análise do caso concreto, do título executivo, do contrato ou da decisão judicial aplicável.`, { tam: 7.5, cor: '0.392 0.455 0.545' });
+    return doc.gerar();
+  }
+
+  // PDF das calculadoras de leilão e escritura, a partir das linhas do montador de planilha.
+  function pdfDeLinhasSimples(linhas, criterios, titulo) {
+    const R = root.CentralRegras;
+    const doc = root.CentralPdf.criar({ orientacao: 'retrato', titulo: titulo || 'Cálculo', rodape: `${titulo || 'Cálculo'} — gerado em ${dataHora()}` });
+    let tabela = null;
+    const fechar = () => {
+      if (tabela && tabela.linhas.length) doc.tabela({ colunas: [{ titulo: tabela.titulo, peso: 3 }, { titulo: 'Valor', peso: 1.4, alinhar: 'd' }, { titulo: 'Observação', peso: 2.6 }], linhas: tabela.linhas });
+      tabela = null;
+    };
+    const formatar = (c) => {
+      if (c.tipo === 't') return c.v;
+      if (c.s === 'percentual') return R.formatarPercentual(c.v * 100);
+      if (['moeda', 'totalMoeda', 'destaque'].includes(c.s)) return R.formatarMoeda(c.v);
+      return String(c.v).replace('.', ',');
+    };
+    let cabecalho = true;
+    linhas.forEach((l) => {
+      const [a, b, c, d] = l;
+      if (!l.length) return;
+      if (a && a.s === 'titulo') { doc.titulo(a.v); return; }
+      if (b && b.s === 'cabecalho') { fechar(); cabecalho = false; doc.espaco(6); tabela = { titulo: b.v, linhas: [] }; return; }
+      if (b && b.s === 'nota') { fechar(); doc.paragrafo(b.v, { tam: 8, cor: '0.392 0.455 0.545' }); return; }
+      if (a && a.s === 'nota') { fechar(); doc.paragrafo(a.v, { tam: 8, cor: '0.392 0.455 0.545' }); return; }
+      if (cabecalho && b && c && c.tipo === 't') { doc.par(b.v.replace(/:$/, ''), c.v); return; }
+      if (!tabela || !b || !c) return;
+      const total = ['totalMoeda', 'destaque'].includes(c.s);
+      tabela.linhas.push({ celulas: [b.v, formatar(c), d && d.v ? d.v : ''], estilo: total ? 'total' : 'normal' });
+    });
+    fechar();
+    if (criterios && criterios.length) { doc.secao('Critérios'); criterios.forEach((p) => doc.par(p[0], p[1])); }
+    return doc.gerar();
+  }
+
+  function nomeSeguro(base, sufixo, ext) {
+    return `${String(base || 'calculo').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'calculo'}-${sufixo}.${ext}`;
+  }
+
+  function baixarPdf(o, nomeBase) {
+    return { bytes: pdfDeRegistro(montarCalculo(o)), nome: nomeSeguro(nomeBase, 'calculo', 'pdf') };
+  }
+  function baixarPdfRegistro(reg, nomeBase) {
+    return { bytes: pdfDeRegistro(reg), nome: nomeSeguro(nomeBase || reg.titulo, 'calculo', 'pdf') };
+  }
+  function baixarPdfSimples(linhas, criterios, titulo, nomeBase) {
+    return { bytes: pdfDeLinhasSimples(linhas, criterios, titulo), nome: nomeSeguro(nomeBase || titulo, 'calculo', 'pdf') };
+  }
+
   function baixarPlanilha(o, nomeBase) {
     const bytes = root.CentralXlsx.gerar(montarPlanilha(o));
     return { bytes, nome: `${String(nomeBase || 'calculo').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50) || 'calculo'}-planilha.xlsx` };
   }
 
-  root.CentralRegistro = { montarCalculo, montarPlanilha, baixarPlanilha, montador, cabecalhoPlanilha, baixarPlanilhaSimples, profissional, textoCorrecao };
+  root.CentralRegistro = { montarCalculo, montarPlanilha, baixarPlanilha, pdfDeRegistro, baixarPdf, baixarPdfRegistro, baixarPdfSimples, montador, cabecalhoPlanilha, baixarPlanilhaSimples, profissional, textoCorrecao };
 })(typeof self !== 'undefined' ? self : globalThis);
