@@ -5,12 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
   <title>Central de Cálculos de Leilões e Imóveis</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js" crossorigin="anonymous"></script>
 
   <style>
+    :root {
+      --ground: #f8f8f8;
+      --surface: #ffffff;
+      --border: #e6e6e6;
+      --text: #0a0a0a;
+      --muted: #6b6b6b;
+      --accent: #1d5fbf;
+    }
+    html.dark {
+      --ground: #0a0a0a;
+      --surface: #141414;
+      --border: #272727;
+      --text: #f5f5f5;
+      --muted: #9a9a9a;
+      --accent: #5b9bf2;
+    }
+    html, body {
+      font-family: "Geist", Inter, system-ui, sans-serif;
+      background: var(--ground);
+    }
     /* Layout de impressão dedicado: documento formal (tabelas, cabeçalho, assinatura),
        não uma cópia com CSS forçado do dashboard da tela. */
     @page {
@@ -32,6 +56,13 @@
   <script>
     tailwind.config = {
       darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Geist', 'Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
     }
   </script>
 </head>
@@ -77,7 +108,7 @@
     const TextInput = ({ label, value, onChange, placeholder }) => (
       <div className="mb-4">
         <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
-        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none" />
       </div>
     );
 
@@ -92,7 +123,7 @@
       return (
         <div className="mb-4">
           <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
-          <input type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <input type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none" />
         </div>
       );
     };
@@ -111,8 +142,8 @@
       return (
         <div className="mb-4">
           <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
-          <div className="relative rounded-xl shadow-sm">
-            <input type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className="block w-full pl-4 pr-10 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <div className="relative rounded-xl">
+            <input type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className="block w-full pl-4 pr-10 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none" />
             <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">%</span></div>
           </div>
           {extraElement && <div className="mt-1">{extraElement}</div>}
@@ -141,9 +172,9 @@
       return (
         <div className="mb-4">
           <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 truncate">{label}</label>
-          <div className="relative rounded-xl shadow-sm">
+          <div className="relative rounded-xl">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">R$</span></div>
-            <input type="text" inputMode="numeric" value={displayValue} onChange={handleChange} className="block w-full pl-10 pr-4 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder={placeholder || "0,00"} />
+            <input type="text" inputMode="numeric" value={displayValue} onChange={handleChange} className="block w-full pl-10 pr-4 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none" placeholder={placeholder || "0,00"} />
           </div>
           <div className="text-xs text-slate-500 mt-1 ml-1 font-medium min-h-[16px]">
             {subText ? subText : ''}
@@ -185,12 +216,12 @@
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
             {!disabled && (
               <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1 w-fit">
-                <button onClick={() => onChangeType('percent')} className={`px-3 py-1 text-xs uppercase font-bold rounded-md transition-colors ${type === 'percent' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>%</button>
-                <button onClick={() => onChangeType('fixed')} className={`px-3 py-1 text-xs uppercase font-bold rounded-md transition-colors ${type === 'fixed' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>R$</button>
+                <button onClick={() => onChangeType('percent')} className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${type === 'percent' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>%</button>
+                <button onClick={() => onChangeType('fixed')} className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${type === 'fixed' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>R$</button>
               </div>
             )}
           </div>
-          <div className="relative rounded-xl shadow-sm">
+          <div className="relative rounded-xl">
             {(type === 'fixed' || disabled) && (
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">R$</span></div>
             )}
@@ -198,7 +229,7 @@
               type="text" inputMode={type === 'fixed' || disabled ? "numeric" : "decimal"} disabled={disabled}
               value={displayValue}
               onChange={handleChange}
-              className={`block w-full ${(type === 'fixed' || disabled) ? 'pl-10 pr-4' : 'pl-4 pr-10'} py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all disabled:opacity-75`}
+              className={`block w-full ${(type === 'fixed' || disabled) ? 'pl-10 pr-4' : 'pl-4 pr-10'} py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none transition-colors disabled:opacity-75`}
               placeholder="0"
             />
             {type === 'percent' && !disabled && (
@@ -214,16 +245,16 @@
 
     const ShowInBudgetToggle = ({ checked, onChange }) => (
       <label className="flex items-center gap-1.5 mt-1.5 ml-1 cursor-pointer select-none w-fit">
-        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-3.5 h-3.5 text-indigo-600 rounded" />
+        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-3.5 h-3.5 text-slate-900 rounded" />
         <span className="text-[11px] text-slate-500 dark:text-slate-400">Mostrar no orçamento</span>
       </label>
     );
 
     const Card = ({ title, icon: Icon, children, extraHeader }) => (
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 sm:p-6 relative">
+      <div className="bg-white dark:bg-[#141414] rounded-lg border border-slate-200 dark:border-slate-800 p-4 sm:p-6 relative">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3 sm:gap-0">
             <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-            {Icon && <Icon className="w-5 h-5 text-indigo-600" />} {title}
+            {Icon && <Icon className="w-5 h-5 text-slate-400" />} {title}
             </h3>
             {extraHeader}
         </div>
@@ -771,76 +802,78 @@
       return (
         <div className="min-h-screen pb-24 print-page-wrapper">
 
-          {/* Menu Superior e Configurações */}
-          <div className="bg-slate-900 text-white print-hide pt-6 sm:pt-8 pb-10 sm:pb-12 px-3 sm:px-4">
-            <div className="max-w-5xl mx-auto">
-              <div className="flex flex-col sm:flex-row justify-between items-center sm:items-start mb-6 gap-4 sm:gap-0">
-                <div className="text-center sm:text-left">
-                  <h1 className="text-lg sm:text-xl font-bold tracking-tight">{advName}</h1>
-                  <p className="text-slate-400 font-medium text-xs sm:text-sm mt-1">{advOab}</p>
+          {/* Barra superior: sem bloco escuro, o nome do produto fica na própria tela */}
+          <div className="sticky top-0 z-40 bg-white dark:bg-[#141414] print-hide border-b border-slate-200 dark:border-slate-800">
+            <div className="max-w-5xl mx-auto px-4 sm:px-4">
+              <div className="flex justify-between items-center h-14 sm:h-16 gap-3">
+                <div className="min-w-0">
+                  <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">Central de Cálculos de Leilões e Imóveis</h1>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{advName}{advOab ? ` · ${advOab}` : ''}</div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => setIsCasesOpen(!isCasesOpen)} className="px-3 py-3 sm:py-2 bg-slate-800 hover:bg-slate-700 rounded-xl sm:rounded-lg text-slate-300 shadow-sm text-xs font-bold uppercase tracking-wide">
+                <div className="flex gap-1 flex-shrink-0">
+                  <button onClick={() => setIsCasesOpen(!isCasesOpen)} className="px-3 h-9 rounded-md text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5">
                     Casos
                   </button>
-                  <button onClick={() => setDarkMode(!darkMode)} className="p-3 sm:p-2 bg-slate-800 hover:bg-slate-700 rounded-xl sm:rounded-lg text-slate-300 shadow-sm">
-                    {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                  <button onClick={() => setDarkMode(!darkMode)} className="w-9 h-9 flex items-center justify-center rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5" aria-label="Alternar tema">
+                    {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                   </button>
-                  <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="p-3 sm:p-2 bg-slate-800 hover:bg-slate-700 rounded-xl sm:rounded-lg text-slate-300 shadow-sm">
-                    <Settings className="w-5 h-5" />
+                  <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="w-9 h-9 flex items-center justify-center rounded-md text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5" aria-label="Configurações">
+                    <Settings className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              {isSettingsOpen && (
-                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6">
-                  <h3 className="text-sm font-bold mb-3 text-slate-200">Configurações de Identidade</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <TextInput label="Nome do Profissional/Escritório" value={advName} onChange={setAdvName} />
-                    <TextInput label="Registo Profissional (Ex: OAB/PR)" value={advOab} onChange={setAdvOab} />
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-2">Tabelas de custas TJ-PR vigentes desde {VIGENCIA_TABELAS_PR}. Verifique atualizações anuais antes de confiar em valores altos.</p>
-                </div>
-              )}
-
-              {isCasesOpen && (
-                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 mb-6">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-sm font-bold text-slate-200">Casos Salvos</h3>
-                    <button onClick={handleSaveCase} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg">Salvar Caso Atual</button>
-                  </div>
-                  {savedCases.length === 0 ? (
-                    <p className="text-xs text-slate-400">Nenhum caso salvo ainda. Preencha os dados e clique em "Salvar Caso Atual" para guardar este cálculo e voltar a ele depois.</p>
-                  ) : (
-                    <ul className="space-y-2 max-h-64 overflow-y-auto">
-                      {savedCases.map(c => (
-                        <li key={c.id} className="flex justify-between items-center bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2">
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold text-slate-200 truncate">{c.nome}</div>
-                            <div className="text-[11px] text-slate-400 uppercase">{c.tipo === 'leilao' ? 'Leilão' : 'Escritura'} • {c.data}</div>
-                          </div>
-                          <div className="flex gap-2 flex-shrink-0 ml-2">
-                            <button onClick={() => handleLoadCase(c.id)} className="px-2.5 py-1 text-[11px] font-bold bg-slate-700 hover:bg-slate-600 text-white rounded-md">Abrir</button>
-                            <button onClick={() => handleDeleteCase(c.id)} className="px-2.5 py-1 text-[11px] font-bold bg-rose-900/60 hover:bg-rose-900 text-rose-200 rounded-md">Excluir</button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
+              {/* Abas sublinhadas no mesmo filete da barra */}
+              <div className="flex gap-6 -mb-px overflow-x-auto no-scrollbar">
+                <button onClick={() => setActiveTab('leilao')} className={`whitespace-nowrap py-3 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'leilao' ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white' : 'border-transparent text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Arrematação (Leilão)</button>
+                <button onClick={() => setActiveTab('escritura')} className={`whitespace-nowrap py-3 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'escritura' ? 'border-slate-900 dark:border-white text-slate-900 dark:text-white' : 'border-transparent text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Compra, Venda e RGI</button>
+              </div>
             </div>
           </div>
 
-          {/* Abas com Menos padding lateral no mobile e Sticky */}
-          <div className="sticky top-0 z-40 bg-slate-50 dark:bg-slate-950 px-3 sm:px-4 pt-3 pb-3 shadow-sm border-b border-slate-200 dark:border-slate-800 mb-6 print-hide">
-             <div className="max-w-5xl mx-auto flex gap-2 overflow-x-auto snap-x no-scrollbar pb-1">
-                <button onClick={() => setActiveTab('leilao')} className={`snap-start whitespace-nowrap px-6 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'leilao' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'}`}>Arrematação (Leilão)</button>
-                <button onClick={() => setActiveTab('escritura')} className={`snap-start whitespace-nowrap px-6 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'escritura' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'}`}>Compra, Venda e RGI</button>
-             </div>
+          <div className="max-w-5xl mx-auto px-4 sm:px-4 print-hide">
+            {isSettingsOpen && (
+              <div className="bg-white dark:bg-[#141414] p-4 rounded-lg border border-slate-200 dark:border-slate-800 mt-4">
+                <h3 className="text-sm font-bold mb-3 text-slate-800 dark:text-slate-200">Configurações de Identidade</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <TextInput label="Nome do Profissional/Escritório" value={advName} onChange={setAdvName} />
+                  <TextInput label="Registo Profissional (Ex: OAB/PR)" value={advOab} onChange={setAdvOab} />
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">Tabelas de custas TJ-PR vigentes desde {VIGENCIA_TABELAS_PR}. Verifique atualizações anuais antes de confiar em valores altos.</p>
+              </div>
+            )}
+
+            {isCasesOpen && (
+              <div className="bg-white dark:bg-[#141414] p-4 rounded-lg border border-slate-200 dark:border-slate-800 mt-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Casos Salvos</h3>
+                  <button onClick={handleSaveCase} className="px-3 py-1.5 bg-slate-900 hover:bg-slate-700 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 text-xs font-bold rounded-md">Salvar Caso Atual</button>
+                </div>
+                {savedCases.length === 0 ? (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Nenhum caso salvo ainda. Preencha os dados e clique em "Salvar Caso Atual" para guardar este cálculo e voltar a ele depois.</p>
+                ) : (
+                  <ul className="space-y-2 max-h-64 overflow-y-auto">
+                    {savedCases.map(c => (
+                      <li key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-2">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{c.nome}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">{c.tipo === 'leilao' ? 'Leilão' : 'Escritura'} · {c.data}</div>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0 ml-2">
+                          <button onClick={() => handleLoadCase(c.id)} className="px-2.5 py-1 text-[11px] font-bold bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white rounded-md">Abrir</button>
+                          <button onClick={() => handleDeleteCase(c.id)} className="px-2.5 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-md">Excluir</button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
-          <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 print:mt-0 print:px-0">
+          <div className="h-6 print-hide" />
+
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 print:mt-0 print:px-0">
 
             {/* --- ABA LEILÃO --- */}
             {activeTab === 'leilao' && (
@@ -848,22 +881,22 @@
                 <div className="space-y-4 sm:space-y-6 print-hide">
 
                   {/* Seletor Tipo de Bem */}
-                  <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-3 flex gap-2">
-                      <button onClick={() => setAssetType('urbano')} className={`flex-1 flex flex-col items-center py-3 rounded-xl border-2 transition-all ${assetType === 'urbano' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                          <Home className="w-5 h-5 mb-1" /> <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider">Urbano</span>
+                  <div className="bg-white dark:bg-[#141414] rounded-lg border border-slate-200 dark:border-slate-800 p-3 flex gap-2">
+                      <button onClick={() => setAssetType('urbano')} className={`flex-1 flex flex-col items-center py-3 rounded-md border transition-colors ${assetType === 'urbano' ? 'border-slate-900 dark:border-white bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                          <Home className="w-5 h-5 mb-1" /> <span className="text-[11px] sm:text-xs font-bold">Urbano</span>
                       </button>
-                      <button onClick={() => setAssetType('rural')} className={`flex-1 flex flex-col items-center py-3 rounded-xl border-2 transition-all ${assetType === 'rural' ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                          <Tree className="w-5 h-5 mb-1" /> <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider">Rural</span>
+                      <button onClick={() => setAssetType('rural')} className={`flex-1 flex flex-col items-center py-3 rounded-md border transition-colors ${assetType === 'rural' ? 'border-slate-900 dark:border-white bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                          <Tree className="w-5 h-5 mb-1" /> <span className="text-[11px] sm:text-xs font-bold">Rural</span>
                       </button>
-                      <button onClick={() => setAssetType('veiculo')} className={`flex-1 flex flex-col items-center py-3 rounded-xl border-2 transition-all ${assetType === 'veiculo' ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                          <Car className="w-5 h-5 mb-1" /> <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider">Veículo</span>
+                      <button onClick={() => setAssetType('veiculo')} className={`flex-1 flex flex-col items-center py-3 rounded-md border transition-colors ${assetType === 'veiculo' ? 'border-slate-900 dark:border-white bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                          <Car className="w-5 h-5 mb-1" /> <span className="text-[11px] sm:text-xs font-bold">Veículo</span>
                       </button>
                   </div>
 
                   {assetType === 'veiculo' && (
-                    <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl flex gap-1 mb-6 border border-slate-200 dark:border-slate-700 mt-2">
-                        <button onClick={() => setVeiculoMode('leilao')} className={`flex-1 py-2.5 sm:py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${veiculoMode === 'leilao' ? 'bg-amber-500 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>Arrematação em Leilão</button>
-                        <button onClick={() => setVeiculoMode('regularizacao')} className={`flex-1 py-2.5 sm:py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${veiculoMode === 'regularizacao' ? 'bg-amber-500 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>Compra c/ Regularização Judicial</button>
+                    <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg flex gap-1 mb-6 border border-slate-200 dark:border-slate-700 mt-2">
+                        <button onClick={() => setVeiculoMode('leilao')} className={`flex-1 py-2.5 sm:py-2 text-[11px] sm:text-xs font-bold rounded-md transition-colors ${veiculoMode === 'leilao' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>Arrematação em Leilão</button>
+                        <button onClick={() => setVeiculoMode('regularizacao')} className={`flex-1 py-2.5 sm:py-2 text-[11px] sm:text-xs font-bold rounded-md transition-colors ${veiculoMode === 'regularizacao' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>Compra c/ Regularização Judicial</button>
                     </div>
                   )}
 
@@ -880,7 +913,7 @@
                         {assetType === 'rural' && (
                           <div>
                             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Unidade</label>
-                            <select value={ruralUnit} onChange={(e) => setRuralUnit(e.target.value)} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <select value={ruralUnit} onChange={(e) => setRuralUnit(e.target.value)} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none">
                               <option value="m2">Metro Quadrado (m²)</option>
                               <option value="ha">Hectares (ha)</option>
                               {Object.entries(ALQUEIRES).map(([key, val]) => (
@@ -898,8 +931,8 @@
                     icon={FileText}
                     extraHeader={assetType !== 'veiculo' && safeSize > 0 && (
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
-                        <button onClick={() => handleValModeChange('total')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${valMode === 'total' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>Total</button>
-                        <button onClick={() => handleValModeChange('unit')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${valMode === 'unit' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>Por {getUnitLabel()}</button>
+                        <button onClick={() => handleValModeChange('total')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${valMode === 'total' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Total</button>
+                        <button onClick={() => handleValModeChange('unit')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${valMode === 'unit' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Por {getUnitLabel()}</button>
                       </div>
                     )}
                   >
@@ -933,7 +966,7 @@
                             onChange={setFipeDiscount}
                             placeholder="30"
                             max={100}
-                            extraElement={<div className="text-[11px] font-bold text-amber-600 dark:text-amber-500">Venda Estimada: {formatMoney(discountedSaleValue)}</div>}
+                            extraElement={<div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">Venda Estimada: {formatMoney(discountedSaleValue)}</div>}
                         />
                       )}
                     </div>
@@ -948,9 +981,9 @@
                     )}
 
                     <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                      <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
+                      <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
                         <MoneyInput label="Orçamento Máximo Total (Teto Pessoal)" value={maxBudget} onChange={setMaxBudget} />
-                        <button onClick={handleSuggestBid} className="w-full py-3 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition-colors">Calcular Lance Ideal Baseado no Orçamento</button>
+                        <button onClick={handleSuggestBid} className="w-full py-3 sm:py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 font-bold rounded-md text-sm transition-colors">Calcular Lance Ideal Baseado no Orçamento</button>
                       </div>
                     </div>
                   </Card>
@@ -960,8 +993,8 @@
                     icon={FileText}
                     extraHeader={assetType !== 'veiculo' && (
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
-                        <button onClick={() => setCartorioModeLeilao('pr')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${cartorioModeLeilao === 'pr' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>Auto PR</button>
-                        <button onClick={() => setCartorioModeLeilao('manual')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${cartorioModeLeilao === 'manual' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>Manual</button>
+                        <button onClick={() => setCartorioModeLeilao('pr')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${cartorioModeLeilao === 'pr' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Auto PR</button>
+                        <button onClick={() => setCartorioModeLeilao('manual')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${cartorioModeLeilao === 'manual' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Manual</button>
                       </div>
                     )}
                   >
@@ -996,7 +1029,7 @@
 
                 {/* VISUALIZAÇÃO DO PDF / RESULTADO (LEILÃO) */}
                 <div className="space-y-4 sm:space-y-6 mt-6 lg:mt-0">
-                  <div id="pdf-leilao" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl sm:shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0 print:shadow-none">
+                  <div id="pdf-leilao" className="bg-white dark:bg-[#141414] rounded-lg border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0">
                     <div className="print:hidden">
                     {/* Header do Relatório */}
                     <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0">
@@ -1026,17 +1059,17 @@
 
                     {/* Bloco Resumo Veicular (Tabela FIPE) */}
                     {assetType === 'veiculo' && safeMarket > 0 && (
-                      <div className="mb-6 p-4 sm:p-5 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
+                      <div className="mb-6 p-4 sm:p-5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-slate-800 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
                         <div>
-                           <span className="text-xs font-bold uppercase text-amber-800 dark:text-amber-400 block mb-1">Tabela FIPE Base</span>
-                           <span className="text-xl font-extrabold text-amber-600 dark:text-amber-500 line-through opacity-60">{formatMoney(safeMarket)}</span>
+                           <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">Tabela FIPE Base</span>
+                           <span className="text-xl font-extrabold text-slate-500 dark:text-slate-400 line-through opacity-60">{formatMoney(safeMarket)}</span>
                            <div className="mt-1.5 text-sm font-bold text-emerald-700 dark:text-emerald-400 flex flex-wrap gap-2 items-center">
                               Venda Estimada: {formatMoney(discountedSaleValue)}
                               {fipeDiscountClamped > 0 && <span className="text-[11px] bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-0.5 rounded text-emerald-800 dark:text-emerald-200">-{formatCurrencyStr(fipeDiscountClamped)}% desval.</span>}
                            </div>
                         </div>
                         <div className="text-left sm:text-right w-full sm:w-auto">
-                           <div className="inline-block px-3 py-1.5 bg-amber-200 dark:bg-amber-800/50 text-amber-800 dark:text-amber-300 rounded-md text-xs font-bold mb-2">
+                           <div className="inline-block px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-md text-xs font-bold mb-2">
                              {isRegularizacao ? 'Compra' : 'Arremate'} = {arremateFipePercent.toFixed(1)}% da FIPE
                            </div>
                            {safeEval > 0 && <div className="text-xs text-slate-500 font-medium mb-1">Avaliação {isRegularizacao ? 'Atual' : 'Judicial'}: {formatMoney(safeEval)}</div>}
@@ -1047,10 +1080,10 @@
 
                     {/* Dimensões Imóvel no PDF (Urbano ou Rural) */}
                     {assetType !== 'veiculo' && safeSize > 0 && (
-                      <div className={`mb-6 p-4 border rounded-xl ${assetType === 'rural' ? 'bg-emerald-50/40 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30' : 'bg-slate-50/40 border-slate-100 dark:bg-slate-800/20 dark:border-slate-800/50'}`}>
+                      <div className="mb-6 p-4 border rounded-lg bg-slate-50/40 border-slate-100 dark:bg-slate-800/20 dark:border-slate-800/50">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-1 sm:gap-0">
-                          <span className={`text-xs font-bold uppercase ${assetType === 'rural' ? 'text-emerald-800 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>Dimensões da Área</span>
-                          <span className={`text-xs font-bold ${assetType === 'rural' ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-700 dark:text-slate-300'}`}>
+                          <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Dimensões da Área</span>
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                             {assetType === 'rural' ? `Área: ${formatCurrencyStr(safeSize)} ${ruralUnit === 'm2' ? 'm²' : ruralUnit === 'ha' ? 'ha' : alqName}` : `Área Total: ${formatCurrencyStr(safeSize)} m²`}
                           </span>
                         </div>
@@ -1081,22 +1114,22 @@
 
                     {/* Bloco de Margem de Lucro e ROI */}
                     {discountedSaleValue > 0 && finalLeilao > 0 && (
-                      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-xl mb-6 ${lucroAbsoluto >= 0 ? 'bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900/30' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/30'}`}>
+                      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-lg mb-6 ${lucroAbsoluto >= 0 ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30' : 'bg-rose-50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/30'}`}>
                         <div className="flex sm:block justify-between items-center">
-                          <span className={`text-[11px] font-bold block ${lucroAbsoluto >= 0 ? 'text-indigo-500' : 'text-rose-500'}`}>{lucroAbsoluto >= 0 ? 'Lucro Absoluto Estimado' : 'Prejuízo Estimado'}</span>
+                          <span className={`text-[11px] font-bold block ${lucroAbsoluto >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-500'}`}>{lucroAbsoluto >= 0 ? 'Lucro Absoluto Estimado' : 'Prejuízo Estimado'}</span>
                           <span className={`text-xl font-extrabold ${lucroAbsoluto >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatMoney(lucroAbsoluto)}</span>
                         </div>
                         <div className="flex sm:block justify-between items-center">
-                          <span className={`text-[11px] font-bold block ${lucroAbsoluto >= 0 ? 'text-indigo-500' : 'text-rose-500'}`}>Retorno / Margem (ROI)</span>
-                          <span className={`text-xl font-extrabold ${margemLucroPorcentagem >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600'}`}>{margemLucroPorcentagem > 0 ? '+' : ''}{formatCurrencyStr(margemLucroPorcentagem)}%</span>
+                          <span className={`text-[11px] font-bold block ${lucroAbsoluto >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-500'}`}>Retorno / Margem (ROI)</span>
+                          <span className={`text-xl font-extrabold ${margemLucroPorcentagem >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{margemLucroPorcentagem > 0 ? '+' : ''}{formatCurrencyStr(margemLucroPorcentagem)}%</span>
                         </div>
                         {assetType !== 'veiculo' && maxBidForProfit > 0 && (
-                          <div className="sm:col-span-2 text-xs font-bold text-rose-600 dark:text-rose-400 pt-2 border-t border-indigo-100 dark:border-indigo-900/30">Teto de Lance p/ Lucro Zero: {formatMoney(maxBidForProfit)}</div>
+                          <div className={`sm:col-span-2 text-xs font-bold text-rose-600 dark:text-rose-400 pt-2 border-t ${lucroAbsoluto >= 0 ? 'border-emerald-100 dark:border-emerald-900/30' : 'border-rose-100 dark:border-rose-900/30'}`}>Teto de Lance p/ Lucro Zero: {formatMoney(maxBidForProfit)}</div>
                         )}
                       </div>
                     )}
 
-                    <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 text-xs uppercase tracking-wider text-slate-500">Detalhamento Financeiro</h4>
+                    <h4 className="font-bold text-slate-600 dark:text-slate-300 mb-4 text-xs">Detalhamento Financeiro</h4>
                     <ul className="space-y-3 text-sm">
                       <li className="flex justify-between font-bold text-base pb-2 border-b border-slate-100 dark:border-slate-800">
                         <span>{isRegularizacao ? "Valor da Compra Acordada" : "Valor de Aquisição (Lance)"}</span>
@@ -1106,7 +1139,7 @@
                       {!isRegularizacao && (
                         <li className="flex justify-between text-slate-600 dark:text-slate-400">
                           <span>Comissão do Leiloeiro</span>
-                          <span className="text-rose-500 font-medium">+{formatMoney(leiloeiroCost)}</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(leiloeiroCost)}</span>
                         </li>
                       )}
 
@@ -1114,35 +1147,35 @@
                         <>
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
                             <span>ITBI Arrematação{safeNumber(valorVenalLeilao) > safeBid ? ' (s/ valor venal)' : ''}</span>
-                            <span className="text-rose-500 font-medium">+{formatMoney(itbiCostLeilao)}</span>
+                            <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(itbiCostLeilao)}</span>
                           </li>
                           <li className="flex justify-between text-slate-600 dark:text-slate-400">
                             <span>Cartório de Registo</span>
-                            <span className="text-rose-500 font-medium">+{formatMoney(cartorioCostLeilao)}</span>
+                            <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(cartorioCostLeilao)}</span>
                           </li>
                         </>
                       )}
 
                       <li className="flex justify-between text-slate-600 dark:text-slate-400">
                         <span>{isRegularizacao ? "Honorários Judiciais e Custas" : "Assessoria Jurídica"}</span>
-                        <span className="text-rose-500 font-medium">+{formatMoney(legalCost)}</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(legalCost)}</span>
                       </li>
                       {(safeNumber(debts) > 0 || safeNumber(renovation) > 0) && (
                         <li className="flex justify-between text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
                           <span>{isRegularizacao ? "Multas, Doc. e Reparos" : "Passivos & Custos Extras"}</span>
-                          <span className="text-amber-500 font-medium">+{formatMoney(fixedCostsLeilao)}</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(fixedCostsLeilao)}</span>
                         </li>
                       )}
                       <li className="flex flex-col sm:flex-row justify-between sm:items-baseline font-extrabold text-sm sm:text-base pt-4 mt-2 border-t border-slate-200 dark:border-slate-800">
                         <span className="text-slate-700 dark:text-slate-300">Custo Operacional Total</span>
-                        <span className="text-2xl sm:text-3xl text-indigo-700 dark:text-indigo-400">{formatMoney(finalLeilao)}</span>
+                        <span className="text-2xl sm:text-3xl tabular-nums text-[#1d5fbf] dark:text-[#5b9bf2]">{formatMoney(finalLeilao)}</span>
                       </li>
                     </ul>
 
                     {/* Comparativo de Preço por Unidade (Imóveis) */}
                     {assetType !== 'veiculo' && safeSize > 0 && (
                       <div className="mt-8">
-                        <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-3 text-xs uppercase tracking-wider text-slate-500">Comparação de Custos por Área</h4>
+                        <h4 className="font-bold text-slate-600 dark:text-slate-300 mb-3 text-xs">Comparação de Custos por Área</h4>
                         <div className="overflow-x-auto no-scrollbar pb-2">
                           <table className="w-full text-left text-xs border-collapse min-w-[400px]">
                             <thead>
@@ -1164,10 +1197,10 @@
                               )}
                               {safeMarket > 0 && (
                                 <tr className="border-b border-slate-100 dark:border-slate-800/50">
-                                  <td className="py-3 font-semibold text-indigo-600 dark:text-indigo-400">Mercado Real ({formatMoney(safeMarket)})</td>
-                                  <td className="py-3 text-right font-extrabold text-indigo-600 dark:text-indigo-400">{formatMoney(ratesMarket.m2)}</td>
-                                  {assetType === 'rural' && <td className="py-3 text-right font-extrabold text-indigo-600 dark:text-indigo-400">{formatMoney(ratesMarket.ha)}</td>}
-                                  {assetType === 'rural' && <td className="py-3 text-right font-extrabold text-indigo-600 dark:text-indigo-400">{formatMoney(ratesMarket.alq)}</td>}
+                                  <td className="py-3 font-semibold text-slate-900 dark:text-white">Mercado Real ({formatMoney(safeMarket)})</td>
+                                  <td className="py-3 text-right font-extrabold text-slate-900 dark:text-white">{formatMoney(ratesMarket.m2)}</td>
+                                  {assetType === 'rural' && <td className="py-3 text-right font-extrabold text-slate-900 dark:text-white">{formatMoney(ratesMarket.ha)}</td>}
+                                  {assetType === 'rural' && <td className="py-3 text-right font-extrabold text-slate-900 dark:text-white">{formatMoney(ratesMarket.alq)}</td>}
                                 </tr>
                               )}
                               <tr className="border-b border-slate-200 dark:border-slate-800">
@@ -1182,15 +1215,15 @@
                       </div>
                     )}
 
-                    <div className="mt-8 text-[9px] text-slate-400 text-justify leading-relaxed">
+                    <div className="mt-8 text-[11px] text-slate-500 dark:text-slate-400 text-justify leading-relaxed">
                       <strong>Nota Legal:</strong> Documento de caráter puramente estimativo e consultivo visando planejamento financeiro. {assetType !== 'veiculo' ? `Custas notariais calculadas pela Tabela III-C do TJ-PR, vigente desde ${VIGENCIA_TABELAS_PR}, sujeita a atualização anual.` : 'Tabela FIPE e débitos são informativos e sujeitos a variação de mercado.'}
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3 mt-8 print-hide">
-                      <button onClick={handleReset} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all">Limpar</button>
-                      <button onClick={handleCopyResumo} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all">Copiar Resumo</button>
-                      <button onClick={handleShareWhatsapp} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all">WhatsApp</button>
-                      <button onClick={handlePrint} className="w-full flex-1 flex items-center justify-center gap-2 py-4 sm:py-3 bg-slate-900 text-white font-bold rounded-xl transition-all shadow-lg">
+                      <button onClick={handleReset} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors">Limpar</button>
+                      <button onClick={handleCopyResumo} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors">Copiar Resumo</button>
+                      <button onClick={handleShareWhatsapp} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-lg transition-colors border border-slate-200 dark:border-slate-700">WhatsApp</button>
+                      <button onClick={handlePrint} className="w-full flex-1 flex items-center justify-center gap-2 py-4 sm:py-3 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 font-bold rounded-lg transition-colors">
                         <Printer className="w-5 h-5" /> Gerar Relatório PDF
                       </button>
                     </div>
@@ -1367,8 +1400,8 @@
                     icon={FileText}
                     extraHeader={
                       <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
-                        <button onClick={() => setEscrituraMode('pr')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${escrituraMode === 'pr' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>Auto PR</button>
-                        <button onClick={() => setEscrituraMode('manual')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${escrituraMode === 'manual' ? 'bg-indigo-600 text-white shadow' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}>Manual</button>
+                        <button onClick={() => setEscrituraMode('pr')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${escrituraMode === 'pr' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Auto PR</button>
+                        <button onClick={() => setEscrituraMode('manual')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${escrituraMode === 'manual' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Manual</button>
                       </div>
                     }
                   >
@@ -1412,7 +1445,7 @@
 
                     <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
                         <label className="flex items-start sm:items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer">
-                          <input type="checkbox" checked={incluirRgi} onChange={(e) => setIncluirRgi(e.target.checked)} className="w-5 h-5 mt-0.5 sm:mt-0 text-indigo-600 rounded" />
+                          <input type="checkbox" checked={incluirRgi} onChange={(e) => setIncluirRgi(e.target.checked)} className="w-5 h-5 mt-0.5 sm:mt-0 text-slate-900 rounded" />
                           <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Incluir Registo de Imóveis (RGI) no extrato final</span>
                         </label>
                     </div>
@@ -1434,8 +1467,8 @@
                       <div>
                         <MoneyInput label="Valor de Outros" value={outrosValorEsc} onChange={setOutrosValorEsc} />
                         <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1 w-fit mt-1.5">
-                          <button onClick={() => setOutrosNoTotal(true)} className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors ${outrosNoTotal ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Somar ao Total</button>
-                          <button onClick={() => setOutrosNoTotal(false)} className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors ${!outrosNoTotal ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Valor à Parte</button>
+                          <button onClick={() => setOutrosNoTotal(true)} className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors ${outrosNoTotal ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>Somar ao Total</button>
+                          <button onClick={() => setOutrosNoTotal(false)} className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors ${!outrosNoTotal ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>Valor à Parte</button>
                         </div>
                         {outrosNoTotal ? (
                           <ShowInBudgetToggle checked={showOutrosEsc} onChange={setShowOutrosEsc} />
@@ -1449,7 +1482,7 @@
 
                 {/* VISUALIZAÇÃO DO PDF / RESULTADO (ESCRITURA) */}
                 <div className="space-y-4 sm:space-y-6 mt-6 lg:mt-0">
-                  <div id="pdf-escritura" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl sm:shadow-sm border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0 print:shadow-none">
+                  <div id="pdf-escritura" className="bg-white dark:bg-[#141414] rounded-lg border border-slate-200 dark:border-slate-800 p-4 sm:p-8 print:border-none print:p-0">
                     <div className="print:hidden">
                     {/* Header Limpo Sem Dados de Controle ou Configuração */}
                     <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0">
@@ -1480,7 +1513,7 @@
                       </div>
                     )}
 
-                    <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-4 text-xs uppercase tracking-wider text-slate-500">Detalhamento Financeiro</h4>
+                    <h4 className="font-bold text-slate-600 dark:text-slate-300 mb-4 text-xs">Detalhamento Financeiro</h4>
 
                     {/* Bloco 1: Inicial */}
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 mb-4">
@@ -1530,14 +1563,14 @@
 
                         <li className="flex justify-between font-bold pt-3 mt-2 border-t border-slate-200 dark:border-slate-700">
                           <span className="text-slate-800 dark:text-slate-200">Subtotal Sem Registro</span>
-                          <span className="text-indigo-600 dark:text-indigo-400">{formatMoney(custoInicialEsc)}</span>
+                          <span className="text-slate-900 dark:text-white">{formatMoney(custoInicialEsc)}</span>
                         </li>
                       </ul>
                     </div>
 
                     {/* Valor à parte: não entra no total do orçamento */}
                     {!outrosNoTotal && safeOutrosEsc > 0 && (
-                      <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/10 mb-4">
+                      <div className="p-4 rounded-lg border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/10 mb-4">
                         <h5 className="text-xs font-bold uppercase text-amber-700 dark:text-amber-400 mb-2">Valor à Parte (não incluído no total)</h5>
                         <ul className="space-y-2 text-sm">
                           <li className="flex justify-between font-medium">
@@ -1550,12 +1583,12 @@
 
                     {/* Bloco 2: Registro */}
                     {incluirRgi && (
-                      <div className="p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-950/10 mb-4">
+                      <div className="p-4 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 mb-4">
                         <h5 className="text-xs font-bold uppercase text-slate-500 mb-2">Passo 2: Registro de Imóveis (RGI)</h5>
                         <ul className="space-y-2 text-sm">
                           <li className="flex justify-between font-medium">
-                            <span className="text-indigo-900 dark:text-indigo-300">Emolumento de Registro</span>
-                            <span className="text-indigo-700 dark:text-indigo-400">+{formatMoney(cartorioCostEsc)}</span>
+                            <span className="text-slate-700 dark:text-slate-300">Emolumento de Registro</span>
+                            <span className="text-slate-900 dark:text-white">+{formatMoney(cartorioCostEsc)}</span>
                           </li>
                         </ul>
                       </div>
@@ -1567,19 +1600,19 @@
 
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline font-extrabold gap-1 sm:gap-0">
                             <span className="text-sm sm:text-base text-slate-300">Total Estimado{incluirRgi ? ' (com Registro RGI)' : ''}</span>
-                            <span className="text-2xl sm:text-3xl text-emerald-400">{formatMoney(totalEscrituraComRegistro)}</span>
+                            <span className="text-2xl sm:text-3xl tabular-nums text-[#5b9bf2]">{formatMoney(totalEscrituraComRegistro)}</span>
                         </div>
                     </div>
 
-                    <div className="mt-8 text-[9px] text-slate-400 text-justify leading-relaxed">
+                    <div className="mt-8 text-[11px] text-slate-500 dark:text-slate-400 text-justify leading-relaxed">
                       <strong>Nota Legal:</strong> Este relatório é de natureza estimativa e consultiva para fins de planejamento financeiro. As custas notariais e de registo seguem as tabelas de emolumentos do TJ-PR vigentes desde {VIGENCIA_TABELAS_PR} e podem variar conforme o cartório competente ou reajuste anual.
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-3 mt-8 print-hide">
-                      <button onClick={handleReset} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all">Limpar</button>
-                      <button onClick={handleCopyResumo} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-all">Copiar Resumo</button>
-                      <button onClick={handleShareWhatsapp} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all">WhatsApp</button>
-                      <button onClick={handlePrint} className="w-full flex-1 flex items-center justify-center gap-2 py-4 sm:py-3 bg-slate-900 text-white font-bold rounded-xl transition-all shadow-lg">
+                      <button onClick={handleReset} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors">Limpar</button>
+                      <button onClick={handleCopyResumo} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors">Copiar Resumo</button>
+                      <button onClick={handleShareWhatsapp} className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-lg transition-colors border border-slate-200 dark:border-slate-700">WhatsApp</button>
+                      <button onClick={handlePrint} className="w-full flex-1 flex items-center justify-center gap-2 py-4 sm:py-3 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 font-bold rounded-lg transition-colors">
                         <Printer className="w-5 h-5" /> Gerar PDF do Orçamento
                       </button>
                     </div>
