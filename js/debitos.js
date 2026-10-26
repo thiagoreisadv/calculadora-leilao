@@ -102,9 +102,9 @@
       setTimeout(() => topoResultado.current && topoResultado.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
     }
 
-    function gerarMemoria() {
+    function entrada() {
       const x = resultado;
-      const registro = window.CentralRegistro.montarCalculo({
+      return {
         tipo: 'debito',
         titulo: 'Memória de cálculo — Atualização de débito',
         subtitulo: f.descricao || 'Dívida',
@@ -112,8 +112,15 @@
         criterios: x.criteriosDescritos,
         parcelas: [{ descricao: x.parcela.descricao, vencimento: x.parcela.vencimento }],
         resultados: [x.r], totais: x.totais, dataFinal: f.criterios.dataFinal, observacoes: f.observacoes,
-      });
-      B.guardarMemoria(registro, true);
+      };
+    }
+
+    function gerarMemoria() {
+      B.guardarMemoria(window.CentralRegistro.montarCalculo(entrada()), true);
+    }
+
+    function gerarPlanilha() {
+      B.gerarPlanilhaCalculo(entrada(), f.descricao || 'debito');
     }
 
     const x = resultado;
@@ -192,6 +199,7 @@
                 </dl>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo</Botao>
                 <Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao>
               </div>
             </div>

@@ -127,9 +127,9 @@
       setTimeout(() => topo.current && topo.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
     }
 
-    function gerarMemoria() {
+    function entrada() {
       const r = resultado;
-      const registro = window.CentralRegistro.montarCalculo({
+      return {
         tipo: p.tipoMemoria,
         titulo: `Memória de cálculo — ${p.titulo}`,
         subtitulo: f.descricao || p.titulo,
@@ -137,8 +137,15 @@
         criterios: r.criteriosDescritos,
         parcelas: r.parcelas.map((x, i) => ({ descricao: x.descricao || `${p.parcela} ${i + 1}`, competencia: x.competencia, vencimento: x.vencimento })),
         resultados: r.resultados, totais: r.totais, dataFinal: f.criterios.dataFinal, observacoes: f.observacoes,
-      });
-      B.guardarMemoria(registro, true);
+      };
+    }
+
+    function gerarMemoria() {
+      B.guardarMemoria(window.CentralRegistro.montarCalculo(entrada()), true);
+    }
+
+    function gerarPlanilha() {
+      B.gerarPlanilhaCalculo(entrada(), f.descricao || p.titulo);
     }
 
     function exportarCsv() {
@@ -239,6 +246,7 @@
                 </div>
               </details>
               <div className="flex flex-wrap gap-2">
+                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo</Botao>
                 <Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao>
                 <Botao icone="baixar" onClick={exportarCsv}>Exportar CSV</Botao>
               </div>

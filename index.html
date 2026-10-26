@@ -119,6 +119,7 @@
   <script src="js/calculo.js"></script>
   <script src="js/historico.js"></script>
   <script src="js/demonstrativo.js"></script>
+  <script src="js/xlsx.js"></script>
   <script src="js/registro.js"></script>
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -949,6 +950,112 @@
         window.open(`https://wa.me/?text=${texto}`, '_blank');
       };
 
+      // --- Planilha de cálculo (.xlsx): toda calculadora termina oferecendo esta saída ---
+      const baixarPlanilhaApp = (resultado) => {
+        window.CentralUI.baixarArquivo(resultado.nome, resultado.bytes, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        window.CentralUI.avisar('Planilha de cálculo gerada.');
+      };
+      const textoTaxa = (t) => (t.type === 'percent' ? `${safeNumber(t.value).toLocaleString('pt-BR')}% sobre o lance` : `${formatMoney(safeNumber(t.value))} (valor fixo)`);
+
+      const handleGerarPlanilhaLeilao = () => {
+        const Reg = window.CentralRegistro;
+        const m = Reg.montador();
+        const veiculo = assetType === 'veiculo';
+        const titulo = veiculo ? (isRegularizacao ? 'Análise de Compra com Regularização' : 'Análise Veicular') : 'Análise Imobiliária';
+        Reg.cabecalhoPlanilha(m, `Planilha de cálculo — ${titulo}`, [['Cliente', clienteNomeLeilao], [veiculo ? 'Veículo' : 'Imóvel', imovelDescLeilao]]);
+        m.secao('Valores informados');
+        const rLance = m.item(isRegularizacao ? 'Valor de compra acordado' : 'Valor do lance / arremate', safeBid);
+        if (safeEval > 0) m.item('Valor de avaliação', safeEval);
+        const rMercado = safeMarket > 0 ? m.item(veiculo ? 'Valor da tabela FIPE' : 'Valor de mercado', safeMarket) : null;
+        if (veiculo && safeMarket > 0) m.item('Desvalorização na revenda', fipeDiscountClamped / 100, 'percentual');
+        if (discountedSaleValue > 0) m.item(veiculo ? 'Venda estimada (FIPE − desvalorização)' : 'Valor de venda estimado', discountedSaleValue);
+        m.vazio();
+        m.secao('Custos de aquisição');
+        const rIni = m.item('Valor de aquisição (lance)', safeBid);
+        if (!isRegularizacao) m.item('Comissão do leiloeiro', leiloeiroCost, 'moeda', textoTaxa(leiloeiro));
+        if (!veiculo) {
+          m.item('ITBI', itbiCostLeilao, 'moeda', `${textoTaxa(itbi)}${safeNumber(valorVenalLeilao) > safeBid ? '; base: valor venal' : ''}`);
+          m.item('Cartório de registro', cartorioCostLeilao, 'moeda', cartorioModeLeilao === 'pr' ? `Tabela TJ-PR (vigente desde ${VIGENCIA_TABELAS_PR})` : 'Custas manuais');
+        }
+        m.item(isRegularizacao ? 'Honorários judiciais e custas' : 'Assessoria jurídica', legalCost, 'moeda', textoTaxa(legal));
+        if (safeNumber(debts) > 0) m.item(veiculo ? 'Multas / IPVA / débitos' : 'Dívidas do imóvel', safeNumber(debts));
+        if (safeNumber(renovation) > 0) m.item(veiculo ? 'Mecânica / reparos' : 'Reformas / outros', safeNumber(renovation));
+        const rFim = m.linhas.length;
+        const rCusto = m.formula('CUSTO OPERACIONAL TOTAL', `SUM(C${rIni}:C${rFim})`, finalLeilao, 'destaque');
+        m.vazio();
+        m.secao('Resultado');
+        if (discountedSaleValue > 0 && finalLeilao > 0) {
+          const rVenda = m.item(veiculo ? 'Venda estimada' : 'Valor de venda estimado', discountedSaleValue);
+          const rLucro = m.formula(lucroAbsoluto >= 0 ? 'Lucro líquido estimado' : 'Prejuízo estimado', `C${rVenda}-C${rCusto}`, lucroAbsoluto, 'totalMoeda');
+          m.formula('ROI (lucro ÷ custo operacional)', `IF(C${rCusto}>0,C${rLucro}/C${rCusto},0)`, margemLucroPorcentagem / 100, 'percentual');
+        } else {
+          m.texto('Lucro e ROI', 'não calculados', 'Informe o valor de mercado e o lance.');
+        }
+        if (descontoMercadoPercent !== null && rMercado) m.formula('Desconto sobre o valor de mercado', `1-C${rLance}/C${rMercado}`, descontoMercadoPercent / 100, 'percentual');
+        if (maxBidForProfit > 0) m.item('Teto de lance para lucro zero', maxBidForProfit);
+        if (segundaPracaResult) {
+          m.vazio();
+          m.secao('Comparativo com a 2ª praça');
+          m.item('Lance na 2ª praça', safeSegundaPraca);
+          m.item('Custo operacional na 2ª praça', segundaPracaResult.total);
+          if (discountedSaleValue > 0) m.item('Lucro estimado na 2ª praça', segundaPracaResult.lucro);
+          m.item(economiaSegundaPraca >= 0 ? 'Economia na 2ª praça' : 'Custo a mais na 2ª praça', economiaSegundaPraca);
+        }
+        m.vazio();
+        m.nota('Documento de caráter estimativo e consultivo. Valores calculados a partir dos dados informados e dos percentuais indicados na coluna Observação.');
+        const criterios = [
+          ['Comissão do leiloeiro', isRegularizacao ? 'Não aplicável' : textoTaxa(leiloeiro)],
+          ['ITBI', veiculo ? 'Não aplicável' : textoTaxa(itbi)],
+          ['Cartório de registro', veiculo ? 'Não aplicável' : (cartorioModeLeilao === 'pr' ? `Tabela TJ-PR vigente desde ${VIGENCIA_TABELAS_PR}` : textoTaxa(cartorioManualLeilao))],
+          [isRegularizacao ? 'Honorários judiciais' : 'Assessoria jurídica', textoTaxa(legal)],
+        ];
+        baixarPlanilhaApp(Reg.baixarPlanilhaSimples(m.linhas, 'Cálculo', criterios, clienteNomeLeilao || imovelDescLeilao || titulo));
+      };
+
+      const handleGerarPlanilhaEscritura = () => {
+        const Reg = window.CentralRegistro;
+        const m = Reg.montador();
+        Reg.cabecalhoPlanilha(m, 'Planilha de cálculo — Memorial de Custas de Escrituração', [['Cliente', clienteNome], ['Imóvel', imovelDesc]]);
+        m.secao('Base de cálculo');
+        m.item('Valor do negócio', safeNegocio);
+        if (safeNumber(valorVenalEsc) > 0) m.item('Valor venal (base do ITBI quando maior que o negócio)', safeNumber(valorVenalEsc));
+        m.vazio();
+        m.secao('Passo 1: lavratura, impostos e acessórios');
+        let primeira = null;
+        let somaExibida = 0;
+        const add = (rotulo, valor, obs) => { const r = m.item(rotulo, valor, 'moeda', obs); if (primeira === null) primeira = r; somaExibida += valor; };
+        if (showItbiEsc) add('Imposto de Transmissão (ITBI)', itbiCostEsc, safeNumber(valorVenalEsc) > safeNegocio ? 'base: valor venal' : '');
+        if (showLavraturaEsc) add('Ato de Escrituração Imobiliária', lavraturaCostExibido, escrituraExtrapolada ? 'valor extrapolado da tabela' : '');
+        if (showFunrejusEsc) add('Funrejus compulsório (0,2% — TJPR)', funrejusCost);
+        if (showCertidoesEsc && safeNumber(certidoesEsc) > 0) add('Certidões e buscas', safeNumber(certidoesEsc));
+        if (showDiligenciasEsc && safeNumber(diligenciasEsc) > 0) add('Diligências / assessoria', safeNumber(diligenciasEsc));
+        if (outrosNoTotal && showOutrosEsc && safeOutrosEsc > 0) add(outrosDescEsc || 'Outros', safeOutrosEsc);
+        const fim = m.linhas.length;
+        const somaConfere = primeira !== null && Math.abs(somaExibida - custoInicialEsc) < 0.005;
+        const rSub = somaConfere
+          ? m.formula('Subtotal sem registro', `SUM(C${primeira}:C${fim})`, custoInicialEsc, 'totalMoeda')
+          : m.item('Subtotal sem registro', custoInicialEsc, 'totalMoeda', 'Inclui itens ocultos do orçamento');
+        if (!outrosNoTotal && safeOutrosEsc > 0) {
+          m.vazio();
+          m.secao('Valor à parte (não incluído no total)');
+          m.item(outrosDescEsc || 'Outros', safeOutrosEsc);
+        }
+        if (incluirRgi) {
+          m.vazio();
+          m.secao('Passo 2: Registro de Imóveis (RGI)');
+          const rRgi = m.item('Emolumento de registro', cartorioCostEsc);
+          m.vazio();
+          m.formula('TOTAL COM REGISTRO (RGI)', `C${rSub}+C${rRgi}`, totalEscrituraComRegistro, 'destaque');
+        }
+        m.vazio();
+        m.nota(`Tabelas de custas TJ-PR vigentes desde ${VIGENCIA_TABELAS_PR}. Documento de caráter estimativo.`);
+        const criterios = [
+          ['Modo de cálculo', escrituraMode === 'pr' ? `Automático — tabelas TJ-PR vigentes desde ${VIGENCIA_TABELAS_PR}` : 'Custas informadas manualmente'],
+          ['ITBI', textoTaxa(itbiEscritura).replace(' sobre o lance', ' sobre o valor do negócio')],
+        ];
+        baixarPlanilhaApp(Reg.baixarPlanilhaSimples(m.linhas, 'Cálculo', criterios, clienteNome || imovelDesc || 'escritura'));
+      };
+
       const leilaoLastStep = assetType === 'veiculo' ? 3 : 4;
       const valoresStep = assetType === 'veiculo' ? 1 : 2;
       const taxasStep = assetType === 'veiculo' ? 2 : 3;
@@ -1453,6 +1560,9 @@
                         <button onClick={handleCopyResumo} className="px-2 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-lg transition-colors">Copiar Resumo</button>
                         <button onClick={handleShareWhatsapp} className="px-2 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm rounded-lg transition-colors border border-slate-200 dark:border-slate-700">WhatsApp</button>
                       </div>
+                      <button onClick={handleGerarPlanilhaLeilao} className="w-full flex items-center justify-center gap-2 py-3.5 mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors">
+                        Gerar planilha de cálculo
+                      </button>
                       <button onClick={handlePrint} className="w-full flex items-center justify-center gap-2 py-3.5 mt-2 bg-navy-900 hover:bg-navy-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white dark:text-navy-900 font-bold rounded-lg transition-colors">
                         <Printer className="w-5 h-5 flex-shrink-0" /> Gerar Relatório PDF
                       </button>
@@ -1866,6 +1976,9 @@
                         <button onClick={handleCopyResumo} className="px-2 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-lg transition-colors">Copiar Resumo</button>
                         <button onClick={handleShareWhatsapp} className="px-2 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm rounded-lg transition-colors border border-slate-200 dark:border-slate-700">WhatsApp</button>
                       </div>
+                      <button onClick={handleGerarPlanilhaEscritura} className="w-full flex items-center justify-center gap-2 py-3.5 mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors">
+                        Gerar planilha de cálculo
+                      </button>
                       <button onClick={handlePrint} className="w-full flex items-center justify-center gap-2 py-3.5 mt-2 bg-navy-900 hover:bg-navy-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white dark:text-navy-900 font-bold rounded-lg transition-colors">
                         <Printer className="w-5 h-5 flex-shrink-0" /> Gerar PDF do Orçamento
                       </button>

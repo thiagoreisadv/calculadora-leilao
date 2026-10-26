@@ -111,9 +111,9 @@
       UI.baixarArquivo(UI.nomeArquivo(f.titulo || 'planilha-debitos', 'csv'), csv, 'text/csv;charset=utf-8');
     }
 
-    function gerarMemoria() {
+    function entrada() {
       const t = res.totais;
-      const registro = window.CentralRegistro.montarCalculo({
+      return {
         tipo: 'planilha',
         titulo: 'Memória de cálculo — Planilha consolidada de débitos',
         subtitulo: f.titulo || 'Planilha de débitos',
@@ -121,8 +121,15 @@
         criterios: B.descreverCriterios(f.criterios),
         parcelas: res.linhas.map((l, i) => ({ descricao: l.descricao || `Linha ${i + 1}`, competencia: l.competencia, vencimento: l.vencimento })),
         resultados: res.resultados, totais: t, dataFinal: f.criterios.dataFinal, observacoes: f.observacoes,
-      });
-      B.guardarMemoria(registro, true);
+      };
+    }
+
+    function gerarMemoria() {
+      B.guardarMemoria(window.CentralRegistro.montarCalculo(entrada()), true);
+    }
+
+    function gerarPlanilha() {
+      B.gerarPlanilhaCalculo(entrada(), f.titulo || 'planilha-debitos');
     }
 
     return (
@@ -177,6 +184,7 @@
                 rodape={['', 'Totais', '', '', m(res.totais.original), m(res.totais.correcao), m(res.totais.juros), m(res.totais.multa), m(res.totais.encargosNominais), res.totais.pagamentos ? `-${m(res.totais.pagamentos)}` : '—', m(res.totais.saldoFinal)]} />
               <p className="text-xs text-slate-500 dark:text-slate-400">O saldo de cada linha inclui honorários em percentual, quando aplicados. Honorários de valor fixo entram uma única vez no total.</p>
               <div className="flex flex-wrap gap-2">
+                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo</Botao>
                 <Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao>
                 <Botao icone="baixar" onClick={exportarCsv}>Exportar CSV</Botao>
               </div>

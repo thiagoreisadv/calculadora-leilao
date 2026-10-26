@@ -175,12 +175,12 @@
       return lista.concat(B.descreverCriterios(f.criterios));
     }
 
-    function gerarMemoria() {
+    function entrada() {
       const x = resultado;
       const m = R.formatarMoeda;
       const notas = [['Subtotal — rito da prisão (art. 528, §§ 3º e 7º, CPC)', m(x.ritos.prisao.total)], ['Subtotal — rito da expropriação (art. 528, § 8º, CPC)', m(x.ritos.expropriacao.total)]];
       const obs = [f.observacoes, x.ritos.nota, x.prescritas.length ? `Competências excluídas por prescrição (data de corte ${f.corte}): ${x.prescritas.map((c) => c.mes_ano).join(', ')}.` : ''].filter(Boolean).join('\n');
-      const registro = window.CentralRegistro.montarCalculo({
+      return {
         tipo: 'pensao',
         titulo: 'Memória de cálculo — Pensão alimentícia',
         subtitulo: f.descricao || 'Débito de pensão alimentícia',
@@ -188,8 +188,16 @@
         criterios: x.criteriosDescritos,
         parcelas: x.lista.map((p) => ({ descricao: `Competência ${p.competencia}`, vencimento: p.vencimento })),
         resultados: x.resultados, totais: x.totais, dataFinal: f.criterios.dataFinal, observacoes: obs, notasResumo: notas,
-      });
-      B.guardarMemoria(registro, true);
+        linhasExtras: [['Subtotal — rito da prisão (art. 528, §§ 3º e 7º, CPC)', x.ritos.prisao.total], ['Subtotal — rito da expropriação (art. 528, § 8º, CPC)', x.ritos.expropriacao.total]],
+      };
+    }
+
+    function gerarMemoria() {
+      B.guardarMemoria(window.CentralRegistro.montarCalculo(entrada()), true);
+    }
+
+    function gerarPlanilha() {
+      B.gerarPlanilhaCalculo(entrada(), f.descricao || 'pensao');
     }
 
     const x = resultado;
@@ -309,7 +317,10 @@
                   ))}
                 </div>
               </details>
-              <div className="flex flex-wrap gap-2"><Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao></div>
+              <div className="flex flex-wrap gap-2">
+                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo</Botao>
+                <Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao>
+              </div>
             </div>
           </Cartao>
         )}

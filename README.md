@@ -15,6 +15,16 @@ não há servidor, banco de dados nem consulta a APIs ou a índices econômicos.
 | Planilha consolidada | Várias obrigações com total consolidado e exportação CSV |
 | Memórias de cálculo | Demonstrativos guardados no navegador: ver, imprimir/salvar PDF, HTML, CSV e cópia JSON |
 
+## Planilha de cálculo em todos os calculadores
+
+Ao final de **cada** calculador (leilões, escritura, débitos, pensão, aluguéis/contratos, acordos e planilha consolidada) há o botão **Gerar planilha de cálculo**, que baixa um arquivo `.xlsx` com:
+
+- aba **Cálculo**: valores numéricos e fórmulas do Excel (correção, principal corrigido, saldo, totais) para conferência e edição;
+- aba **Memória**: o passo a passo de cada parcela;
+- aba **Critérios**: os parâmetros utilizados.
+
+As memórias guardadas em **Memórias de cálculo** também podem ter a planilha baixada de novo. O arquivo é gerado no navegador, sem bibliotecas (`js/xlsx.js`).
+
 ## Correção monetária (sempre informada pelo usuário)
 
 O sistema **não** consulta índices nem calcula correção automática. Em cada parcela o usuário escolhe uma das opções:
@@ -39,7 +49,8 @@ index.html            Calculadora de leilões (React) + carregamento dos módulo
 js/regras.js          Utilitários: valores, datas, arredondamento, CSV
 js/calculo.js         Motor de cálculo local (correção informada, juros, multa, honorários, pagamentos, ritos)
 js/historico.js       Histórico local (localStorage) com exportação/importação JSON
-js/registro.js        Monta o registro da memória de cálculo
+js/registro.js        Monta o registro da memória de cálculo e a planilha de cálculo
+js/xlsx.js            Gerador de planilhas .xlsx sem dependências
 js/demonstrativo.js   Gera o HTML do demonstrativo (imprimível / salvar em PDF)
 js/componentes.js     Componentes de interface compartilhados
 js/blocos.js          Correção manual, critérios de cálculo, resumo, visualizador de documentos
@@ -60,7 +71,7 @@ O GitHub Pages é hospedagem estática, sem banco de dados. Por isso:
 ## Testes
 
 ```bash
-node --test test/regras.test.js test/calculo.test.js
+node --test test/regras.test.js test/calculo.test.js test/xlsx.test.js
 ```
 
 Cobrem as três modalidades de correção, a ausência de aplicação dupla, juros simples e compostos (ao mês e ao ano), multa, honorários, pagamentos nos dois modos de abatimento, validações, ritos do art. 528 e a garantia de que os arquivos de cálculo não fazem chamadas de rede.

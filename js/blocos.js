@@ -198,8 +198,19 @@
     return r.id;
   }
 
+  // Gera e baixa a planilha de cálculo (.xlsx) do resultado atual. Toda calculadora oferece esta ação.
+  function gerarPlanilhaCalculo(entrada, nomeBase) {
+    try {
+      const { bytes, nome } = window.CentralRegistro.baixarPlanilha(entrada, nomeBase);
+      UI.baixarArquivo(nome, bytes, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      UI.avisar('Planilha de cálculo gerada.');
+    } catch (e) {
+      UI.avisar('Não foi possível gerar a planilha de cálculo.', 'erro');
+    }
+  }
+
   window.CentralBlocos = {
     descreverCriterios, CorrecaoManual, CriteriosCalculo, ResumoConsolidado, ListaAlertas,
-    textoCorrecao, VisualizadorDocumento, guardarMemoria,
+    textoCorrecao, VisualizadorDocumento, guardarMemoria, gerarPlanilhaCalculo,
   };
 })();
