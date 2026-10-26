@@ -114,9 +114,28 @@
       },
     }
   </script>
+  <!-- Módulos da plataforma (camadas separadas: regras locais, API, interface) -->
+  <script src="js/config.js"></script>
+  <script src="js/regras.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/motor.js"></script>
+  <script src="js/historico.js"></script>
+  <script src="js/demonstrativo.js"></script>
+  <script src="js/registro.js"></script>
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
   <div id="root"></div>
+
+  <script type="text/babel" src="js/componentes.js"></script>
+  <script type="text/babel" src="js/blocos.js"></script>
+  <script type="text/babel" src="js/debitos.js"></script>
+  <script type="text/babel" src="js/parcelas.js"></script>
+  <script type="text/babel" src="js/planilha.js"></script>
+  <script type="text/babel" src="js/pensao.js"></script>
+  <script type="text/babel" src="js/memorias.js"></script>
+  <script type="text/babel" src="js/conexao.js"></script>
+  <script type="text/babel" src="js/painel.js"></script>
+  <script type="text/babel" src="js/plataforma.js"></script>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
@@ -434,7 +453,7 @@
     };
 
     // --- App Principal ---
-    function App() {
+    function App(props) {
       // Carregamento de Configurações da Memória Local
       const loadInitialState = () => {
           try {
@@ -455,7 +474,10 @@
       const [advOab, setAdvOab] = useState(initialState?.advOab || "OAB/PR 115.608");
       const [isSettingsOpen, setIsSettingsOpen] = useState(false);
       const [isCasesOpen, setIsCasesOpen] = useState(false);
-      const [darkMode, setDarkMode] = useState(initialState?.darkMode || false);
+      // O modo escuro pode ser controlado pela plataforma (props) ou, isolado, pelo próprio estado.
+      const [darkLocal, setDarkLocal] = useState(initialState?.darkMode || false);
+      const darkMode = props && props.dark !== undefined ? props.dark : darkLocal;
+      const setDarkMode = props && props.setDark ? props.setDark : setDarkLocal;
       const [activeTab, setActiveTab] = useState(initialState?.activeTab || 'leilao');
 
       // Acordeão de preenchimento (só tem efeito visual no celular; no desktop os cartões ficam sempre abertos)
@@ -943,13 +965,12 @@
           )}
 
           {/* Barra superior: sem bloco escuro, o nome do produto fica na própria tela */}
-          <div className="sticky top-0 z-40 bg-navy-900 dark:bg-[#0B1424] print-hide shadow-card">
+          <div className="sticky top-14 lg:top-0 z-30 bg-navy-900 dark:bg-[#0B1424] print-hide shadow-card">
             <div className="max-w-5xl mx-auto px-4 sm:px-6">
-              <div className="flex justify-between items-center h-16 sm:h-[72px] gap-3">
+              <div className="flex justify-between items-center h-14 sm:h-[72px] gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <img src="img/logo-thiago-reis-fundo-escuro.svg" alt="Thiago Reis, advogado" className="h-6 sm:h-8 w-auto flex-shrink-0" />
-                  <div className="hidden sm:block min-w-0 border-l border-white/15 pl-3">
-                    <h1 className="text-[13px] sm:text-sm font-semibold tracking-tight text-white truncate">Central de Cálculos de Leilões e Imóveis</h1>
+                  <div className="min-w-0">
+                    <h1 className="text-[13px] sm:text-sm font-semibold tracking-tight text-white truncate">Calculadora de Leilões e Imóveis</h1>
                     <div className="text-[11px] text-slate-300/80 truncate">{advName}{advOab ? ` · ${advOab}` : ''}</div>
                   </div>
                 </div>
@@ -1949,7 +1970,7 @@
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    root.render(<window.CentralPlataforma.Plataforma AppLeiloes={App} />);
   </script>
 </body>
 </html>
