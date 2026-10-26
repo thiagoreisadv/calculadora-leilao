@@ -158,22 +158,46 @@
     );
   }
 
-  // Valor monetário em reais: aceita digitação livre e formata ao sair do campo.
+  // Entrada de valor em reais com máscara ao digitar ("350000" -> "350.000"), sem mover o cursor.
+  // Trabalha com o texto do campo; ao sair, completa as casas decimais ("1.500" -> "1.500,00").
+  function EntradaMoeda({ valor, onChange, className = '', placeholder = '0,00', ...resto }) {
+    const ref = useRef(null);
+    const cursor = useRef(null);
+    const texto = valor === null || valor === undefined ? '' : String(valor);
+
+    // Recoloca o cursor depois que o React grava o valor formatado
+    React.useLayoutEffect(() => {
+      if (cursor.current !== null && ref.current && ref.current === document.activeElement) {
+        ref.current.setSelectionRange(cursor.current, cursor.current);
+      }
+      cursor.current = null;
+    });
+
+    const digitar = (e) => {
+      const { inputType, data } = e.nativeEvent || {};
+      const r = R.editarDigitacaoMoeda(texto, e.target.value, e.target.selectionStart, inputType, data);
+      cursor.current = r.cursor;
+      onChange(r.valor);
+    };
+    const sair = () => { if (texto !== '') onChange(R.textoCampoMoeda(texto)); };
+
+    return (
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 pointer-events-none">R$</span>
+        <input ref={ref} type="text" inputMode="decimal" autoComplete="off" value={texto} placeholder={placeholder} maxLength={20}
+          onChange={digitar} onBlur={sair} {...resto}
+          className={`${CLASSE_ENTRADA} pl-10 tabular-nums ${className}`} />
+      </div>
+    );
+  }
+
   function CampoMoeda({ rotulo, valor, onChange, erro, ajuda, obrigatorio, placeholder = '0,00', className }) {
     const id = useId('moeda');
-    const sair = () => {
-      const n = R.lerValor(valor);
-      if (!Number.isNaN(n) && valor !== '') onChange(n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-    };
     return (
       <Campo rotulo={rotulo} id={id} erro={erro} ajuda={ajuda} obrigatorio={obrigatorio} className={className}>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 pointer-events-none">R$</span>
-          <input id={id} type="text" inputMode="decimal" value={valor || ''} placeholder={placeholder} maxLength={18}
-            aria-invalid={Boolean(erro)} aria-describedby={erro ? `${id}-erro` : undefined}
-            onChange={(e) => onChange(e.target.value.replace(/[^\d.,-]/g, ''))} onBlur={sair}
-            className={`${CLASSE_ENTRADA} pl-10 tabular-nums ${bordaEntrada(erro)}`} />
-        </div>
+        <EntradaMoeda id={id} valor={valor} onChange={onChange} placeholder={placeholder}
+          aria-invalid={Boolean(erro)} aria-describedby={erro ? `${id}-erro` : undefined}
+          className={bordaEntrada(erro)} />
       </Campo>
     );
   }
@@ -386,7 +410,7 @@
   }
 
   window.CentralUI = {
-    Icone, Pagina, Cartao, Botao, Carregando, Alerta, Campo, CampoTexto, CampoMoeda, CampoPercentual, CampoData, CampoCompetencia,
+    Icone, Pagina, Cartao, Botao, Carregando, Alerta, Campo, CampoTexto, EntradaMoeda, CampoMoeda, CampoPercentual, CampoData, CampoCompetencia,
     Selecao, Chave, Indicador, Tabela, Confirmacao, avisar, navegar, baixarArquivo, nomeArquivo, identidade, mascararData, useRascunho,
   };
 })();

@@ -44,6 +44,15 @@ A partir do principal corrigido o sistema calcula os demais componentes:
 
 A memória de cálculo mostra cada passo e declara que a correção foi **informada manualmente**.
 
+## Digitação de valores em R$
+
+Todos os campos de valor usam a mesma máscara (`EntradaMoeda` em `js/componentes.js`, lógica em `js/regras.js`):
+
+- formata enquanto se digita: `350000` vira `350.000` (R$ 350 mil, nunca R$ 3.500,00); a vírgula é opcional, com até 2 casas;
+- o cursor fica onde estava ao inserir ou apagar no meio do número, e apagar um ponto de milhar apaga o dígito vizinho;
+- o `.` do teclado numérico vira vírgula; colar `R$ 1.500,00` funciona;
+- ao sair do campo, completa as casas decimais (`1.500` → `1.500,00`).
+
 ## Arquitetura
 
 ```

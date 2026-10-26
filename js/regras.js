@@ -42,6 +42,52 @@
     return Number.isFinite(n) ? (negativo ? -n : n) : NaN;
   }
 
+  // ---------- Máscara de digitação de valores (R$) ----------
+
+  // Formata enquanto o usuário digita: "1234567,8" -> "1.234.567,8". A vírgula é opcional
+  // e aceita até 2 casas; os pontos de milhar são sempre recolocados pela máscara.
+  function formatarDigitacaoMoeda(texto) {
+    const s = String(texto === null || texto === undefined ? '' : texto).replace(/[^\d,]/g, '');
+    const i = s.indexOf(',');
+    let inteiro = (i === -1 ? s : s.slice(0, i)).replace(/^0+(?=\d)/, '');
+    const decimal = i === -1 ? null : s.slice(i + 1).replace(/,/g, '').slice(0, 2);
+    if (inteiro === '' && decimal !== null) inteiro = '0';
+    inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return decimal === null ? inteiro : `${inteiro},${decimal}`;
+  }
+
+  const significativos = (t) => String(t || '').replace(/[^\d,]/g, '');
+
+  // Aplica a máscara a uma edição do campo sem tirar o cursor do lugar.
+  // anterior: texto antes da tecla; bruto/cursor: valor e posição do cursor depois dela;
+  // tipo/dado: inputType e data do evento de entrada (InputEvent).
+  // O cursor é recolocado contando os dígitos (e a vírgula) que ficaram à sua direita,
+  // pois a pontuação inserida pela máscara não muda essa contagem.
+  function editarDigitacaoMoeda(anterior, bruto, cursor, tipo, dado) {
+    let texto = String(bruto || '');
+    let pos = Math.max(0, Math.min(cursor === null || cursor === undefined ? texto.length : cursor, texto.length));
+    // Ponto do teclado numérico (layout americano) vira vírgula decimal
+    if (dado === '.' && texto[pos - 1] === '.') texto = `${texto.slice(0, pos - 1)},${texto.slice(pos)}`;
+    // Apagar um ponto de milhar apaga o dígito vizinho; sem isso a máscara o recoloca e o cursor "trava"
+    if (significativos(texto) === significativos(anterior)) {
+      if (tipo === 'deleteContentBackward' && pos > 0) { texto = texto.slice(0, pos - 1) + texto.slice(pos); pos -= 1; }
+      else if (tipo === 'deleteContentForward') texto = texto.slice(0, pos) + texto.slice(pos + 1);
+    }
+    const aDireita = significativos(texto.slice(pos)).length;
+    const valor = formatarDigitacaoMoeda(texto);
+    let p = valor.length;
+    for (let n = 0; p > 0 && n < aDireita;) { p -= 1; if (/[\d,]/.test(valor[p])) n += 1; }
+    return { valor, cursor: p };
+  }
+
+  // Valor numérico já gravado -> texto do campo ("1500" -> "1.500,00"); vazio quando não há valor.
+  function textoCampoMoeda(valor) {
+    if (valor === '' || valor === null || valor === undefined) return '';
+    const n = lerValor(valor);
+    if (Number.isNaN(n)) return '';
+    return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   function formatarMoeda(valor) {
     const n = Number(valor);
     return (Number.isFinite(n) ? n : 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -130,6 +176,7 @@
 
   return {
     LIMITE_PARCELAS, arredondar, lerValor, formatarMoeda, formatarPercentual,
+    formatarDigitacaoMoeda, editarDigitacaoMoeda, textoCampoMoeda,
     lerData, dataEhValida, isoParaBR, brParaISO, hojeBR, adicionarMeses, competenciaParaData,
     celulaCSV, numeroCSV, gerarCSV, escaparHtml,
   };

@@ -72,3 +72,46 @@ test('não há chamadas de rede nos arquivos de cálculo', () => {
     assert.ok(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|sendBeacon/.test(texto), `${arquivo} não pode acessar a rede`);
   }
 });
+
+// Simula uma tecla no campo de valor: "|" marca o cursor no resultado
+function tecla(anterior, bruto, cursor, tipo, dado) {
+  const r = R.editarDigitacaoMoeda(anterior, bruto, cursor, tipo, dado);
+  return r.valor.slice(0, r.cursor) + '|' + r.valor.slice(r.cursor);
+}
+
+test('formatarDigitacaoMoeda: milhar ao digitar, vírgula opcional e até 2 casas', () => {
+  assert.equal(R.formatarDigitacaoMoeda('350000'), '350.000');
+  assert.equal(R.formatarDigitacaoMoeda('1234567,8'), '1.234.567,8');
+  assert.equal(R.formatarDigitacaoMoeda('1.500,999'), '1.500,99');
+  assert.equal(R.formatarDigitacaoMoeda('R$ 1.500,00'), '1.500,00');
+  assert.equal(R.formatarDigitacaoMoeda(',5'), '0,5');
+  assert.equal(R.formatarDigitacaoMoeda('007'), '7');
+  assert.equal(R.formatarDigitacaoMoeda('1,2,3'), '1,23');
+  assert.equal(R.formatarDigitacaoMoeda(''), '');
+});
+
+test('editarDigitacaoMoeda: digitação natural (350000 é R$ 350 mil, não R$ 3.500)', () => {
+  let v = '';
+  for (const c of '350000') v = R.editarDigitacaoMoeda(v, v + c, v.length + 1, 'insertText', c).valor;
+  assert.equal(v, '350.000');
+  assert.equal(R.lerValor(v), 350000);
+});
+
+test('editarDigitacaoMoeda: o cursor não pula para o fim nem trava', () => {
+  assert.equal(tecla('1.234.567', '1.2349.567', 6, 'insertText', '9'), '12.349.|567');
+  assert.equal(tecla('1.234', '1.34', 2, 'deleteContentBackward'), '1|34');
+  // Backspace logo após o ponto de milhar apaga o dígito anterior
+  assert.equal(tecla('1.234', '1234', 1, 'deleteContentBackward'), '|234');
+  // Delete logo antes do ponto apaga o dígito seguinte
+  assert.equal(tecla('1.234', '1234', 1, 'deleteContentForward'), '1|34');
+  assert.equal(tecla('', ',', 1, 'insertText', ','), '0,|');
+  assert.equal(tecla('1500', '1500.', 5, 'insertText', '.'), '1.500,|');
+  assert.equal(tecla('', 'R$ 1.500,00', 11, 'insertFromPaste'), '1.500,00|');
+});
+
+test('textoCampoMoeda: número gravado vira texto do campo', () => {
+  assert.equal(R.textoCampoMoeda(1500), '1.500,00');
+  assert.equal(R.textoCampoMoeda(1234.5), '1.234,50');
+  assert.equal(R.textoCampoMoeda(''), '');
+  assert.equal(R.textoCampoMoeda(null), '');
+});

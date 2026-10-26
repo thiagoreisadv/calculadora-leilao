@@ -2,7 +2,7 @@
 <html lang="pt-BR" class="antialiased">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Central de Cálculos de Leilões e Imóveis</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,7 +32,7 @@
       --accent: #34D399;
     }
     html, body {
-      font-family: "Geist", Inter, system-ui, sans-serif;
+      font-family: Inter, system-ui, sans-serif;
       background: var(--ground);
     }
     /* Layout de impressão dedicado: documento formal (tabelas, cabeçalho, assinatura),
@@ -164,26 +164,98 @@
 
     const formatPercent = (value) => `${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 
-    // Cartão de indicador: o sinal e o texto da legenda comunicam o resultado, não só a cor
-    const KpiCard = ({ label, value, sub, tone = 'neutral' }) => {
-      const box = {
-        good: 'bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/25 dark:border-emerald-900/50',
-        bad: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/50',
-        neutral: 'bg-slate-50 border-slate-200 dark:bg-white/5 dark:border-slate-700',
-      }[tone];
-      const subColor = {
+    // ROI a partir do qual a arrematação é tratada como confortável (abaixo disso: margem apertada)
+    const ROI_CONFORTAVEL = 15;
+
+    // Indicador secundário do painel de resultado: o texto da legenda comunica o resultado, não só a cor
+    const Estatistica = ({ label, value, sub, tone = 'neutral' }) => {
+      const cor = {
         good: 'text-emerald-700 dark:text-emerald-400',
         bad: 'text-red-600 dark:text-red-400',
-        neutral: 'text-slate-500 dark:text-slate-400',
+        neutral: 'text-slate-900 dark:text-white',
       }[tone];
       return (
-        <div className={`rounded-xl border p-4 ${box}`}>
+        <div className="min-w-0">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</div>
-          <div key={value} className="value-update mt-1 text-lg sm:text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{value}</div>
-          {sub && <div className={`mt-1 text-[11px] font-semibold ${subColor}`}>{sub}</div>}
+          <div key={value} className={`value-update mt-1 text-base sm:text-lg font-bold tabular-nums truncate ${cor}`}>{value}</div>
+          {sub && <div className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{sub}</div>}
         </div>
       );
     };
+
+    // Controle segmentado (escolha única entre poucas opções)
+    const Segmentado = ({ opcoes, valor, onChange, rotulo, className = '' }) => (
+      <div role="radiogroup" aria-label={rotulo} className={`inline-flex p-1 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-slate-700/60 ${className}`}>
+        {opcoes.map((o) => (
+          <button key={o.valor} type="button" role="radio" aria-checked={valor === o.valor} onClick={() => onChange(o.valor)}
+            className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 h-8 text-xs font-semibold rounded-md whitespace-nowrap ${valor === o.valor ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>
+            {o.icone && <o.icone className="w-4 h-4" />}{o.rotulo}
+          </button>
+        ))}
+      </div>
+    );
+
+    // Bloco recolhível para campos opcionais (abre sozinho quando já há algo preenchido)
+    const Revelar = ({ titulo, aberto, onAlternar, children }) => (
+      <div className="border-t border-slate-100 dark:border-slate-700/60 pt-3">
+        <button type="button" onClick={onAlternar} aria-expanded={aberto}
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300">
+          <ChevronDown className={`w-4 h-4 transition-transform ${aberto ? 'rotate-180' : ''}`} /> {titulo}
+        </button>
+        {aberto && <div className="mt-4 space-y-4 section-open">{children}</div>}
+      </div>
+    );
+
+    // Menu "Exportar": reúne as saídas secundárias para deixar um único botão principal
+    const MenuExportar = ({ itens }) => {
+      const [aberto, setAberto] = useState(false);
+      const ref = React.useRef(null);
+      useEffect(() => {
+        if (!aberto) return undefined;
+        const fora = (e) => { if (ref.current && !ref.current.contains(e.target)) setAberto(false); };
+        const tecla = (e) => { if (e.key === 'Escape') setAberto(false); };
+        document.addEventListener('mousedown', fora);
+        window.addEventListener('keydown', tecla);
+        return () => { document.removeEventListener('mousedown', fora); window.removeEventListener('keydown', tecla); };
+      }, [aberto]);
+      return (
+        <div ref={ref} className="relative flex-1">
+          <button type="button" onClick={() => setAberto(!aberto)} aria-expanded={aberto} aria-haspopup="menu"
+            className="w-full inline-flex items-center justify-center gap-2 h-11 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-white/5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10">
+            Exportar <ChevronDown className={`w-4 h-4 transition-transform ${aberto ? 'rotate-180' : ''}`} />
+          </button>
+          {aberto && (
+            <div role="menu" className="absolute bottom-full left-0 right-0 mb-2 z-20 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#14243A] shadow-card section-open">
+              {itens.map((item) => (
+                <button key={item.rotulo} type="button" role="menuitem" onClick={() => { setAberto(false); item.acao(); }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5">
+                  <span className="font-semibold">{item.rotulo}</span>
+                  {item.detalhe && <span className="block text-xs text-slate-500 dark:text-slate-400">{item.detalhe}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // Ações do painel de resultado: uma ação principal, as demais no menu "Exportar"
+    const AcoesResultado = ({ rotuloPrincipal, onPrincipal, onExcel, onPdfPlanilha, onCopiar, onWhatsapp, onLimpar }) => (
+      <div className="mt-6 space-y-2 print-hide">
+        <button type="button" onClick={onPrincipal} className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-navy-900 hover:bg-navy-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-sm font-bold shadow-sm">
+          <Printer className="w-5 h-5 flex-shrink-0" /> {rotuloPrincipal}
+        </button>
+        <div className="flex gap-2">
+          <MenuExportar itens={[
+            { rotulo: 'Planilha de cálculo (Excel)', detalhe: 'Arquivo .xlsx com fórmulas', acao: onExcel },
+            { rotulo: 'Planilha de cálculo (PDF)', detalhe: 'Tabela pronta para enviar', acao: onPdfPlanilha },
+            { rotulo: 'Copiar resumo', detalhe: 'Texto curto para colar', acao: onCopiar },
+            { rotulo: 'Enviar pelo WhatsApp', acao: onWhatsapp },
+          ]} />
+          <button type="button" onClick={onLimpar} className="h-11 px-4 rounded-lg text-sm font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/10">Limpar</button>
+        </div>
+      </div>
+    );
 
     const formatDateTime = (date) => date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -195,181 +267,173 @@
         return isNaN(num) ? 0 : num;
     };
 
-    // --- Componentes de Input Otimizados para Celular ---
-    const TextInput = ({ label, value, onChange, placeholder }) => (
-      <div className="mb-4">
-        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
-        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none" />
-      </div>
-    );
+    // --- Componentes de entrada (mesmo visual dos demais módulos: js/componentes.js) ---
+    const ENTRADA = 'block w-full h-11 px-3 text-base sm:text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-500 dark:disabled:bg-slate-900/60';
+    const ROTULO = 'block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5';
+    const AJUDA = 'mt-1 text-xs text-slate-500 dark:text-slate-400';
+    const BORDA_MOEDA = 'text-base sm:text-sm border-slate-300 dark:border-slate-600';
 
-    const DecimalInput = ({ label, value, onChange, placeholder }) => {
-      const handleChange = (e) => {
-        let val = e.target.value;
-        val = val.replace(/[^0-9,]/g, '');
-        const parts = val.split(',');
-        if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
-        onChange(val);
-      };
+    let contadorCampos = 0;
+    const useIdCampo = () => {
+      const ref = React.useRef(null);
+      if (ref.current === null) { contadorCampos += 1; ref.current = `campo-leilao-${contadorCampos}`; }
+      return ref.current;
+    };
+
+    const TextInput = ({ label, value, onChange, placeholder }) => {
+      const id = useIdCampo();
       return (
-        <div className="mb-4">
-          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
-          <input type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none" />
+        <div>
+          <label htmlFor={id} className={ROTULO}>{label}</label>
+          <input id={id} type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={ENTRADA} />
+        </div>
+      );
+    };
+
+    const limparDecimal = (texto) => {
+      let val = texto.replace(/[^0-9,]/g, '');
+      const parts = val.split(',');
+      if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
+      return val;
+    };
+
+    const DecimalInput = ({ label, value, onChange, placeholder, subText }) => {
+      const id = useIdCampo();
+      return (
+        <div>
+          <label htmlFor={id} className={ROTULO}>{label}</label>
+          <input id={id} type="text" inputMode="decimal" value={value} onChange={(e) => onChange(limparDecimal(e.target.value))} placeholder={placeholder} className={`${ENTRADA} tabular-nums`} />
+          {subText && <p className={AJUDA}>{subText}</p>}
         </div>
       );
     };
 
     const PercentInput = ({ label, value, onChange, placeholder, extraElement, max }) => {
+      const id = useIdCampo();
       const handleChange = (e) => {
-        let val = e.target.value;
-        val = val.replace(/[^0-9,]/g, '');
-        const parts = val.split(',');
-        if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
-        if (max != null && val !== '' && safeNumber(val) > max) {
-          val = String(max).replace('.', ',');
-        }
+        let val = limparDecimal(e.target.value);
+        if (max != null && val !== '' && safeNumber(val) > max) val = String(max).replace('.', ',');
         onChange(val);
       };
       return (
-        <div className="mb-4">
-          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
-          <div className="relative rounded-xl">
-            <input type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className="block w-full pl-4 pr-10 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none" />
-            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">%</span></div>
+        <div>
+          <label htmlFor={id} className={ROTULO}>{label}</label>
+          <div className="relative">
+            <input id={id} type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className={`${ENTRADA} pr-9 tabular-nums`} />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 pointer-events-none">%</span>
           </div>
           {extraElement && <div className="mt-1">{extraElement}</div>}
         </div>
       );
     };
 
-    const MoneyInput = ({ label, value, onChange, placeholder, subText }) => {
-      const displayValue = value === '' ? '' : formatCurrencyStr(value);
-
-      const handleChange = (e) => {
-        let rawValue = e.target.value;
-        if (rawValue === '') {
-          onChange('');
-          return;
-        }
-        const digits = rawValue.replace(/\D/g, '');
-        if (digits === '') {
-          onChange('');
-          return;
-        }
-        const floatValue = parseInt(digits, 10) / 100;
-        onChange(floatValue);
+    // Os valores em R$ desta calculadora são guardados como número; o campo trabalha com o texto
+    // mascarado ("350.000,00") e devolve o número a cada tecla. Quando o valor muda por fora
+    // (lance sugerido, limpar, abrir caso, total/por m²) o texto acompanha.
+    const centavos = (v) => {
+      if (v === '' || v == null) return null;
+      const n = window.CentralRegras.lerValor(v);
+      return Number.isNaN(n) ? null : Math.round(n * 100);
+    };
+    const useTextoMoeda = (value, onChange) => {
+      const R = window.CentralRegras;
+      const [texto, setTexto] = useState(() => R.textoCampoMoeda(value));
+      useEffect(() => {
+        if (centavos(texto) !== centavos(value)) setTexto(R.textoCampoMoeda(value));
+      }, [value]);
+      const alterar = (t) => {
+        setTexto(t);
+        const n = R.lerValor(t);
+        onChange(t === '' || Number.isNaN(n) ? '' : n);
       };
+      return [texto, alterar];
+    };
 
+    const MoneyInput = ({ label, value, onChange, placeholder, subText }) => {
+      const id = useIdCampo();
+      const [texto, alterar] = useTextoMoeda(value, onChange);
+      const { EntradaMoeda } = window.CentralUI;
       return (
-        <div className="mb-4">
-          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 truncate">{label}</label>
-          <div className="relative rounded-xl">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">R$</span></div>
-            <input type="text" inputMode="numeric" value={displayValue} onChange={handleChange} className="block w-full pl-10 pr-4 py-3 sm:py-2.5 text-base sm:text-sm font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none" placeholder={placeholder || "0,00"} />
-          </div>
-          <div className="text-xs text-slate-500 mt-1 ml-1 font-medium min-h-[16px]">
-            {subText ? subText : ''}
-          </div>
+        <div>
+          <label htmlFor={id} className={ROTULO}>{label}</label>
+          <EntradaMoeda id={id} valor={texto} onChange={alterar} placeholder={placeholder || '0,00'} className={BORDA_MOEDA} />
+          {subText && <p className={AJUDA}>{subText}</p>}
         </div>
       );
     };
 
     const TaxInput = ({ label, value, onChangeValue, type, onChangeType, description, disabled }) => {
-      let displayValue = value;
-      if (type === 'fixed' && value !== '') {
-          displayValue = formatCurrencyStr(value);
-      }
-
-      const handleChange = (e) => {
-        const raw = e.target.value;
-        if (type === 'fixed') {
-            if (raw === '') {
-                onChangeValue('');
-                return;
-            }
-            const digits = raw.replace(/\D/g, '');
-            if (digits === '') {
-                onChangeValue('');
-                return;
-            }
-            onChangeValue(parseInt(digits, 10) / 100);
-        } else {
-            let val = raw.replace(/[^0-9,]/g, '');
-            const parts = val.split(',');
-            if (parts.length > 2) val = parts[0] + ',' + parts.slice(1).join('');
-            onChangeValue(val);
-        }
-      };
-
+      const id = useIdCampo();
+      const [texto, alterar] = useTextoMoeda(value, onChangeValue || (() => {}));
+      const { EntradaMoeda } = window.CentralUI;
+      const emReais = type === 'fixed' || disabled;
       return (
-        <div className="mb-4">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-end mb-1.5 gap-2 sm:gap-0">
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
+        <div>
+          <div className="flex justify-between items-end gap-2 mb-1.5">
+            <label htmlFor={id} className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
             {!disabled && (
-              <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1 w-fit">
-                <button onClick={() => onChangeType('percent')} className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${type === 'percent' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>%</button>
-                <button onClick={() => onChangeType('fixed')} className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${type === 'fixed' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>R$</button>
-              </div>
+              <Segmentado rotulo={`Tipo de valor: ${label}`} valor={type} onChange={onChangeType}
+                opcoes={[{ valor: 'percent', rotulo: '%' }, { valor: 'fixed', rotulo: 'R$' }]} className="!p-0.5 [&>button]:h-6 [&>button]:px-2.5" />
             )}
           </div>
-          <div className="relative rounded-xl">
-            {(type === 'fixed' || disabled) && (
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">R$</span></div>
-            )}
-            <input
-              type="text" inputMode={type === 'fixed' || disabled ? "numeric" : "decimal"} disabled={disabled}
-              value={displayValue}
-              onChange={handleChange}
-              className={`block w-full ${(type === 'fixed' || disabled) ? 'pl-10 pr-4' : 'pl-4 pr-10'} py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none transition-colors disabled:opacity-75`}
-              placeholder="0"
-            />
-            {type === 'percent' && !disabled && (
-              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"><span className="text-slate-500 font-medium sm:text-sm">%</span></div>
-            )}
-          </div>
-          <div className="flex justify-between items-center mt-1.5 ml-1 h-4">
-            {description && <div className="text-[11px] text-slate-500">{description}</div>}
-          </div>
+          {disabled ? (
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 pointer-events-none">R$</span>
+              <input id={id} type="text" disabled value={formatCurrencyStr(value) || '0,00'} className={`${ENTRADA} pl-10 tabular-nums`} />
+            </div>
+          ) : emReais ? (
+            <EntradaMoeda id={id} valor={texto} onChange={alterar} placeholder="0,00" className={BORDA_MOEDA} />
+          ) : (
+            <div className="relative">
+              <input id={id} type="text" inputMode="decimal" value={value} onChange={(e) => onChangeValue(limparDecimal(e.target.value))} placeholder="0" className={`${ENTRADA} pr-9 tabular-nums`} />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 pointer-events-none">%</span>
+            </div>
+          )}
+          {description && <p className={AJUDA}>{description}</p>}
         </div>
       );
     };
 
     const ShowInBudgetToggle = ({ checked, onChange }) => (
-      <label className="flex items-center gap-1.5 mt-1.5 ml-1 cursor-pointer select-none w-fit">
-        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-3.5 h-3.5 text-slate-900 rounded" />
-        <span className="text-[11px] text-slate-500 dark:text-slate-400">Mostrar no orçamento</span>
+      <label className="flex items-center gap-1.5 mt-1.5 cursor-pointer select-none w-fit">
+        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-3.5 h-3.5 rounded accent-emerald-600" />
+        <span className="text-xs text-slate-500 dark:text-slate-400">Mostrar no orçamento</span>
       </label>
     );
 
-    // step/activeStep/onStepChange/isLast turn the card into a mobile-only accordion step;
-    // omit them (or pass step={null}) to keep the card always open, as on desktop.
-    const Card = ({ title, icon: Icon, children, extraHeader, step, activeStep, onStepChange, isLast }) => {
+    // Etapa numerada do formulário. No celular funciona como acordeão (uma etapa aberta por vez,
+    // com um resumo de uma linha quando fechada); no computador fica sempre aberta.
+    const Card = ({ title, numero, resumo, children, extraHeader, step, activeStep, onStepChange, isLast }) => {
       const steppable = step != null;
       const isOpen = !steppable || step === activeStep;
+      const titulo = (
+        <span className="flex items-center gap-3 min-w-0">
+          {numero != null && <span className="flex-shrink-0 w-6 h-6 rounded-full bg-navy-900 dark:bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">{numero}</span>}
+          <span className="min-w-0">
+            <span className="block text-base font-semibold text-slate-900 dark:text-white truncate">{title}</span>
+            {resumo && !isOpen && <span className="block sm:hidden text-xs text-slate-500 dark:text-slate-400 truncate">{resumo}</span>}
+          </span>
+        </span>
+      );
       return (
-        <div className="bg-white dark:bg-[#14243A] rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-card relative">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 p-4 sm:p-6 sm:pb-0">
+        <section className="bg-white dark:bg-[#14243A] rounded-2xl border border-slate-200 dark:border-slate-700/60">
+          <div className="flex flex-wrap justify-between items-center gap-3 px-5 sm:px-6 pt-5">
             {steppable ? (
-              <button type="button" onClick={() => onStepChange(isOpen ? -1 : step)} className="w-full flex items-center justify-between gap-2 text-left sm:w-auto sm:pointer-events-none" aria-expanded={isOpen}>
-                <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 min-w-0">
-                  {Icon && <Icon className="w-5 h-5 text-slate-400 flex-shrink-0" />} <span className="truncate">{title}</span>
-                </h3>
+              <button type="button" onClick={() => onStepChange(isOpen ? -1 : step)} className="flex-1 sm:flex-none min-w-0 flex items-center justify-between gap-2 text-left sm:pointer-events-none" aria-expanded={isOpen}>
+                {titulo}
                 <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 sm:hidden transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </button>
-            ) : (
-              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                {Icon && <Icon className="w-5 h-5 text-slate-400" />} {title}
-              </h3>
-            )}
-            {extraHeader}
+            ) : titulo}
+            {extraHeader && <div className={`${isOpen ? '' : 'hidden'} sm:block`}>{extraHeader}</div>}
           </div>
-          <div className={`${isOpen ? 'block section-open' : 'hidden'} sm:block px-4 sm:px-6 pb-4 sm:pb-6 pt-5`}>
+          <div className={`${isOpen ? 'block section-open' : 'hidden'} sm:block px-5 sm:px-6 pb-5 sm:pb-6 pt-5 space-y-4`}>
             {children}
             {steppable && !isLast && (
-              <button type="button" onClick={() => onStepChange(step + 1)} className="sm:hidden mt-2 w-full py-2.5 bg-navy-900 dark:bg-emerald-600 text-white dark:text-navy-900 font-bold text-sm rounded-md transition-colors">Continuar</button>
+              <button type="button" onClick={() => onStepChange(step + 1)} className="sm:hidden w-full h-11 bg-navy-900 dark:bg-emerald-600 text-white font-semibold text-sm rounded-lg">Continuar</button>
             )}
           </div>
-        </div>
+          {!isOpen && <div className="h-5 sm:hidden" />}
+        </section>
       );
     };
 
@@ -482,6 +546,11 @@
       // Acordeão de preenchimento (só tem efeito visual no celular; no desktop os cartões ficam sempre abertos)
       const [leilaoStep, setLeilaoStep] = useState(0);
       const [escrituraStep, setEscrituraStep] = useState(0);
+
+      // Campos opcionais recolhidos: abrem sozinhos quando já há algo preenchido (ex.: caso salvo)
+      const [mostrarIdentificacao, setMostrarIdentificacao] = useState(Boolean(initialState?.clienteNomeLeilao || initialState?.imovelDescLeilao));
+      const [mostrarOpcoes, setMostrarOpcoes] = useState(Boolean(initialState?.valorVenalLeilao || initialState?.segundaPracaValue || initialState?.maxBudget));
+      const [editarTaxas, setEditarTaxas] = useState(false);
 
       // Estados: LEILÃO
       const [assetType, setAssetType] = useState(initialState?.assetType || 'urbano');
@@ -643,7 +712,12 @@
 
       const handleLoadCase = (id) => {
         const found = savedCases.find(c => c.id === id);
-        if (found) { applyState(found.state); setIsCasesOpen(false); }
+        if (found) {
+          const s = found.state;
+          applyState(s); setIsCasesOpen(false);
+          setMostrarIdentificacao(Boolean(s.clienteNomeLeilao || s.imovelDescLeilao));
+          setMostrarOpcoes(Boolean(s.valorVenalLeilao || s.segundaPracaValue || s.maxBudget));
+        }
       };
 
       const handleDeleteCase = (id) => {
@@ -667,7 +741,7 @@
                 setClienteNomeLeilao(''); setImovelDescLeilao('');
                 setEvalValue(''); setMarketValue(''); setBidValue('');
                 setEvalUnitValue(''); setMarketUnitValue(''); setBidUnitValue('');
-                setMaxBudget(''); setDebts(''); setRenovation(''); setValorVenalLeilao('');
+                setMaxBudget(''); setDebts(''); setRenovation(''); setValorVenalLeilao(''); setSegundaPracaValue('');
                 setAssetSize(''); setAssetType('urbano'); setVeiculoMode('leilao'); setRuralUnit('ha'); setValMode('total'); setFipeDiscount('30');
             } else {
                 setClienteNome(''); setImovelDesc(''); setNegocioValor(''); setValorVenalEsc('');
@@ -1063,80 +1137,92 @@
         else baixarPlanilhaApp(Reg.baixarPlanilhaSimples(m.linhas, 'Cálculo', criterios, clienteNome || imovelDesc || 'escritura'));
       };
 
-      const leilaoLastStep = assetType === 'veiculo' ? 3 : 4;
-      const valoresStep = assetType === 'veiculo' ? 1 : 2;
-      const taxasStep = assetType === 'veiculo' ? 2 : 3;
+      const leilaoLastStep = 2;
+      const ehVeiculo = assetType === 'veiculo';
+      const tituloAnalise = ehVeiculo ? (isRegularizacao ? 'Análise de compra com regularização' : 'Análise veicular') : 'Análise imobiliária';
+
+      // Resumo das taxas (modo padrão): regra aplicada + valor, sem expor os campos de edição
+      const regraTaxa = (t) => (t.type === 'percent' ? `${safeNumber(t.value).toLocaleString('pt-BR')}%` : 'valor fixo');
+      const linhasTaxas = [
+        !isRegularizacao && { rotulo: 'Leiloeiro', regra: regraTaxa(leiloeiro), valor: leiloeiroCost },
+        !ehVeiculo && { rotulo: 'ITBI', regra: `${regraTaxa(itbi)}${safeNumber(valorVenalLeilao) > safeBid ? ' · base: valor venal' : ''}`, valor: itbiCostLeilao },
+        !ehVeiculo && { rotulo: 'Registro de imóveis', regra: cartorioModeLeilao === 'pr' ? 'tabela TJ-PR' : regraTaxa(cartorioManualLeilao), valor: cartorioCostLeilao },
+        { rotulo: isRegularizacao ? 'Honorários judiciais' : 'Assessoria jurídica', regra: regraTaxa(legal), valor: legalCost },
+      ].filter(Boolean);
+      const totalTaxasLeilao = linhasTaxas.reduce((soma, l) => soma + l.valor, 0);
+
+      // Veredito do painel: o rótulo comunica o resultado, a cor só reforça
+      const veredito = !temVendaEstimada ? null
+        : lucroAbsoluto < 0 ? { rotulo: 'Inviável', chip: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/60', ponto: 'bg-red-500', fundo: 'bg-red-50 dark:bg-red-950/25', valor: 'text-red-600 dark:text-red-400' }
+        : margemLucroPorcentagem < ROI_CONFORTAVEL ? { rotulo: 'Margem apertada', chip: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60', ponto: 'bg-amber-500', fundo: 'bg-amber-50/70 dark:bg-amber-950/20', valor: 'text-slate-900 dark:text-white' }
+        : { rotulo: 'Viável', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60', ponto: 'bg-emerald-500', fundo: 'bg-emerald-50/70 dark:bg-emerald-950/25', valor: 'text-emerald-700 dark:text-emerald-400' };
+
+      const rotuloUnidade = getUnitLabel();
+      const porUnidade = valMode !== 'total';
 
       return (
         <div className="min-h-screen pb-24 print-page-wrapper">
           {toast && (
-            <div role="status" aria-live="polite" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-[90vw] px-4 py-2.5 rounded-lg bg-navy-900 dark:bg-emerald-600 text-white dark:text-navy-900 text-sm font-semibold shadow-card print-hide section-open">
+            <div role="status" aria-live="polite" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-[90vw] px-4 py-2.5 rounded-lg bg-navy-900 dark:bg-emerald-600 text-white text-sm font-semibold shadow-card print-hide section-open">
               ✓ {toast}
             </div>
           )}
 
-          {/* Barra superior: sem bloco escuro, o nome do produto fica na própria tela */}
-          <div className="sticky top-14 lg:top-0 z-30 bg-navy-900 dark:bg-[#0B1424] print-hide shadow-card">
-            <div className="max-w-5xl mx-auto px-4 sm:px-6">
-              <div className="flex justify-between items-center h-14 sm:h-[72px] gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="min-w-0">
-                    <h1 className="text-[13px] sm:text-sm font-semibold tracking-tight text-white truncate">Calculadora de Leilões e Imóveis</h1>
-                    <div className="text-[11px] text-slate-300/80 truncate">{advName}{advOab ? ` · ${advOab}` : ''}</div>
-                  </div>
-                </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  <button onClick={() => setIsCasesOpen(!isCasesOpen)} className="px-3 h-9 rounded-lg text-xs font-semibold text-slate-200 hover:bg-white/10 transition-colors">
-                    Casos
-                  </button>
-                  <button onClick={() => setDarkMode(!darkMode)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-200 hover:bg-white/10 transition-colors" aria-label="Alternar tema">
-                    {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                  </button>
-                  <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-200 hover:bg-white/10 transition-colors" aria-label="Configurações">
-                    <Settings className="w-4 h-4" />
-                  </button>
-                </div>
+          {/* Cabeçalho da página: mesmo padrão dos demais módulos (sem segunda barra escura) */}
+          <header className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 print-hide">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-navy-900 dark:text-white">Calculadora de leilões</h1>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {activeTab === 'leilao' ? 'Custo total, lucro e ROI da arrematação de imóveis e veículos.' : 'Custas de escritura, ITBI e registro de uma compra e venda.'}
+                </p>
               </div>
-
-              {/* Abas sublinhadas no mesmo filete da barra */}
-              <div className="flex gap-6 -mb-px overflow-x-auto no-scrollbar">
-                <button onClick={() => setActiveTab('leilao')} className={`whitespace-nowrap py-3 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'leilao' ? 'border-emerald-500 text-white' : 'border-transparent text-slate-300 hover:text-white'}`}>Arrematação (Leilão)</button>
-                <button onClick={() => setActiveTab('escritura')} className={`whitespace-nowrap py-3 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'escritura' ? 'border-emerald-500 text-white' : 'border-transparent text-slate-300 hover:text-white'}`}>Compra, Venda e RGI</button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button type="button" onClick={() => setIsCasesOpen(!isCasesOpen)} aria-expanded={isCasesOpen}
+                  className={`h-9 px-3 rounded-lg border text-xs font-semibold ${isCasesOpen ? 'border-emerald-500 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30' : 'border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10'}`}>
+                  Casos salvos{savedCases.length > 0 ? ` (${savedCases.length})` : ''}
+                </button>
+                <button type="button" onClick={() => setIsSettingsOpen(!isSettingsOpen)} aria-expanded={isSettingsOpen} aria-label="Identificação do profissional" title="Identificação do profissional"
+                  className={`w-9 h-9 flex items-center justify-center rounded-lg border ${isSettingsOpen ? 'border-emerald-500 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30' : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10'}`}>
+                  <Settings className="w-4 h-4" />
+                </button>
               </div>
             </div>
-          </div>
+            <Segmentado rotulo="Tipo de cálculo" valor={activeTab} onChange={setActiveTab} className="mt-5 [&>button]:h-9 [&>button]:px-4 [&>button]:text-sm"
+              opcoes={[{ valor: 'leilao', rotulo: 'Arrematação (leilão)' }, { valor: 'escritura', rotulo: 'Compra, venda e RGI' }]} />
+          </header>
 
-          <div className="max-w-5xl mx-auto px-4 sm:px-4 print-hide">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 print-hide">
             {isSettingsOpen && (
-              <div className="bg-white dark:bg-[#14243A] p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-card mt-4">
-                <h3 className="text-sm font-bold mb-3 text-slate-800 dark:text-slate-200">Configurações de Identidade</h3>
+              <div className="bg-white dark:bg-[#14243A] p-5 rounded-2xl border border-slate-200 dark:border-slate-700/60 mt-4 section-open">
+                <h3 className="text-sm font-semibold mb-4 text-slate-900 dark:text-white">Identificação do profissional</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <TextInput label="Nome do Profissional/Escritório" value={advName} onChange={setAdvName} />
-                  <TextInput label="Registo Profissional (Ex: OAB/PR)" value={advOab} onChange={setAdvOab} />
+                  <TextInput label="Nome do profissional ou escritório" value={advName} onChange={setAdvName} />
+                  <TextInput label="Registro profissional (ex.: OAB/PR)" value={advOab} onChange={setAdvOab} />
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">Tabelas de custas TJ-PR vigentes desde {VIGENCIA_TABELAS_PR}. Verifique atualizações anuais antes de confiar em valores altos.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">Aparece no relatório em PDF. Tabelas de custas TJ-PR vigentes desde {VIGENCIA_TABELAS_PR}; verifique as atualizações anuais antes de confiar em valores altos.</p>
               </div>
             )}
 
             {isCasesOpen && (
-              <div className="bg-white dark:bg-[#14243A] p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-card mt-4">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Casos Salvos</h3>
-                  <button onClick={handleSaveCase} className="px-3 py-1.5 bg-navy-900 hover:bg-navy-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white dark:text-navy-900 text-xs font-bold rounded-md">Salvar Caso Atual</button>
+              <div className="bg-white dark:bg-[#14243A] p-5 rounded-2xl border border-slate-200 dark:border-slate-700/60 mt-4 section-open">
+                <div className="flex justify-between items-center gap-3 mb-3">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Casos salvos</h3>
+                  <button type="button" onClick={handleSaveCase} className="h-9 px-3 bg-navy-900 hover:bg-navy-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg">Salvar caso atual</button>
                 </div>
                 {savedCases.length === 0 ? (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Nenhum caso salvo ainda. Preencha os dados e clique em "Salvar Caso Atual" para guardar este cálculo e voltar a ele depois.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum caso salvo ainda. Preencha os dados e clique em "Salvar caso atual" para voltar a este cálculo depois.</p>
                 ) : (
-                  <ul className="space-y-2 max-h-64 overflow-y-auto">
+                  <ul className="divide-y divide-slate-100 dark:divide-slate-700/60 max-h-64 overflow-y-auto">
                     {savedCases.map(c => (
-                      <li key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-2">
+                      <li key={c.id} className="flex justify-between items-center gap-3 py-2.5">
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{c.nome}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400">{c.tipo === 'leilao' ? 'Leilão' : 'Escritura'} · {c.data}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">{c.tipo === 'leilao' ? 'Leilão' : 'Escritura'} · {c.data}</div>
                         </div>
-                        <div className="flex gap-2 flex-shrink-0 ml-2">
-                          <button onClick={() => handleLoadCase(c.id)} className="px-2.5 py-1 text-[11px] font-bold bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white rounded-md">Abrir</button>
-                          <button onClick={() => handleDeleteCase(c.id)} className="px-2.5 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-md">Excluir</button>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <button type="button" onClick={() => handleLoadCase(c.id)} className="h-8 px-3 text-xs font-semibold border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-white rounded-lg">Abrir</button>
+                          <button type="button" onClick={() => handleDeleteCase(c.id)} className="h-8 px-3 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg">Excluir</button>
                         </div>
                       </li>
                     ))}
@@ -1148,49 +1234,34 @@
 
           <div className="h-6 print-hide" />
 
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 print:mt-0 print:px-0">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 print:mt-0 print:px-0">
 
             {/* --- ABA LEILÃO --- */}
             {activeTab === 'leilao' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="space-y-4 sm:space-y-6 print-hide">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 items-start">
+                <div className="space-y-4 print-hide">
 
-                  {/* Seletor Tipo de Bem */}
-                  <div className="bg-white dark:bg-[#14243A] rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-card p-3 flex gap-2">
-                      <button onClick={() => setAssetType('urbano')} className={`flex-1 flex flex-col items-center py-3 rounded-md border transition-colors ${assetType === 'urbano' ? 'border-emerald-600 dark:border-emerald-500 bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                          <Home className="w-5 h-5 mb-1" /> <span className="text-[11px] sm:text-xs font-bold">Urbano</span>
-                      </button>
-                      <button onClick={() => setAssetType('rural')} className={`flex-1 flex flex-col items-center py-3 rounded-md border transition-colors ${assetType === 'rural' ? 'border-emerald-600 dark:border-emerald-500 bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                          <Tree className="w-5 h-5 mb-1" /> <span className="text-[11px] sm:text-xs font-bold">Rural</span>
-                      </button>
-                      <button onClick={() => setAssetType('veiculo')} className={`flex-1 flex flex-col items-center py-3 rounded-md border transition-colors ${assetType === 'veiculo' ? 'border-emerald-600 dark:border-emerald-500 bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white' : 'border-transparent bg-slate-50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                          <Car className="w-5 h-5 mb-1" /> <span className="text-[11px] sm:text-xs font-bold">Veículo</span>
-                      </button>
-                  </div>
+                  {/* Etapa 1: o bem */}
+                  <Card title={ehVeiculo ? 'O veículo' : 'O imóvel'} numero={1} step={0} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={false}
+                    resumo={[{ urbano: 'Urbano', rural: 'Rural', veiculo: 'Veículo' }[assetType], !ehVeiculo && safeSize > 0 ? `${formatCurrencyStr(safeSize)} ${assetType === 'urbano' ? 'm²' : rotuloUnidade}` : null].filter(Boolean).join(' · ')}>
+                    <Segmentado rotulo="Tipo de bem" valor={assetType} onChange={setAssetType} className="w-full [&>button]:h-10 [&>button]:text-sm"
+                      opcoes={[{ valor: 'urbano', rotulo: 'Urbano', icone: Home }, { valor: 'rural', rotulo: 'Rural', icone: Tree }, { valor: 'veiculo', rotulo: 'Veículo', icone: Car }]} />
 
-                  {assetType === 'veiculo' && (
-                    <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg flex gap-1 mb-6 border border-slate-200 dark:border-slate-700 mt-2">
-                        <button onClick={() => setVeiculoMode('leilao')} className={`flex-1 py-2.5 sm:py-2 text-[11px] sm:text-xs font-bold rounded-md transition-colors ${veiculoMode === 'leilao' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>Arrematação em Leilão</button>
-                        <button onClick={() => setVeiculoMode('regularizacao')} className={`flex-1 py-2.5 sm:py-2 text-[11px] sm:text-xs font-bold rounded-md transition-colors ${veiculoMode === 'regularizacao' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>Compra c/ Regularização Judicial</button>
-                    </div>
-                  )}
+                    {ehVeiculo && (
+                      <Segmentado rotulo="Modalidade" valor={veiculoMode} onChange={setVeiculoMode} className="w-full"
+                        opcoes={[{ valor: 'leilao', rotulo: 'Arrematação em leilão' }, { valor: 'regularizacao', rotulo: 'Compra com regularização' }]} />
+                    )}
 
-                  <Card title="Dados do Arrematante" icon={Building} step={0} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={leilaoLastStep === 0}>
-                    <TextInput label="Nome do Cliente" value={clienteNomeLeilao} onChange={setClienteNomeLeilao} placeholder="Ex: Thiago de Souza Reis" />
-                    <TextInput label={assetType === 'veiculo' ? "Identificação do Veículo" : "Identificação do Imóvel"} value={imovelDescLeilao} onChange={setImovelDescLeilao} placeholder={assetType === 'veiculo' ? "Ex: Toyota Corolla 2022" : "Ex: Casa - Centro, Loanda/PR"} />
-                  </Card>
-
-                  {/* Dimensão (Esconde se for veículo) */}
-                  {assetType !== 'veiculo' && (
-                    <Card title="Dimensões do Imóvel" icon={assetType === 'rural' ? Tree : Home} step={1} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={leilaoLastStep === 1}>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <DecimalInput label={assetType === 'urbano' ? "Área Total (m²)" : "Tamanho Total"} value={assetSize} onChange={setAssetSize} placeholder="Ex: 250,50" />
+                    {!ehVeiculo && (
+                      <div className={`grid grid-cols-1 gap-4 ${assetType === 'rural' ? 'sm:grid-cols-2' : ''}`}>
+                        <DecimalInput label={assetType === 'urbano' ? 'Área total (m²)' : 'Área total'} value={assetSize} onChange={setAssetSize} placeholder="Ex.: 250,50"
+                          subText={assetType === 'urbano' ? 'Opcional. Permite informar valores por m².' : undefined} />
                         {assetType === 'rural' && (
                           <div>
-                            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Unidade</label>
-                            <select value={ruralUnit} onChange={(e) => setRuralUnit(e.target.value)} className="block w-full px-4 py-3 sm:py-2.5 text-base sm:text-sm font-medium border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500 outline-none">
-                              <option value="m2">Metro Quadrado (m²)</option>
-                              <option value="ha">Hectares (ha)</option>
+                            <label htmlFor="unidade-rural" className={ROTULO}>Unidade</label>
+                            <select id="unidade-rural" value={ruralUnit} onChange={(e) => setRuralUnit(e.target.value)} className={ENTRADA}>
+                              <option value="m2">Metro quadrado (m²)</option>
+                              <option value="ha">Hectare (ha)</option>
                               {Object.entries(ALQUEIRES).map(([key, val]) => (
                                 <option key={key} value={key}>{val.name}</option>
                               ))}
@@ -1198,383 +1269,314 @@
                           </div>
                         )}
                       </div>
-                    </Card>
-                  )}
+                    )}
 
-                  <Card
-                    title={`Valores do ${assetType === 'veiculo' ? 'Veículo' : 'Imóvel'}`}
-                    icon={FileText}
-                    step={valoresStep}
-                    activeStep={leilaoStep}
-                    onStepChange={setLeilaoStep}
-                    isLast={leilaoLastStep === valoresStep}
-                    extraHeader={assetType !== 'veiculo' && safeSize > 0 && (
-                      <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
-                        <button onClick={() => handleValModeChange('total')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${valMode === 'total' ? 'bg-navy-900 dark:bg-emerald-600 text-white dark:text-navy-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Total</button>
-                        <button onClick={() => handleValModeChange('unit')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${valMode === 'unit' ? 'bg-navy-900 dark:bg-emerald-600 text-white dark:text-navy-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Por {getUnitLabel()}</button>
-                      </div>
+                    <Revelar titulo="Identificar cliente e bem (para o relatório)" aberto={mostrarIdentificacao} onAlternar={() => setMostrarIdentificacao(!mostrarIdentificacao)}>
+                      <TextInput label={isRegularizacao ? 'Comprador / cliente' : 'Arrematante / cliente'} value={clienteNomeLeilao} onChange={setClienteNomeLeilao} placeholder="Ex.: Thiago de Souza Reis" />
+                      <TextInput label={ehVeiculo ? 'Identificação do veículo' : 'Identificação do imóvel'} value={imovelDescLeilao} onChange={setImovelDescLeilao} placeholder={ehVeiculo ? 'Ex.: Toyota Corolla 2022' : 'Ex.: Casa - Centro, Loanda/PR'} />
+                    </Revelar>
+                  </Card>
+
+                  {/* Etapa 2: valores */}
+                  <Card title="Valores" numero={2} step={1} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={false}
+                    resumo={safeBid > 0 ? `Lance ${formatMoney(safeBid)}${safeMarket > 0 ? ` · mercado ${formatMoney(safeMarket)}` : ''}` : 'Lance, avaliação e mercado'}
+                    extraHeader={!ehVeiculo && safeSize > 0 && (
+                      <Segmentado rotulo="Forma de informar os valores" valor={valMode} onChange={handleValModeChange}
+                        opcoes={[{ valor: 'total', rotulo: 'Total' }, { valor: 'unit', rotulo: `Por ${rotuloUnidade}` }]} />
                     )}
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <MoneyInput
-                        label={valMode === 'total' ? (isRegularizacao ? "Valor de Compra Acordado" : "Valor do Lance / Arremate") : `Lance (Por ${getUnitLabel()})`}
-                        value={valMode === 'total' ? bidValue : bidUnitValue}
-                        onChange={valMode === 'total' ? setBidValue : setBidUnitValue}
-                        subText={assetType !== 'veiculo' ? getSubText(valMode === 'total', valMode === 'total' ? bidValue : bidUnitValue, safeSize) : undefined}
-                      />
-                      <MoneyInput
-                        label={valMode === 'total' ? "Valor de Avaliação" : `Avaliação (Por ${getUnitLabel()})`}
-                        value={valMode === 'total' ? evalValue : evalUnitValue}
-                        onChange={valMode === 'total' ? setEvalValue : setEvalUnitValue}
-                        subText={assetType !== 'veiculo' ? getSubText(valMode === 'total', valMode === 'total' ? evalValue : evalUnitValue, safeSize) : undefined}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <MoneyInput
-                        label={assetType === 'veiculo' ? "Valor Tabela FIPE (Cheia)" : (valMode === 'total' ? "Valor de Mercado Real" : `Mercado (Por ${getUnitLabel()})`)}
-                        value={valMode === 'total' ? marketValue : marketUnitValue}
-                        onChange={valMode === 'total' ? setMarketValue : setMarketUnitValue}
-                        subText={assetType !== 'veiculo' ? getSubText(valMode === 'total', valMode === 'total' ? marketValue : marketUnitValue, safeSize) : undefined}
-                      />
-
-                      {assetType === 'veiculo' && (
-                        <PercentInput
-                            label="Desvalorização na Revenda"
-                            value={fipeDiscount}
-                            onChange={setFipeDiscount}
-                            placeholder="30"
-                            max={100}
-                            extraElement={<div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">Venda Estimada: {formatMoney(discountedSaleValue)}</div>}
+                      <div className={ehVeiculo ? '' : 'sm:col-span-2'}>
+                        <MoneyInput
+                          label={porUnidade ? `Lance por ${rotuloUnidade}` : (isRegularizacao ? 'Valor de compra acordado' : 'Valor do lance')}
+                          value={porUnidade ? bidUnitValue : bidValue}
+                          onChange={porUnidade ? setBidUnitValue : setBidValue}
+                          subText={!ehVeiculo ? getSubText(!porUnidade, porUnidade ? bidUnitValue : bidValue, safeSize) : undefined}
                         />
+                      </div>
+                      <MoneyInput
+                        label={porUnidade ? `Avaliação por ${rotuloUnidade}` : 'Valor de avaliação'}
+                        value={porUnidade ? evalUnitValue : evalValue}
+                        onChange={porUnidade ? setEvalUnitValue : setEvalValue}
+                        subText={!ehVeiculo ? getSubText(!porUnidade, porUnidade ? evalUnitValue : evalValue, safeSize) : undefined}
+                      />
+                      <MoneyInput
+                        label={ehVeiculo ? 'Tabela FIPE (cheia)' : (porUnidade ? `Mercado por ${rotuloUnidade}` : 'Valor de mercado')}
+                        value={porUnidade ? marketUnitValue : marketValue}
+                        onChange={porUnidade ? setMarketUnitValue : setMarketValue}
+                        subText={!ehVeiculo ? getSubText(!porUnidade, porUnidade ? marketUnitValue : marketValue, safeSize) : undefined}
+                      />
+                      {ehVeiculo && (
+                        <div className="sm:col-span-2">
+                          <PercentInput label="Desvalorização na revenda" value={fipeDiscount} onChange={setFipeDiscount} placeholder="30" max={100}
+                            extraElement={<p className="text-xs text-slate-500 dark:text-slate-400">Venda estimada: <span className="font-semibold text-slate-700 dark:text-slate-200 tabular-nums">{formatMoney(discountedSaleValue)}</span></p>} />
+                        </div>
                       )}
                     </div>
 
-                    {assetType !== 'veiculo' && (
-                      <MoneyInput
-                        label="Valor Venal (opcional, para base do ITBI)"
-                        value={valorVenalLeilao}
-                        onChange={setValorVenalLeilao}
-                        subText="Se maior que o lance, o ITBI usa este valor como base — regra comum na maioria dos municípios"
-                      />
-                    )}
-
-                    <MoneyInput
-                      label="Lance na 2ª Praça (opcional, para comparar)"
-                      value={segundaPracaValue}
-                      onChange={setSegundaPracaValue}
-                      subText="Preencha para ver o comparativo de custo e lucro lado a lado com a 1ª praça"
-                    />
-
-                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                      <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
-                        <MoneyInput label="Orçamento Máximo Total (Teto Pessoal)" value={maxBudget} onChange={setMaxBudget} />
-                        <button onClick={handleSuggestBid} className="w-full py-3 sm:py-2 bg-navy-900 hover:bg-navy-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white dark:text-navy-900 font-bold rounded-md text-sm transition-colors">Calcular Lance Ideal Baseado no Orçamento</button>
+                    <Revelar titulo={ehVeiculo ? 'Mais opções: 2ª praça e orçamento' : 'Mais opções: valor venal, 2ª praça e orçamento'} aberto={mostrarOpcoes} onAlternar={() => setMostrarOpcoes(!mostrarOpcoes)}>
+                      {!ehVeiculo && (
+                        <MoneyInput label="Valor venal" value={valorVenalLeilao} onChange={setValorVenalLeilao}
+                          subText="Se for maior que o lance, o ITBI usa este valor como base (regra comum nos municípios)." />
+                      )}
+                      <MoneyInput label="Lance na 2ª praça" value={segundaPracaValue} onChange={setSegundaPracaValue}
+                        subText="Mostra no resultado o comparativo de custo e lucro com a 1ª praça." />
+                      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-start">
+                        <MoneyInput label="Orçamento máximo (teto pessoal)" value={maxBudget} onChange={setMaxBudget}
+                          subText="Calcula o maior lance cujo custo total cabe no orçamento." />
+                        <button type="button" onClick={handleSuggestBid} disabled={!(safeNumber(maxBudget) > 0)}
+                          className="sm:mt-[26px] h-11 px-4 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-white/5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+                          Calcular lance ideal
+                        </button>
                       </div>
-                    </div>
+                    </Revelar>
                   </Card>
 
-                  <Card
-                    title="Taxas e Custas de Entrada"
-                    icon={FileText}
-                    step={taxasStep}
-                    activeStep={leilaoStep}
-                    onStepChange={setLeilaoStep}
-                    isLast={leilaoLastStep === taxasStep}
-                    extraHeader={assetType !== 'veiculo' && (
-                      <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
-                        <button onClick={() => setCartorioModeLeilao('pr')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${cartorioModeLeilao === 'pr' ? 'bg-navy-900 dark:bg-emerald-600 text-white dark:text-navy-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Auto PR</button>
-                        <button onClick={() => setCartorioModeLeilao('manual')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${cartorioModeLeilao === 'manual' ? 'bg-navy-900 dark:bg-emerald-600 text-white dark:text-navy-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Manual</button>
+                  {/* Etapa 3: custos */}
+                  <Card title="Custos" numero={3} step={2} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={true}
+                    resumo={`Taxas e custas ${formatMoney(totalTaxasLeilao)}${fixedCostsLeilao > 0 ? ` · extras ${formatMoney(fixedCostsLeilao)}` : ''}`}>
+                    <div>
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Taxas e custas de entrada</span>
+                        <button type="button" onClick={() => setEditarTaxas(!editarTaxas)} aria-expanded={editarTaxas}
+                          className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300">
+                          {editarTaxas ? 'Concluir' : 'Editar taxas'}
+                        </button>
                       </div>
-                    )}
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {!isRegularizacao && (
-                          <TaxInput label="Leiloeiro" value={leiloeiro.value} type={leiloeiro.type} onChangeValue={(val) => setLeiloeiro({ ...leiloeiro, value: val })} onChangeType={(t) => setLeiloeiro({ ...leiloeiro, type: t })} description="Padrão: 5%" />
-                        )}
 
-                        {assetType !== 'veiculo' && (
-                          <TaxInput label="ITBI (Imposto)" value={itbi.value} type={itbi.type} onChangeValue={(val) => setItbi({ ...itbi, value: val })} onChangeType={(t) => setItbi({ ...itbi, type: t })} description="Padrão: 2%" />
-                        )}
-
-                        {assetType !== 'veiculo' && (
-                          cartorioModeLeilao === 'pr' ? (
-                            <TaxInput label="Registo Imóveis" value={cartorioCostLeilao} type="fixed" disabled description="Tabela TJ-PR 2026" />
-                          ) : (
-                            <TaxInput label="Registo Imóveis" value={cartorioManualLeilao.value} type={cartorioManualLeilao.type} onChangeValue={(val) => setCartorioManualLeilao({ ...cartorioManualLeilao, value: val })} onChangeType={(t) => setCartorioManualLeilao({ ...cartorioManualLeilao, type: t })} description="Custas manuais" />
-                          )
-                        )}
-
-                        <TaxInput label={isRegularizacao ? "Honorários Judiciais" : "Assessoria Reis"} value={legal.value} type={legal.type} onChangeValue={(val) => setLegal({ ...legal, value: val })} onChangeType={(t) => setLegal({ ...legal, type: t })} description={isRegularizacao ? "Regularização" : "Honorários"} />
+                      {!editarTaxas ? (
+                        <ul className="divide-y divide-slate-100 dark:divide-slate-700/60 rounded-xl border border-slate-200 dark:border-slate-700/60">
+                          {linhasTaxas.map((l) => (
+                            <li key={l.rotulo} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                              <span className="min-w-0 truncate"><span className="text-slate-700 dark:text-slate-200">{l.rotulo}</span> <span className="text-xs text-slate-400">· {l.regra}</span></span>
+                              <span className="font-semibold tabular-nums text-slate-900 dark:text-white whitespace-nowrap">{safeBid > 0 ? formatMoney(l.valor) : '—'}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="space-y-4 section-open">
+                          {!ehVeiculo && (
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="text-xs text-slate-500 dark:text-slate-400">Registro de imóveis</span>
+                              <Segmentado rotulo="Cálculo do registro de imóveis" valor={cartorioModeLeilao} onChange={setCartorioModeLeilao}
+                                opcoes={[{ valor: 'pr', rotulo: 'Tabela TJ-PR' }, { valor: 'manual', rotulo: 'Manual' }]} />
+                            </div>
+                          )}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {!isRegularizacao && (
+                              <TaxInput label="Leiloeiro" value={leiloeiro.value} type={leiloeiro.type} onChangeValue={(val) => setLeiloeiro({ ...leiloeiro, value: val })} onChangeType={(t) => setLeiloeiro({ ...leiloeiro, type: t })} description="Padrão: 5%" />
+                            )}
+                            {!ehVeiculo && (
+                              <TaxInput label="ITBI" value={itbi.value} type={itbi.type} onChangeValue={(val) => setItbi({ ...itbi, value: val })} onChangeType={(t) => setItbi({ ...itbi, type: t })} description="Padrão: 2%" />
+                            )}
+                            {!ehVeiculo && (
+                              cartorioModeLeilao === 'pr' ? (
+                                <TaxInput label="Registro de imóveis" value={cartorioCostLeilao} type="fixed" disabled description={`Tabela TJ-PR vigente desde ${VIGENCIA_TABELAS_PR}`} />
+                              ) : (
+                                <TaxInput label="Registro de imóveis" value={cartorioManualLeilao.value} type={cartorioManualLeilao.type} onChangeValue={(val) => setCartorioManualLeilao({ ...cartorioManualLeilao, value: val })} onChangeType={(t) => setCartorioManualLeilao({ ...cartorioManualLeilao, type: t })} description="Custas informadas manualmente" />
+                              )
+                            )}
+                            <TaxInput label={isRegularizacao ? 'Honorários judiciais' : 'Assessoria jurídica'} value={legal.value} type={legal.type} onChangeValue={(val) => setLegal({ ...legal, value: val })} onChangeType={(t) => setLegal({ ...legal, type: t })} description={isRegularizacao ? 'Regularização' : 'Honorários'} />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </Card>
 
-                  <Card title={assetType === 'veiculo' ? (isRegularizacao ? "Débitos / Documentação / Reparos" : "Débitos e Reparos Extras") : "Custos Extras / Reformas"} icon={FileText} step={leilaoLastStep} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={true}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <MoneyInput label={assetType === 'veiculo' ? "Multas / IPVA / Débitos" : "Dívidas do Imóvel"} value={debts} onChange={setDebts} />
-                      <MoneyInput label={assetType === 'veiculo' ? "Mecânica / Reparos" : "Reformas / Outros"} value={renovation} onChange={setRenovation} />
+                    <div className="border-t border-slate-100 dark:border-slate-700/60 pt-4">
+                      <span className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">{isRegularizacao ? 'Débitos, documentação e reparos' : (ehVeiculo ? 'Débitos e reparos' : 'Dívidas e reformas')}</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <MoneyInput label={ehVeiculo ? 'Multas / IPVA / débitos' : 'Dívidas do imóvel'} value={debts} onChange={setDebts} />
+                        <MoneyInput label={ehVeiculo ? 'Mecânica / reparos' : 'Reformas / outros'} value={renovation} onChange={setRenovation} />
+                      </div>
                     </div>
                   </Card>
                 </div>
 
-                {/* VISUALIZAÇÃO DO PDF / RESULTADO (LEILÃO) */}
-                <div className="space-y-4 sm:space-y-6 mt-6 lg:mt-0">
-                  <div id="pdf-leilao" className="bg-white dark:bg-[#14243A] rounded-2xl border border-slate-200 dark:border-slate-700/60 p-4 sm:p-8 shadow-card print:shadow-none print:border-none print:p-0">
+                {/* RESULTADO (LEILÃO): fica visível ao rolar o formulário no computador */}
+                <div className="lg:sticky lg:top-6 print:static">
+                  <div id="pdf-leilao" className="bg-white dark:bg-[#14243A] rounded-2xl border border-slate-200 dark:border-slate-700/60 p-5 sm:p-6 shadow-card lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto print:max-h-none print:overflow-visible print:shadow-none print:border-none print:p-0">
                     <div className="print:hidden">
-                    {/* Header do Relatório */}
-                    <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0">
-                      <div>
-                        <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">{assetType === 'veiculo' ? (isRegularizacao ? 'Análise de Compra com Regularização' : 'Análise Veicular') : 'Análise Imobiliária'}</h2>
-                        <p className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 mt-0.5">{advName} — {advOab}</p>
+                    <div className="flex items-start justify-between gap-3 mb-5">
+                      <div className="min-w-0">
+                        <h2 className="text-base font-semibold text-slate-900 dark:text-white">{tituloAnalise}</h2>
+                        {(clienteNomeLeilao || imovelDescLeilao) && (
+                          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 truncate">{[clienteNomeLeilao, imovelDescLeilao].filter(Boolean).join(' · ')}</p>
+                        )}
                       </div>
+                      {veredito && safeBid > 0 && (
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 h-7 rounded-full border text-xs font-semibold whitespace-nowrap ${veredito.chip}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${veredito.ponto}`} aria-hidden="true" />{veredito.rotulo}
+                        </span>
+                      )}
                     </div>
 
-                    {/* Dados do Cliente e Imóvel/Veículo */}
-                    {(clienteNomeLeilao || imovelDescLeilao) && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 mb-6">
-                        {clienteNomeLeilao && (
-                          <div>
-                            <span className="text-[11px] font-bold text-slate-400 block">{assetType === 'veiculo' && isRegularizacao ? 'Comprador / Cliente' : 'Arrematante / Cliente'}</span>
-                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{clienteNomeLeilao}</span>
-                          </div>
-                        )}
-                        {imovelDescLeilao && (
-                          <div>
-                            <span className="text-[11px] font-bold text-slate-400 block">{assetType === 'veiculo' ? (isRegularizacao ? "Veículo para Regularizar" : "Veículo Avaliado") : "Imóvel Avaliado"}</span>
-                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{imovelDescLeilao}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Bloco Resumo Veicular (Tabela FIPE) */}
-                    {assetType === 'veiculo' && safeMarket > 0 && (
-                      <div className="mb-6 p-4 sm:p-5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-slate-800 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
-                        <div>
-                           <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block mb-1">Tabela FIPE Base</span>
-                           <span className="text-xl font-extrabold text-slate-500 dark:text-slate-400 line-through opacity-60">{formatMoney(safeMarket)}</span>
-                           <div className="mt-1.5 text-sm font-bold text-emerald-700 dark:text-emerald-400 flex flex-wrap gap-2 items-center">
-                              Venda Estimada: {formatMoney(discountedSaleValue)}
-                              {fipeDiscountClamped > 0 && <span className="text-[11px] bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-0.5 rounded text-emerald-800 dark:text-emerald-200">-{formatCurrencyStr(fipeDiscountClamped)}% desval.</span>}
-                           </div>
+                    {safeBid <= 0 ? (
+                      <div className="py-10 text-center">
+                        <div className="mx-auto w-11 h-11 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400">
+                          <FileText className="w-5 h-5" />
                         </div>
-                        <div className="text-left sm:text-right w-full sm:w-auto">
-                           <div className="inline-block px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-md text-xs font-bold mb-2">
-                             {isRegularizacao ? 'Compra' : 'Arremate'} = {arremateFipePercent.toFixed(1)}% da FIPE
-                           </div>
-                           {safeEval > 0 && <div className="text-xs text-slate-500 font-medium mb-1">Avaliação {isRegularizacao ? 'Atual' : 'Judicial'}: {formatMoney(safeEval)}</div>}
-                           {maxBidForProfit > 0 && <div className="text-xs text-rose-600 dark:text-rose-400 font-bold mt-1">Teto p/ Lucro Zero: {formatMoney(maxBidForProfit)}</div>}
-                        </div>
+                        <p className="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Informe o valor do lance</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">O lucro, o ROI e o custo total aparecem aqui assim que você preencher o lance e o valor de {ehVeiculo ? 'tabela FIPE' : 'mercado'}.</p>
                       </div>
-                    )}
-
-                    {/* Dimensões Imóvel no PDF (Urbano ou Rural) */}
-                    {assetType !== 'veiculo' && safeSize > 0 && (
-                      <div className="mb-6 p-4 border rounded-lg bg-slate-50/40 border-slate-100 dark:bg-slate-800/20 dark:border-slate-800/50">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-1 sm:gap-0">
-                          <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Dimensões da Área</span>
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                            {assetType === 'rural' ? `Área: ${formatCurrencyStr(safeSize)} ${ruralUnit === 'm2' ? 'm²' : ruralUnit === 'ha' ? 'ha' : alqName}` : `Área Total: ${formatCurrencyStr(safeSize)} m²`}
-                          </span>
+                    ) : (
+                      <>
+                        {/* Destaque: o número que decide o lance */}
+                        <div className={`rounded-xl p-4 sm:p-5 ${veredito ? veredito.fundo : 'bg-slate-50 dark:bg-white/5'}`}>
+                          <div className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                            {temVendaEstimada ? (lucroAbsoluto >= 0 ? 'Lucro líquido estimado' : 'Prejuízo estimado') : 'Investimento total'}
+                          </div>
+                          <div key={temVendaEstimada ? lucroAbsoluto : finalLeilao} className={`value-update mt-1 text-3xl sm:text-4xl font-bold tracking-tight tabular-nums ${veredito ? veredito.valor : 'text-slate-900 dark:text-white'}`}>
+                            {formatMoney(temVendaEstimada ? lucroAbsoluto : finalLeilao)}
+                          </div>
+                          <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                            {temVendaEstimada
+                              ? `Venda estimada de ${formatMoney(discountedSaleValue)} menos o investimento total`
+                              : 'Lance + taxas e custos'}
+                          </div>
                         </div>
 
-                        {assetType === 'rural' ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center text-xs">
-                            <div className="bg-white/80 dark:bg-slate-800 p-3 sm:p-2 rounded-lg flex sm:block justify-between items-center">
-                              <span className="text-[11px] sm:block text-slate-500 sm:text-slate-400 uppercase font-bold">Total m²</span>
-                              <strong className="text-slate-800 dark:text-slate-200 text-sm sm:text-xs">{formatCurrencyStr(areaInM2)} m²</strong>
-                            </div>
-                            <div className="bg-white/80 dark:bg-slate-800 p-3 sm:p-2 rounded-lg flex sm:block justify-between items-center">
-                              <span className="text-[11px] sm:block text-slate-500 sm:text-slate-400 uppercase font-bold">Total Hectares</span>
-                              <strong className="text-slate-800 dark:text-slate-200 text-sm sm:text-xs">{formatCurrencyStr(areaInHa)} ha</strong>
-                            </div>
-                            <div className="bg-white/80 dark:bg-slate-800 p-3 sm:p-2 rounded-lg flex sm:block justify-between items-center">
-                              <span className="text-[11px] sm:block text-slate-500 sm:text-slate-400 uppercase font-bold">Total {alqName}</span>
-                              <strong className="text-slate-800 dark:text-slate-200 text-sm sm:text-xs">{formatCurrencyStr(areaInAlq)} alq</strong>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="bg-white/80 dark:bg-slate-800 p-3 sm:p-2 rounded-lg text-center flex sm:block justify-between items-center">
-                              <span className="text-[11px] sm:block text-slate-500 sm:text-slate-400 uppercase font-bold">Área Total</span>
-                              <strong className="text-slate-800 dark:text-slate-200 text-sm">{formatCurrencyStr(areaInM2)} m²</strong>
+                        {!temVendaEstimada && (
+                          <p className="mt-3 text-xs font-medium text-amber-700 dark:text-amber-300">Informe o valor de {ehVeiculo ? 'tabela FIPE' : 'mercado'} para calcular lucro, ROI e desconto.</p>
+                        )}
+                        {descontoMercadoPercent !== null && descontoMercadoPercent < 0 && (
+                          <p className="mt-3 text-xs font-medium text-amber-700 dark:text-amber-300">Atenção: o lance está acima do valor de {ehVeiculo ? 'tabela FIPE' : 'mercado'} informado.</p>
+                        )}
+
+                        {temVendaEstimada && (
+                          <div className="grid grid-cols-3 gap-3 mt-5">
+                            <Estatistica label="ROI" value={`${margemLucroPorcentagem > 0 ? '+' : ''}${formatPercent(margemLucroPorcentagem)}`} tone={resultadoTone} sub="Sobre o investimento" />
+                            <Estatistica label="Desconto" value={descontoMercadoPercent !== null ? formatPercent(descontoMercadoPercent) : '—'}
+                              tone={descontoMercadoPercent === null ? 'neutral' : (descontoMercadoPercent >= 0 ? 'good' : 'bad')} sub={ehVeiculo ? 'Sobre a FIPE' : 'Sobre o mercado'} />
+                            <Estatistica label="Investimento" value={formatMoney(finalLeilao)} sub="Lance + custos" />
                           </div>
                         )}
-                      </div>
-                    )}
 
-                    {safeBid <= 0 && (
-                      <div className="mb-4 p-3 rounded-lg border border-slate-200 bg-slate-50 dark:bg-white/5 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                        Informe o valor do lance para ver o investimento total e os demais indicadores.
-                      </div>
-                    )}
+                        {temVendaEstimada && maxBidForProfit > 0 && (
+                          <div className="mt-5 flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700/60">
+                            <span className="text-sm text-slate-600 dark:text-slate-300">Lance máximo sem prejuízo</span>
+                            <span className="text-sm font-bold tabular-nums text-slate-900 dark:text-white">{formatMoney(maxBidForProfit)}</span>
+                          </div>
+                        )}
 
-                    {/* Alertas: explicam por que faltam indicadores ou quando o lance passa do mercado */}
-                    {safeBid > 0 && safeMarket <= 0 && (
-                      <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 text-xs font-semibold text-amber-800 dark:text-amber-300">
-                        Informe o valor de mercado para calcular lucro, ROI e desconto.
-                      </div>
-                    )}
-                    {descontoMercadoPercent !== null && descontoMercadoPercent < 0 && (
-                      <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 text-xs font-semibold text-amber-800 dark:text-amber-300">
-                        Atenção: o lance está acima do valor de mercado informado.
-                      </div>
-                    )}
+                        {ehVeiculo && safeMarket > 0 && (
+                          <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                            FIPE {formatMoney(safeMarket)} · {isRegularizacao ? 'compra' : 'arremate'} = {arremateFipePercent.toFixed(1).replace('.', ',')}% da FIPE{safeEval > 0 ? ` · avaliação ${formatMoney(safeEval)}` : ''}
+                          </p>
+                        )}
 
-                    {/* Indicadores principais (mesmos cálculos do detalhamento abaixo) */}
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
-                      <KpiCard label="Investimento total" value={formatMoney(finalLeilao)} sub="Lance + taxas e custos" />
-                      <KpiCard
-                        label="Lucro líquido estimado"
-                        value={temVendaEstimada ? formatMoney(lucroAbsoluto) : '—'}
-                        sub={temVendaEstimada ? (lucroAbsoluto >= 0 ? 'Favorável' : 'Prejuízo estimado') : 'Sem valor de venda'}
-                        tone={temVendaEstimada ? resultadoTone : 'neutral'}
-                      />
-                      <KpiCard
-                        label="ROI"
-                        value={temVendaEstimada ? `${margemLucroPorcentagem > 0 ? '+' : ''}${formatPercent(margemLucroPorcentagem)}` : '—'}
-                        sub="Lucro sobre o investimento"
-                        tone={temVendaEstimada ? resultadoTone : 'neutral'}
-                      />
-                      <KpiCard
-                        label="Desconto sobre mercado"
-                        value={descontoMercadoPercent !== null ? formatPercent(descontoMercadoPercent) : '—'}
-                        sub={descontoMercadoPercent === null ? 'Informe lance e mercado' : (descontoMercadoPercent >= 0 ? 'Abaixo do mercado' : 'Acima do mercado')}
-                        tone={descontoMercadoPercent === null ? 'neutral' : (descontoMercadoPercent >= 0 ? 'good' : 'bad')}
-                      />
-                    </div>
-                    {assetType !== 'veiculo' && temVendaEstimada && maxBidForProfit > 0 && (
-                      <div className="mb-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
-                        Teto de lance para lucro zero: <span className="font-extrabold text-slate-900 dark:text-white tabular-nums">{formatMoney(maxBidForProfit)}</span>
-                      </div>
-                    )}
-
-                    <h4 className="font-bold text-slate-600 dark:text-slate-300 mb-4 text-xs">Detalhamento Financeiro</h4>
-                    <ul className="space-y-3 text-sm">
-                      <li className="flex justify-between font-bold text-base pb-2 border-b border-slate-100 dark:border-slate-800">
-                        <span>{isRegularizacao ? "Valor da Compra Acordada" : "Valor de Aquisição (Lance)"}</span>
-                        <span className="text-slate-900 dark:text-white">{formatMoney(safeBid)}</span>
-                      </li>
-
-                      {!isRegularizacao && (
-                        <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                          <span>Comissão do Leiloeiro</span>
-                          <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(leiloeiroCost)}</span>
-                        </li>
-                      )}
-
-                      {assetType !== 'veiculo' && (
-                        <>
-                          <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                            <span>ITBI Arrematação{safeNumber(valorVenalLeilao) > safeBid ? ' (s/ valor venal)' : ''}</span>
-                            <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(itbiCostLeilao)}</span>
-                          </li>
-                          <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                            <span>Cartório de Registo</span>
-                            <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(cartorioCostLeilao)}</span>
-                          </li>
-                        </>
-                      )}
-
-                      <li className="flex justify-between text-slate-600 dark:text-slate-400">
-                        <span>{isRegularizacao ? "Honorários Judiciais e Custas" : "Assessoria Jurídica"}</span>
-                        <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(legalCost)}</span>
-                      </li>
-                      {(safeNumber(debts) > 0 || safeNumber(renovation) > 0) && (
-                        <li className="flex justify-between text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
-                          <span>{isRegularizacao ? "Multas, Doc. e Reparos" : "Passivos & Custos Extras"}</span>
-                          <span className="text-slate-700 dark:text-slate-300 font-semibold">+{formatMoney(fixedCostsLeilao)}</span>
-                        </li>
-                      )}
-                      <li className="flex flex-col sm:flex-row justify-between sm:items-baseline font-extrabold text-sm sm:text-base pt-4 mt-2 border-t border-slate-200 dark:border-slate-800">
-                        <span className="text-slate-700 dark:text-slate-300">Custo Operacional Total</span>
-                        <span className="text-2xl sm:text-3xl tabular-nums text-navy-900 dark:text-white">{formatMoney(finalLeilao)}</span>
-                      </li>
-                    </ul>
-
-                    {/* Comparativo com a 2ª Praça */}
-                    {segundaPracaResult && (
-                      <div className="mt-6 p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-white/5">
-                        <h4 className="font-bold text-slate-600 dark:text-slate-300 mb-3 text-xs">Comparativo com a 2ª Praça</h4>
-                        <ul className="space-y-2 text-sm">
-                          <li className="flex justify-between">
-                            <span className="text-slate-600 dark:text-slate-400">Custo Operacional (2ª Praça)</span>
-                            <span className="font-bold text-slate-900 dark:text-white tabular-nums">{formatMoney(segundaPracaResult.total)}</span>
-                          </li>
-                          <li className="flex justify-between">
-                            <span className="text-slate-600 dark:text-slate-400">{economiaSegundaPraca >= 0 ? 'Economia na 2ª praça' : 'Custo a mais na 2ª praça'}</span>
-                            <span className={`font-bold tabular-nums ${economiaSegundaPraca >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatMoney(Math.abs(economiaSegundaPraca))}</span>
-                          </li>
-                          {discountedSaleValue > 0 && (
-                            <li className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
-                              <span className="text-slate-600 dark:text-slate-400">Lucro estimado (2ª Praça)</span>
-                              <span className={`font-bold tabular-nums ${segundaPracaResult.lucro >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatMoney(segundaPracaResult.lucro)}</span>
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Comparativo de Preço por Unidade (Imóveis) */}
-                    {assetType !== 'veiculo' && safeSize > 0 && (
-                      <div className="mt-8">
-                        <h4 className="font-bold text-slate-600 dark:text-slate-300 mb-3 text-xs">Comparação de Custos por Área</h4>
-                        <div className="overflow-x-auto no-scrollbar pb-2">
-                          <table className="w-full text-left text-xs border-collapse min-w-[400px]">
-                            <thead>
-                              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400">
-                                <th className="py-2 font-bold uppercase">Métrica</th>
-                                <th className="py-2 text-right font-bold uppercase">Por m²</th>
-                                {assetType === 'rural' && <th className="py-2 text-right font-bold uppercase">Por Hectare</th>}
-                                {assetType === 'rural' && <th className="py-2 text-right font-bold uppercase">Por {alqName}</th>}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {safeEval > 0 && (
-                                <tr className="border-b border-slate-100 dark:border-slate-800/50">
-                                  <td className="py-3 font-semibold text-slate-600 dark:text-slate-400">Avaliação ({formatMoney(safeEval)})</td>
-                                  <td className="py-3 text-right font-bold">{formatMoney(ratesEval.m2)}</td>
-                                  {assetType === 'rural' && <td className="py-3 text-right font-bold">{formatMoney(ratesEval.ha)}</td>}
-                                  {assetType === 'rural' && <td className="py-3 text-right font-bold">{formatMoney(ratesEval.alq)}</td>}
-                                </tr>
+                        {/* Comparativo com a 2ª praça */}
+                        {segundaPracaResult && (
+                          <div className="mt-5 rounded-xl border border-slate-200 dark:border-slate-700/60 px-4 py-3">
+                            <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Comparativo com a 2ª praça ({formatMoney(safeSegundaPraca)})</h4>
+                            <ul className="space-y-1.5 text-sm">
+                              <li className="flex justify-between gap-3">
+                                <span className="text-slate-600 dark:text-slate-400">Custo total</span>
+                                <span className="font-semibold text-slate-900 dark:text-white tabular-nums">{formatMoney(segundaPracaResult.total)}</span>
+                              </li>
+                              <li className="flex justify-between gap-3">
+                                <span className="text-slate-600 dark:text-slate-400">{economiaSegundaPraca >= 0 ? 'Economia em relação à 1ª praça' : 'Custo a mais que a 1ª praça'}</span>
+                                <span className={`font-semibold tabular-nums ${economiaSegundaPraca >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatMoney(Math.abs(economiaSegundaPraca))}</span>
+                              </li>
+                              {discountedSaleValue > 0 && (
+                                <li className="flex justify-between gap-3">
+                                  <span className="text-slate-600 dark:text-slate-400">Lucro estimado</span>
+                                  <span className={`font-semibold tabular-nums ${segundaPracaResult.lucro >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatMoney(segundaPracaResult.lucro)}</span>
+                                </li>
                               )}
-                              {safeMarket > 0 && (
-                                <tr className="border-b border-slate-100 dark:border-slate-800/50">
-                                  <td className="py-3 font-semibold text-slate-900 dark:text-white">Mercado Real ({formatMoney(safeMarket)})</td>
-                                  <td className="py-3 text-right font-extrabold text-slate-900 dark:text-white">{formatMoney(ratesMarket.m2)}</td>
-                                  {assetType === 'rural' && <td className="py-3 text-right font-extrabold text-slate-900 dark:text-white">{formatMoney(ratesMarket.ha)}</td>}
-                                  {assetType === 'rural' && <td className="py-3 text-right font-extrabold text-slate-900 dark:text-white">{formatMoney(ratesMarket.alq)}</td>}
-                                </tr>
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Detalhamento: consulta, não decisão — fica recolhido */}
+                        <details className="group mt-5 rounded-xl border border-slate-200 dark:border-slate-700/60">
+                          <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Detalhamento dos custos</span>
+                            <span className="flex items-center gap-2 text-sm font-bold tabular-nums text-slate-900 dark:text-white">
+                              {formatMoney(finalLeilao)} <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+                            </span>
+                          </summary>
+                          <div className="px-4 pb-4">
+                            <ul className="space-y-2 text-sm">
+                              <li className="flex justify-between gap-3 font-semibold text-slate-900 dark:text-white">
+                                <span>{isRegularizacao ? 'Valor da compra acordada' : 'Valor de aquisição (lance)'}</span>
+                                <span className="tabular-nums">{formatMoney(safeBid)}</span>
+                              </li>
+                              {linhasTaxas.map((l) => (
+                                <li key={l.rotulo} className="flex justify-between gap-3 text-slate-600 dark:text-slate-400">
+                                  <span>{l.rotulo}</span>
+                                  <span className="tabular-nums">+{formatMoney(l.valor)}</span>
+                                </li>
+                              ))}
+                              {fixedCostsLeilao > 0 && (
+                                <li className="flex justify-between gap-3 text-slate-600 dark:text-slate-400">
+                                  <span>{isRegularizacao ? 'Multas, documentação e reparos' : 'Dívidas e custos extras'}</span>
+                                  <span className="tabular-nums">+{formatMoney(fixedCostsLeilao)}</span>
+                                </li>
                               )}
-                              <tr className="border-b border-slate-200 dark:border-slate-800">
-                                  <td className="py-3 font-semibold text-emerald-600 dark:text-emerald-400">Arrematação ({formatMoney(safeBid)})</td>
-                                  <td className="py-3 text-right font-extrabold text-emerald-600 dark:text-emerald-400">{formatMoney(ratesBid.m2)}</td>
-                                  {assetType === 'rural' && <td className="py-3 text-right font-extrabold text-emerald-600 dark:text-emerald-400">{formatMoney(ratesBid.ha)}</td>}
-                                  {assetType === 'rural' && <td className="py-3 text-right font-extrabold text-emerald-600 dark:text-emerald-400">{formatMoney(ratesBid.alq)}</td>}
-                                </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
+                              <li className="flex justify-between gap-3 pt-2 mt-1 border-t border-slate-200 dark:border-slate-700/60 font-bold text-slate-900 dark:text-white">
+                                <span>Custo operacional total</span>
+                                <span className="tabular-nums">{formatMoney(finalLeilao)}</span>
+                              </li>
+                            </ul>
+
+                            {/* Comparativo de preço por área (imóveis) */}
+                            {!ehVeiculo && safeSize > 0 && (
+                              <div className="mt-5">
+                                <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">
+                                  Por área · {assetType === 'rural' ? `${formatCurrencyStr(areaInM2)} m² · ${formatCurrencyStr(areaInHa)} ha · ${formatCurrencyStr(areaInAlq)} ${alqName}` : `${formatCurrencyStr(areaInM2)} m²`}
+                                </h4>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-left text-xs border-collapse">
+                                    <thead>
+                                      <tr className="border-b border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400">
+                                        <th className="py-2 font-semibold">Métrica</th>
+                                        <th className="py-2 text-right font-semibold">Por m²</th>
+                                        {assetType === 'rural' && <th className="py-2 text-right font-semibold">Por ha</th>}
+                                        {assetType === 'rural' && <th className="py-2 text-right font-semibold">Por {alqName}</th>}
+                                      </tr>
+                                    </thead>
+                                    <tbody className="tabular-nums">
+                                      {safeEval > 0 && (
+                                        <tr className="border-b border-slate-100 dark:border-slate-700/40 text-slate-600 dark:text-slate-400">
+                                          <td className="py-2">Avaliação</td>
+                                          <td className="py-2 text-right">{formatMoney(ratesEval.m2)}</td>
+                                          {assetType === 'rural' && <td className="py-2 text-right">{formatMoney(ratesEval.ha)}</td>}
+                                          {assetType === 'rural' && <td className="py-2 text-right">{formatMoney(ratesEval.alq)}</td>}
+                                        </tr>
+                                      )}
+                                      {safeMarket > 0 && (
+                                        <tr className="border-b border-slate-100 dark:border-slate-700/40 text-slate-600 dark:text-slate-400">
+                                          <td className="py-2">Mercado</td>
+                                          <td className="py-2 text-right">{formatMoney(ratesMarket.m2)}</td>
+                                          {assetType === 'rural' && <td className="py-2 text-right">{formatMoney(ratesMarket.ha)}</td>}
+                                          {assetType === 'rural' && <td className="py-2 text-right">{formatMoney(ratesMarket.alq)}</td>}
+                                        </tr>
+                                      )}
+                                      <tr className="font-semibold text-slate-900 dark:text-white">
+                                        <td className="py-2">Arrematação</td>
+                                        <td className="py-2 text-right">{formatMoney(ratesBid.m2)}</td>
+                                        {assetType === 'rural' && <td className="py-2 text-right">{formatMoney(ratesBid.ha)}</td>}
+                                        {assetType === 'rural' && <td className="py-2 text-right">{formatMoney(ratesBid.alq)}</td>}
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      </>
                     )}
 
-                    <div className="mt-8 text-[11px] text-slate-500 dark:text-slate-400 text-justify leading-relaxed">
-                      <strong>Nota Legal:</strong> Documento de caráter puramente estimativo e consultivo visando planejamento financeiro. {assetType !== 'veiculo' ? `Custas notariais calculadas pela Tabela III-C do TJ-PR, vigente desde ${VIGENCIA_TABELAS_PR}, sujeita a atualização anual.` : 'Tabela FIPE e débitos são informativos e sujeitos a variação de mercado.'}
-                    </div>
+                    <p className="mt-5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                      Estimativa para planejamento, sem caráter de garantia. {!ehVeiculo ? `Registro calculado pela Tabela III-C do TJ-PR vigente desde ${VIGENCIA_TABELAS_PR}, sujeita a atualização anual.` : 'Tabela FIPE e débitos são informativos e variam com o mercado.'}
+                    </p>
 
-                    <div className="mt-8 print-hide">
-                      <div className="grid grid-cols-3 gap-2">
-                        <button onClick={handleReset} className="px-2 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-lg transition-colors">Limpar</button>
-                        <button onClick={handleCopyResumo} className="px-2 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-lg transition-colors">Copiar Resumo</button>
-                        <button onClick={handleShareWhatsapp} className="px-2 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm rounded-lg transition-colors border border-slate-200 dark:border-slate-700">WhatsApp</button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        <button onClick={() => handleGerarPlanilhaLeilao()} className="flex items-center justify-center gap-2 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg transition-colors">Planilha de cálculo (Excel)</button>
-                        <button onClick={() => handleGerarPlanilhaLeilao('pdf')} className="flex items-center justify-center gap-2 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg transition-colors">Planilha de cálculo (PDF)</button>
-                      </div>
-                      <button onClick={handlePrint} className="w-full flex items-center justify-center gap-2 py-3.5 mt-2 bg-navy-900 hover:bg-navy-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white dark:text-navy-900 font-bold rounded-lg transition-colors">
-                        <Printer className="w-5 h-5 flex-shrink-0" /> Gerar Relatório PDF
-                      </button>
-                    </div>
+                    {safeBid > 0 && (
+                      <AcoesResultado rotuloPrincipal="Gerar relatório PDF" onPrincipal={handlePrint}
+                        onExcel={() => handleGerarPlanilhaLeilao()} onPdfPlanilha={() => handleGerarPlanilhaLeilao('pdf')}
+                        onCopiar={handleCopyResumo} onWhatsapp={handleShareWhatsapp} onLimpar={handleReset} />
+                    )}
                     </div>{/* fim do bloco de tela (print:hidden) */}
 
                     {/* ===== DOCUMENTO DE IMPRESSÃO (formal, tabelas, sem chrome de dashboard) ===== */}
@@ -1652,7 +1654,7 @@
                           {assetType !== 'veiculo' && (
                             <>
                               <tr className="border-b border-gray-300"><td className="py-1.5">ITBI Arrematação{safeNumber(valorVenalLeilao) > safeBid ? ' (s/ valor venal)' : ''}</td><td className="py-1.5 text-right">{formatMoney(itbiCostLeilao)}</td></tr>
-                              <tr className="border-b border-gray-300"><td className="py-1.5">Cartório de Registo</td><td className="py-1.5 text-right">{formatMoney(cartorioCostLeilao)}</td></tr>
+                              <tr className="border-b border-gray-300"><td className="py-1.5">Cartório de Registro</td><td className="py-1.5 text-right">{formatMoney(cartorioCostLeilao)}</td></tr>
                             </>
                           )}
                           <tr className="border-b border-gray-300"><td className="py-1.5">{isRegularizacao ? "Honorários Judiciais e Custas" : "Assessoria Jurídica"}</td><td className="py-1.5 text-right">{formatMoney(legalCost)}</td></tr>
@@ -1752,58 +1754,56 @@
 
             {/* --- ABA ESCRITURA E COMPRA --- */}
             {activeTab === 'escritura' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                <div className="space-y-4 sm:space-y-6 print-hide">
-                  <Card title="Dados da Escritura" icon={Building} step={0} activeStep={escrituraStep} onStepChange={setEscrituraStep} isLast={false}>
-                    <TextInput label="Nome do Adquirente" value={clienteNome} onChange={setClienteNome} placeholder="Ex: João Silva" />
-                    <TextInput label="Descrição Detalhada do Imóvel" value={imovelDesc} onChange={setImovelDesc} placeholder="Ex: Chácara São Pedro - Loanda/PR" />
-                    <MoneyInput label="Valor Real da Negociação" value={negocioValor} onChange={setNegocioValor} />
-                    <MoneyInput label="Valor Venal (opcional, para base do ITBI)" value={valorVenalEsc} onChange={setValorVenalEsc} subText="Se maior que o valor do negócio, o ITBI usa este valor como base" />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 items-start">
+                <div className="space-y-4 print-hide">
+                  <Card title="Dados da escritura" numero={1} resumo={safeNegocio > 0 ? `Negócio ${formatMoney(safeNegocio)}` : undefined} step={0} activeStep={escrituraStep} onStepChange={setEscrituraStep} isLast={false}>
+                    <TextInput label="Nome do adquirente" value={clienteNome} onChange={setClienteNome} placeholder="Ex: João Silva" />
+                    <TextInput label="Descrição do imóvel" value={imovelDesc} onChange={setImovelDesc} placeholder="Ex: Chácara São Pedro - Loanda/PR" />
+                    <MoneyInput label="Valor real da negociação" value={negocioValor} onChange={setNegocioValor} />
+                    <MoneyInput label="Valor venal (opcional)" value={valorVenalEsc} onChange={setValorVenalEsc} subText="Se maior que o valor do negócio, o ITBI usa este valor como base" />
                   </Card>
 
                   <Card
-                    title="Configurações de Custas"
-                    icon={FileText}
+                    title="Custas"
+                    numero={2}
                     step={1}
                     activeStep={escrituraStep}
                     onStepChange={setEscrituraStep}
                     isLast={false}
                     extraHeader={
-                      <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700">
-                        <button onClick={() => setEscrituraMode('pr')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${escrituraMode === 'pr' ? 'bg-navy-900 dark:bg-emerald-600 text-white dark:text-navy-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Auto PR</button>
-                        <button onClick={() => setEscrituraMode('manual')} className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${escrituraMode === 'manual' ? 'bg-navy-900 dark:bg-emerald-600 text-white dark:text-navy-900' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}>Manual</button>
-                      </div>
+                      <Segmentado rotulo="Cálculo das custas" valor={escrituraMode} onChange={setEscrituraMode}
+                        opcoes={[{ valor: 'pr', rotulo: 'Tabela TJ-PR' }, { valor: 'manual', rotulo: 'Manual' }]} />
                     }
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <TaxInput label="ITBI (%)" value={itbiEscritura.value} type={itbiEscritura.type} onChangeValue={(val) => setItbiEscritura({ ...itbiEscritura, value: val })} onChangeType={(t) => setItbiEscritura({ ...itbiEscritura, type: t })} description="Imposto de Transmissão" />
+                          <TaxInput label="ITBI" value={itbiEscritura.value} type={itbiEscritura.type} onChangeValue={(val) => setItbiEscritura({ ...itbiEscritura, value: val })} onChangeType={(t) => setItbiEscritura({ ...itbiEscritura, type: t })} description="Imposto de Transmissão" />
                           <ShowInBudgetToggle checked={showItbiEsc} onChange={setShowItbiEsc} />
                         </div>
 
                         {escrituraMode === 'pr' ? (
                           <>
                             <div>
-                              <TaxInput label="Escritura de Compra" value={Math.round(lavraturaCost * 100) / 100} type="fixed" disabled description={escrituraExtrapolada ? "Acima do teto da tabela (226 mil) — confirme no tabelionato" : "Tabela XI/TJ-PR 2026"} />
+                              <TaxInput label="Escritura de compra" value={Math.round(lavraturaCost * 100) / 100} type="fixed" disabled description={escrituraExtrapolada ? "Acima do teto da tabela (226 mil) — confirme no tabelionato" : "Tabela XI/TJ-PR 2026"} />
                               <ShowInBudgetToggle checked={showLavraturaEsc} onChange={setShowLavraturaEsc} />
                             </div>
                             <div>
-                              <TaxInput label="Funrejus Obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Automático (0.2% Teto PR)" />
+                              <TaxInput label="Funrejus obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Automático (0.2% Teto PR)" />
                               <ShowInBudgetToggle checked={showFunrejusEsc} onChange={setShowFunrejusEsc} />
                             </div>
-                            <TaxInput label="Registo de Imóveis" value={Math.round(cartorioCostEsc * 100) / 100} type="fixed" disabled description="Tabela III-C/TJ-PR 2026" />
+                            <TaxInput label="Registro de imóveis" value={Math.round(cartorioCostEsc * 100) / 100} type="fixed" disabled description="Tabela III-C/TJ-PR 2026" />
                           </>
                         ) : (
                           <>
                             <div>
-                              <TaxInput label="Escritura de Compra" value={escrituraManual.value} type={escrituraManual.type} onChangeValue={(val) => setEscrituraManual({ ...escrituraManual, value: val })} onChangeType={(t) => setEscrituraManual({ ...escrituraManual, type: t })} description="Tabelionato" />
+                              <TaxInput label="Escritura de compra" value={escrituraManual.value} type={escrituraManual.type} onChangeValue={(val) => setEscrituraManual({ ...escrituraManual, value: val })} onChangeType={(t) => setEscrituraManual({ ...escrituraManual, type: t })} description="Tabelionato" />
                               <ShowInBudgetToggle checked={showLavraturaEsc} onChange={setShowLavraturaEsc} />
                             </div>
                             <div>
-                              <TaxInput label="Funrejus Obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Compulsório (0.2% Teto PR)" />
+                              <TaxInput label="Funrejus obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Compulsório (0.2% Teto PR)" />
                               <ShowInBudgetToggle checked={showFunrejusEsc} onChange={setShowFunrejusEsc} />
                             </div>
-                            <TaxInput label="Registo de Imóveis" value={rgiManual.value} type={rgiManual.type} onChangeValue={(val) => setRgiManual({ ...rgiManual, value: val })} onChangeType={(t) => setRgiManual({ ...rgiManual, type: t })} description="Cartório de Registo" />
+                            <TaxInput label="Registro de imóveis" value={rgiManual.value} type={rgiManual.type} onChangeValue={(val) => setRgiManual({ ...rgiManual, value: val })} onChangeType={(t) => setRgiManual({ ...rgiManual, type: t })} description="Cartório de Registro" />
                           </>
                         )}
                     </div>
@@ -1813,22 +1813,22 @@
                       </div>
                     )}
 
-                    <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <label className="flex items-start sm:items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer">
-                          <input type="checkbox" checked={incluirRgi} onChange={(e) => setIncluirRgi(e.target.checked)} className="w-5 h-5 mt-0.5 sm:mt-0 text-slate-900 rounded" />
-                          <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Incluir Registo de Imóveis (RGI) no extrato final</span>
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input type="checkbox" checked={incluirRgi} onChange={(e) => setIncluirRgi(e.target.checked)} className="w-5 h-5 rounded accent-emerald-600" />
+                          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Incluir o registro de imóveis (RGI) no total</span>
                         </label>
                     </div>
                   </Card>
 
-                  <Card title="Custos Acessórios" icon={FileText} step={2} activeStep={escrituraStep} onStepChange={setEscrituraStep} isLast={true}>
+                  <Card title="Custos acessórios" numero={3} step={2} activeStep={escrituraStep} onStepChange={setEscrituraStep} isLast={true}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <MoneyInput label="Certidões e Buscas" value={certidoesEsc} onChange={setCertidoesEsc} />
+                        <MoneyInput label="Certidões e buscas" value={certidoesEsc} onChange={setCertidoesEsc} />
                         <ShowInBudgetToggle checked={showCertidoesEsc} onChange={setShowCertidoesEsc} />
                       </div>
                       <div>
-                        <MoneyInput label="Diligências / Assessoria" value={diligenciasEsc} onChange={setDiligenciasEsc} />
+                        <MoneyInput label="Diligências / assessoria" value={diligenciasEsc} onChange={setDiligenciasEsc} />
                         <ShowInBudgetToggle checked={showDiligenciasEsc} onChange={setShowDiligenciasEsc} />
                       </div>
                       <div className="sm:col-span-2">
@@ -1836,14 +1836,12 @@
                       </div>
                       <div>
                         <MoneyInput label="Valor de Outros" value={outrosValorEsc} onChange={setOutrosValorEsc} />
-                        <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1 w-fit mt-1.5">
-                          <button onClick={() => setOutrosNoTotal(true)} className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors ${outrosNoTotal ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>Somar ao Total</button>
-                          <button onClick={() => setOutrosNoTotal(false)} className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors ${!outrosNoTotal ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700'}`}>Valor à Parte</button>
-                        </div>
+                        <Segmentado rotulo="Como tratar o valor de outros" valor={outrosNoTotal ? 'total' : 'parte'} onChange={(v) => setOutrosNoTotal(v === 'total')} className="mt-2"
+                          opcoes={[{ valor: 'total', rotulo: 'Somar ao total' }, { valor: 'parte', rotulo: 'Valor à parte' }]} />
                         {outrosNoTotal ? (
                           <ShowInBudgetToggle checked={showOutrosEsc} onChange={setShowOutrosEsc} />
                         ) : (
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 ml-1">Exibido à parte, fora do total do orçamento</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">Exibido à parte, fora do total do orçamento</div>
                         )}
                       </div>
                     </div>
@@ -1851,46 +1849,32 @@
                 </div>
 
                 {/* VISUALIZAÇÃO DO PDF / RESULTADO (ESCRITURA) */}
-                <div className="space-y-4 sm:space-y-6 mt-6 lg:mt-0">
-                  <div id="pdf-escritura" className="bg-white dark:bg-[#14243A] rounded-2xl border border-slate-200 dark:border-slate-700/60 p-4 sm:p-8 shadow-card print:shadow-none print:border-none print:p-0">
+                <div className="lg:sticky lg:top-6 print:static">
+                  <div id="pdf-escritura" className="bg-white dark:bg-[#14243A] rounded-2xl border border-slate-200 dark:border-slate-700/60 p-5 sm:p-6 shadow-card lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto print:max-h-none print:overflow-visible print:shadow-none print:border-none print:p-0">
                     <div className="print:hidden">
                     {/* Header Limpo Sem Dados de Controle ou Configuração */}
-                    <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start gap-2 sm:gap-0">
-                      <div>
-                        <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white uppercase tracking-tight">Memorial de Custas de Escrituração</h2>
-                        <p className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 mt-0.5">{advName} — {advOab}</p>
-                      </div>
-                      <div className="text-left sm:text-right text-[11px] text-slate-400 uppercase tracking-wider font-bold">
-                        Simulação Estimativa
-                      </div>
+                    <div className="mb-5">
+                      <h2 className="text-base font-semibold text-slate-900 dark:text-white">Memorial de custas de escrituração</h2>
+                      {(clienteNome || imovelDesc) && (
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 truncate">{[clienteNome, imovelDesc].filter(Boolean).join(' · ')}</p>
+                      )}
                     </div>
 
-                    {/* Dados do Cliente */}
-                    {(clienteNome || imovelDesc) && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 mb-6">
-                        {clienteNome && (
-                          <div>
-                            <span className="text-[11px] font-bold text-slate-400 block">Adquirente / Outorgado</span>
-                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{clienteNome}</span>
-                          </div>
-                        )}
-                        {imovelDesc && (
-                          <div>
-                            <span className="text-[11px] font-bold text-slate-400 block">Objeto / Imóvel</span>
-                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{imovelDesc}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {/* Destaque: total estimado */}
+                    <div className="rounded-xl p-4 sm:p-5 bg-slate-50 dark:bg-white/5 mb-5">
+                      <div className="text-xs font-semibold text-slate-600 dark:text-slate-300">Total estimado{incluirRgi ? ' com registro (RGI)' : ''}</div>
+                      <div key={totalEscrituraComRegistro} className="value-update mt-1 text-3xl sm:text-4xl font-bold tracking-tight tabular-nums text-slate-900 dark:text-white">{formatMoney(incluirRgi ? totalEscrituraComRegistro : custoInicialEsc)}</div>
+                      <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">Sobre um negócio de {formatMoney(safeNegocio)}</div>
+                    </div>
 
-                    <h4 className="font-bold text-slate-600 dark:text-slate-300 mb-4 text-xs">Detalhamento Financeiro</h4>
+                    <h4 className="font-semibold text-slate-500 dark:text-slate-400 mb-3 text-xs">Detalhamento</h4>
 
                     {/* Bloco 1: Inicial */}
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 mb-4">
-                      <h5 className="text-xs font-bold uppercase text-slate-500 mb-3">Passo 1: Lavratura, Impostos e Acessórios</h5>
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 mb-4">
+                      <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3">Passo 1 · Lavratura, impostos e acessórios</h5>
                       <ul className="space-y-3 text-sm">
                         <li className="flex justify-between pb-2 border-b border-dashed border-slate-200 dark:border-slate-700">
-                          <span>Base da Transação</span>
+                          <span>Base da transação</span>
                           <span className="font-bold text-slate-900 dark:text-white">{formatMoney(safeNegocio)}</span>
                         </li>
                         {showItbiEsc && (
@@ -1932,7 +1916,7 @@
                         )}
 
                         <li className="flex justify-between font-bold pt-3 mt-2 border-t border-slate-200 dark:border-slate-700">
-                          <span className="text-slate-800 dark:text-slate-200">Subtotal Sem Registro</span>
+                          <span className="text-slate-800 dark:text-slate-200">Subtotal sem registro</span>
                           <span className="text-slate-900 dark:text-white">{formatMoney(custoInicialEsc)}</span>
                         </li>
                       </ul>
@@ -1941,7 +1925,7 @@
                     {/* Valor à parte: não entra no total do orçamento */}
                     {!outrosNoTotal && safeOutrosEsc > 0 && (
                       <div className="p-4 rounded-lg border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/10 mb-4">
-                        <h5 className="text-xs font-bold uppercase text-amber-700 dark:text-amber-400 mb-2">Valor à Parte (não incluído no total)</h5>
+                        <h5 className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2">Valor à parte (não incluído no total)</h5>
                         <ul className="space-y-2 text-sm">
                           <li className="flex justify-between font-medium">
                             <span className="text-amber-900 dark:text-amber-300">{outrosDescEsc || 'Outros'}</span>
@@ -1953,8 +1937,8 @@
 
                     {/* Bloco 2: Registro */}
                     {incluirRgi && (
-                      <div className="p-4 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 mb-4">
-                        <h5 className="text-xs font-bold uppercase text-slate-500 mb-2">Passo 2: Registro de Imóveis (RGI)</h5>
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 mb-4">
+                        <h5 className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Passo 2 · Registro de imóveis (RGI)</h5>
                         <ul className="space-y-2 text-sm">
                           <li className="flex justify-between font-medium">
                             <span className="text-slate-700 dark:text-slate-300">Emolumento de Registro</span>
@@ -1964,34 +1948,15 @@
                       </div>
                     )}
 
-                    {/* Resumo Final para PDF */}
-                    <div className="bg-navy-900 text-white rounded-xl p-4 sm:p-5 mt-6">
-                        <h5 className="text-xs font-bold text-slate-400 mb-4 text-center">Apurado Geral do Orçamento</h5>
+                    <p className="mt-5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                      Estimativa para planejamento, sem caráter de garantia. Custas pelas tabelas do TJ-PR vigentes desde {VIGENCIA_TABELAS_PR}; podem variar conforme o cartório ou o reajuste anual.
+                    </p>
 
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline font-extrabold gap-1 sm:gap-0">
-                            <span className="text-sm sm:text-base text-slate-300">Total Estimado{incluirRgi ? ' (com Registro RGI)' : ''}</span>
-                            <span className="text-2xl sm:text-3xl tabular-nums text-[#5b9bf2]">{formatMoney(totalEscrituraComRegistro)}</span>
-                        </div>
-                    </div>
-
-                    <div className="mt-8 text-[11px] text-slate-500 dark:text-slate-400 text-justify leading-relaxed">
-                      <strong>Nota Legal:</strong> Este relatório é de natureza estimativa e consultiva para fins de planejamento financeiro. As custas notariais e de registo seguem as tabelas de emolumentos do TJ-PR vigentes desde {VIGENCIA_TABELAS_PR} e podem variar conforme o cartório competente ou reajuste anual.
-                    </div>
-
-                    <div className="mt-8 print-hide">
-                      <div className="grid grid-cols-3 gap-2">
-                        <button onClick={handleReset} className="px-2 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-lg transition-colors">Limpar</button>
-                        <button onClick={handleCopyResumo} className="px-2 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-sm rounded-lg transition-colors">Copiar Resumo</button>
-                        <button onClick={handleShareWhatsapp} className="px-2 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm rounded-lg transition-colors border border-slate-200 dark:border-slate-700">WhatsApp</button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        <button onClick={() => handleGerarPlanilhaEscritura()} className="flex items-center justify-center gap-2 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg transition-colors">Planilha de cálculo (Excel)</button>
-                        <button onClick={() => handleGerarPlanilhaEscritura('pdf')} className="flex items-center justify-center gap-2 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg transition-colors">Planilha de cálculo (PDF)</button>
-                      </div>
-                      <button onClick={handlePrint} className="w-full flex items-center justify-center gap-2 py-3.5 mt-2 bg-navy-900 hover:bg-navy-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white dark:text-navy-900 font-bold rounded-lg transition-colors">
-                        <Printer className="w-5 h-5 flex-shrink-0" /> Gerar PDF do Orçamento
-                      </button>
-                    </div>
+                    {safeNegocio > 0 && (
+                      <AcoesResultado rotuloPrincipal="Gerar PDF do orçamento" onPrincipal={handlePrint}
+                        onExcel={() => handleGerarPlanilhaEscritura()} onPdfPlanilha={() => handleGerarPlanilhaEscritura('pdf')}
+                        onCopiar={handleCopyResumo} onWhatsapp={handleShareWhatsapp} onLimpar={handleReset} />
+                    )}
                     </div>{/* fim do bloco de tela (print:hidden) */}
 
                     {/* ===== DOCUMENTO DE IMPRESSÃO (formal, tabelas, sem chrome de dashboard) ===== */}
@@ -2063,7 +2028,7 @@
                       </table>
 
                       <p className="text-[8px] text-gray-600 text-justify leading-relaxed mb-10">
-                        <strong>Nota Legal:</strong> Este relatório é de natureza estimativa e consultiva para fins de planejamento financeiro. As custas notariais e de registo seguem as tabelas de emolumentos do TJ-PR vigentes desde {VIGENCIA_TABELAS_PR} e podem variar conforme o cartório competente ou reajuste anual.
+                        <strong>Nota Legal:</strong> Este relatório é de natureza estimativa e consultiva para fins de planejamento financeiro. As custas notariais e de registro seguem as tabelas de emolumentos do TJ-PR vigentes desde {VIGENCIA_TABELAS_PR} e podem variar conforme o cartório competente ou reajuste anual.
                         {escrituraExtrapolada ? ' * A tabela oficial do Tabelionato de Notas não define faixas acima de R$226.000,00; o valor exibido é uma estimativa mínima baseada na última faixa conhecida — confirme com o tabelionato.' : ''}
                       </p>
 
