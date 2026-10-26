@@ -52,6 +52,42 @@
       tr { page-break-inside: avoid; break-inside: avoid; }
       thead { display: table-header-group; }
     }
+
+    /* Microinterações discretas: transições curtas, foco visível e campo ativo destacado */
+    button, a, input, select, textarea {
+      transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease, transform .15s ease, opacity .15s ease;
+    }
+    button:active:not(:disabled) { transform: scale(.98); }
+    :focus { outline: none; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 3px rgba(15, 139, 104, .18) !important;
+    }
+    html.dark input:focus, html.dark select:focus, html.dark textarea:focus {
+      box-shadow: 0 0 0 3px rgba(52, 211, 153, .22) !important;
+    }
+
+    @keyframes section-in {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes value-in {
+      from { opacity: .35; }
+      to { opacity: 1; }
+    }
+    .section-open { animation: section-in .22s ease-out; }
+    .value-update { animation: value-in .3s ease-out; }
+
+    /* Respeita a preferência de movimento reduzido do sistema */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
   </style>
   <script>
     tailwind.config = {
@@ -125,7 +161,7 @@
       return (
         <div className={`rounded-xl border p-4 ${box}`}>
           <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</div>
-          <div className="mt-1 text-xl sm:text-2xl font-extrabold tabular-nums text-slate-900 dark:text-white">{value}</div>
+          <div key={value} className="value-update mt-1 text-lg sm:text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{value}</div>
           {sub && <div className={`mt-1 text-[11px] font-semibold ${subColor}`}>{sub}</div>}
         </div>
       );
@@ -309,7 +345,7 @@
             )}
             {extraHeader}
           </div>
-          <div className={`${isOpen ? 'block' : 'hidden'} sm:block px-4 sm:px-6 pb-4 sm:pb-6 pt-5`}>
+          <div className={`${isOpen ? 'block section-open' : 'hidden'} sm:block px-4 sm:px-6 pb-4 sm:pb-6 pt-5`}>
             {children}
             {steppable && !isLast && (
               <button type="button" onClick={() => onStepChange(step + 1)} className="sm:hidden mt-2 w-full py-2.5 bg-navy-900 dark:bg-emerald-600 text-white dark:text-navy-900 font-bold text-sm rounded-md transition-colors">Continuar</button>
@@ -482,6 +518,13 @@
       const [outrosNoTotal, setOutrosNoTotal] = useState(initialState?.outrosNoTotal ?? true);
 
       // Casos salvos (histórico multi-cliente)
+      const [toast, setToast] = useState('');
+      useEffect(() => {
+        if (!toast) return;
+        const timer = setTimeout(() => setToast(''), 2600);
+        return () => clearTimeout(timer);
+      }, [toast]);
+
       const [savedCases, setSavedCases] = useState(() => {
         try {
           const raw = localStorage.getItem('central_calc_imob_casos_v1');
@@ -876,7 +919,7 @@
         const texto = buildResumoTexto();
         try {
           await navigator.clipboard.writeText(texto);
-          alert('Resumo copiado para a área de transferência.');
+          setToast('Resumo copiado para a área de transferência.');
         } catch (e) {
           window.prompt('Copie o resumo abaixo:', texto);
         }
@@ -893,14 +936,19 @@
 
       return (
         <div className="min-h-screen pb-24 print-page-wrapper">
+          {toast && (
+            <div role="status" aria-live="polite" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-[90vw] px-4 py-2.5 rounded-lg bg-navy-900 dark:bg-emerald-600 text-white dark:text-navy-900 text-sm font-semibold shadow-card print-hide section-open">
+              ✓ {toast}
+            </div>
+          )}
 
           {/* Barra superior: sem bloco escuro, o nome do produto fica na própria tela */}
           <div className="sticky top-0 z-40 bg-navy-900 dark:bg-[#0B1424] print-hide shadow-card">
             <div className="max-w-5xl mx-auto px-4 sm:px-6">
               <div className="flex justify-between items-center h-16 sm:h-[72px] gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <img src="img/logo-thiago-reis-fundo-escuro.svg" alt="Thiago Reis, advogado" className="h-7 sm:h-8 w-auto flex-shrink-0" />
-                  <div className="min-w-0 border-l border-white/15 pl-3">
+                  <img src="img/logo-thiago-reis-fundo-escuro.svg" alt="Thiago Reis, advogado" className="h-6 sm:h-8 w-auto flex-shrink-0" />
+                  <div className="hidden sm:block min-w-0 border-l border-white/15 pl-3">
                     <h1 className="text-[13px] sm:text-sm font-semibold tracking-tight text-white truncate">Central de Cálculos de Leilões e Imóveis</h1>
                     <div className="text-[11px] text-slate-300/80 truncate">{advName}{advOab ? ` · ${advOab}` : ''}</div>
                   </div>
@@ -1241,7 +1289,7 @@
                     )}
 
                     {/* Indicadores principais (mesmos cálculos do detalhamento abaixo) */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
                       <KpiCard label="Investimento total" value={formatMoney(finalLeilao)} sub="Lance + taxas e custos" />
                       <KpiCard
                         label="Lucro líquido estimado"
