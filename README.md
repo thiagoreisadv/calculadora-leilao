@@ -1,47 +1,53 @@
 # Central de Cálculos de Leilões e Imóveis
 
 Plataforma web de cálculos financeiros e jurídicos, publicada no GitHub Pages
-(<https://thiagoreisadv.github.io/calculadora-leilao/>).
+(<https://thiagoreisadv.github.io/calculadora-leilao/>). Todo o cálculo é feito **no navegador**:
+não há servidor, banco de dados nem consulta a APIs ou a índices econômicos.
 
 ## Módulos
 
-| Módulo | O que faz | Usa a API da Debit? |
-| --- | --- | --- |
-| Calculadora de leilões | Custo de arrematação, lucro, ROI, escritura e RGI (imóveis, rural, veículos) | Não |
-| Atualização de débitos | Dívida única com correção, juros, multa, honorários e pagamentos parciais | Sim (`/v1/correct`) |
-| Pensão alimentícia | Débito por competência, prescrição e ritos do art. 528 CPC | Sim (cálculo `pensaoAlimenticia`) |
-| Aluguéis e contratos / Acordos e parcelas | Várias parcelas com vencimentos, valores e pagamentos próprios | Sim (`/v1/correct`) |
-| Planilha consolidada | Várias obrigações, critérios por linha, total consolidado e CSV | Sim (`/v1/correct`, 1 chamada por linha) |
-| Memórias de cálculo | Demonstrativos guardados no navegador: ver, imprimir, HTML, CSV, cópia JSON | Não |
+| Módulo | O que faz |
+| --- | --- |
+| Calculadora de leilões | Custo de arrematação, lucro, ROI, escritura e RGI (imóveis, rural, veículos) |
+| Atualização de débitos | Dívida única com correção monetária informada, juros, multa, honorários e pagamentos |
+| Pensão alimentícia | Débito competência por competência, ritos do art. 528 do CPC e corte de prescrição informado |
+| Aluguéis e contratos / Acordos e parcelas | Várias parcelas, cada uma com a sua correção, vencimento, valor e pagamentos |
+| Planilha consolidada | Várias obrigações com total consolidado e exportação CSV |
+| Memórias de cálculo | Demonstrativos guardados no navegador: ver, imprimir/salvar PDF, HTML, CSV e cópia JSON |
 
-A calculadora de leilões **não depende** da integração: continua funcionando mesmo sem conexão com a Debit.
+## Correção monetária (sempre informada pelo usuário)
+
+O sistema **não** consulta índices nem calcula correção automática. Em cada parcela o usuário escolhe uma das opções:
+
+1. **Informar percentual de correção** — o percentual acumulado do período. O sistema calcula a correção e a soma ao valor original **uma única vez**. Ex.: R$ 5.000,00 com 8% → correção de R$ 400,00 → principal corrigido de R$ 5.400,00.
+2. **Informar valor já corrigido** — o principal corrigido apurado pelo usuário em outra ferramenta. É usado como base, **sem nova correção**.
+3. **Sem correção monetária** — usa diretamente o valor original.
+
+A partir do principal corrigido o sistema calcula os demais componentes:
+
+- **Juros**: taxa informada, ao mês ou ao ano, simples ou compostos, do vencimento até a data final, sobre o principal corrigido. Período = meses completos + dias restantes ÷ 30.
+- **Multa**: percentual sobre o principal corrigido, aplicada uma única vez.
+- **Honorários**: percentual sobre (principal corrigido + juros + multa − pagamentos) ou valor fixo, somado uma única vez.
+- **Pagamentos**: abatidos do saldo final, ou imputados em ordem cronológica primeiro nos juros e depois no principal (art. 354 do Código Civil), com juros recalculados sobre o principal restante — conforme a escolha do usuário.
+
+A memória de cálculo mostra cada passo e declara que a correção foi **informada manualmente**.
 
 ## Arquitetura
 
 ```
-index.html            Calculadora de leilões (React, inalterada em lógica) + carregamento dos módulos
-js/regras.js          Regras locais testáveis: valores, datas, validação, montagem e conferência de respostas, totais, CSV
-js/api.js             Cliente do servidor intermediário (única porta de saída para a Debit)
-js/motor.js           Liga regras + API (agrupa, envia, confere, fila com limite de concorrência)
+index.html            Calculadora de leilões (React) + carregamento dos módulos
+js/regras.js          Utilitários: valores, datas, arredondamento, CSV
+js/calculo.js         Motor de cálculo local (correção informada, juros, multa, honorários, pagamentos, ritos)
 js/historico.js       Histórico local (localStorage) com exportação/importação JSON
-js/registro.js        Monta o registro de memória de cálculo
+js/registro.js        Monta o registro da memória de cálculo
 js/demonstrativo.js   Gera o HTML do demonstrativo (imprimível / salvar em PDF)
 js/componentes.js     Componentes de interface compartilhados
-js/blocos.js          Critérios de correção, resumo, visualizador de documentos, demonstrativo oficial
-js/debitos.js · parcelas.js · planilha.js · pensao.js · memorias.js · painel.js · conexao.js · plataforma.js
-worker/               Servidor intermediário (Cloudflare Worker) que guarda a chave da Debit
-test/ · worker/test/  Testes automáticos
+js/blocos.js          Correção manual, critérios de cálculo, resumo, visualizador de documentos
+js/debitos.js · parcelas.js · planilha.js · pensao.js · memorias.js · painel.js · plataforma.js
+test/                 Testes automáticos
 ```
 
-O site continua estático (sem build): os arquivos `js/*.js` são carregados diretamente pelo navegador, o que é compatível com o GitHub Pages.
-
-## Segurança
-
-- A **chave da Debit nunca está no site nem no repositório.** Ela fica como segredo no Worker (`wrangler secret put DEBIT_API_KEY`).
-- O site pede um **código de acesso** que o Worker confere; o código fica só no navegador (sessão da aba, ou `localStorage` se você marcar "lembrar").
-- O Worker valida e restringe os campos, aceita apenas as origens autorizadas e não repassa mensagens internas.
-- Nomes de credor, devedor e partes ficam **somente no navegador**; não vão à Debit.
-- Detalhes e passo a passo em [`worker/README.md`](worker/README.md).
+O site é estático e não precisa de build: os arquivos `js/*.js` são carregados direto pelo navegador, compatível com o GitHub Pages.
 
 ## Armazenamento e histórico
 
@@ -49,17 +55,14 @@ O GitHub Pages é hospedagem estática, sem banco de dados. Por isso:
 
 - **Funciona localmente:** histórico de memórias de cálculo no `localStorage` do navegador, cópia de segurança em JSON (exportar/importar), rascunhos dos formulários durante a sessão da aba, "Casos" da calculadora de leilões.
 - **Não existe:** sincronização entre dispositivos e backup automático. Se os dados do navegador forem apagados, o histórico some.
-- **Se for necessário** histórico compartilhado ou em nuvem, é preciso uma infraestrutura adicional (por exemplo, banco no Cloudflare D1/KV com login). Isso não foi implementado para não enviar dados de clientes a serviços externos sem necessidade.
+- Nenhum dado de cliente é enviado a serviços externos.
 
 ## Testes
 
 ```bash
-node --test test/regras.test.js     # regras locais (valores, datas, validação, conferência, CSV)
-cd worker && npm test               # Worker com Debit simulada
+node --test test/regras.test.js test/calculo.test.js
 ```
 
-## Publicar
+Cobrem as três modalidades de correção, a ausência de aplicação dupla, juros simples e compostos (ao mês e ao ano), multa, honorários, pagamentos nos dois modos de abatimento, validações, ritos do art. 528 e a garantia de que os arquivos de cálculo não fazem chamadas de rede.
 
-1. Publique o Worker e configure os segredos (veja `worker/README.md`).
-2. Faça o merge das alterações na `main`: o GitHub Pages publica sozinho.
-3. No site, abra **Conexão com a Debit**, informe o endereço do Worker e o código de acesso, e teste.
+Para ver o site localmente: `python -m http.server 8600` na pasta do projeto e abra <http://localhost:8600>.

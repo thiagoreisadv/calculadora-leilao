@@ -2,9 +2,7 @@
  * Módulo: Painel inicial — resumo da plataforma, atalhos e últimos cálculos.
  */
 (() => {
-  const { useState, useEffect } = React;
   const UI = window.CentralUI;
-  const Api = window.CentralApi;
   const M = window.CentralModulos;
   const { Pagina, Cartao, Botao, Icone, Indicador } = UI;
 
@@ -19,27 +17,13 @@
 
   function ModuloPainel() {
     const historico = M.useHistorico();
-    const [conexao, definirConexao] = useState({ estado: Api.estaConfigurada() ? 'verificando' : 'naoConfigurada' });
-
-    useEffect(() => {
-      let ativo = true;
-      if (!Api.estaConfigurada()) { definirConexao({ estado: 'naoConfigurada' }); return undefined; }
-      Api.conta({ tentativas: 0 })
-        .then((c) => { if (ativo) definirConexao({ estado: 'ok', assinante: c.assinante_calculos }); })
-        .catch((e) => { if (ativo) definirConexao({ estado: 'erro', mensagem: Api.mensagemDeErro(e) }); });
-      return () => { ativo = false; };
-    }, []);
-
     const ultimo = historico[0];
-    const rotuloConexao = { naoConfigurada: 'Não configurada', verificando: 'Verificando…', ok: 'Conectada', erro: 'Com problema' }[conexao.estado];
-    const detalheConexao = conexao.estado === 'ok' ? (conexao.assinante ? 'Conta com assinatura ativa' : 'Conta sem assinatura: últimos 2 anos') : conexao.estado === 'erro' ? conexao.mensagem : conexao.estado === 'naoConfigurada' ? 'Necessária para a atualização monetária' : undefined;
-
     return (
       <Pagina titulo="Central de Cálculos de Leilões e Imóveis" descricao="Cálculos financeiros e jurídicos em um só lugar: arrematação de bens, atualização de débitos, pensão alimentícia e contratos.">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Indicador rotulo="Memórias de cálculo" valor={String(historico.length)} detalhe="Guardadas neste navegador" />
           <Indicador rotulo="Último cálculo" valor={ultimo ? (ultimo.total ? ultimo.total.valor : '—') : '—'} detalhe={ultimo ? `${M.NOMES_TIPOS[ultimo.tipo] || ultimo.tipo} · ${M.dataCurta(ultimo.criadoEm)}` : 'Nenhum ainda'} />
-          <Indicador rotulo="Conexão com a Debit" valor={rotuloConexao} tom={conexao.estado === 'ok' ? 'positivo' : conexao.estado === 'erro' ? 'alerta' : 'neutro'} detalhe={detalheConexao} />
+          <Indicador rotulo="Correção monetária" valor="Informada por você" detalhe="Percentual acumulado ou valor já corrigido, sem índices automáticos" />
         </div>
 
         <Cartao titulo="Iniciar um cálculo">

@@ -10,13 +10,13 @@
  *    resumo: [['Valor original', 'R$ ...'], ...],
  *    total: { rotulo, valor },
  *    secoes: [{ titulo, colunas: [...], linhas: [[...]], rodape?: [...] }],
- *    memorias: [{ rotulo, texto }],      // texto de memória devolvido pela API, quando houver
+ *    memorias: [{ rotulo, texto }],      // passo a passo do cálculo de cada parcela
  *    alertas: [{ tipo, mensagem }],
  *    observacoes: '...',
  *    fonte: '...'
  *  }
  *
- * Todo texto vindo do usuário ou da API é escapado: o documento não executa conteúdo externo.
+ * Todo texto vindo do usuário é escapado: o documento não executa conteúdo externo.
  */
 (function (root) {
   'use strict';
@@ -82,7 +82,7 @@ ${reg.criterios && reg.criterios.length ? `<h2>Critérios de cálculo utilizados
 ${reg.resumo && reg.resumo.length ? `<h2>Discriminação dos valores</h2>${dl(reg.resumo)}` : ''}
 ${reg.total ? `<div class="total"><span class="r">${esc(reg.total.rotulo)}</span><span class="v">${esc(reg.total.valor)}</span></div>` : ''}
 ${(reg.secoes || []).map(tabela).join('')}
-${memorias ? `<h2>Memória de cálculo retornada pela API</h2>${memorias}` : ''}
+${memorias ? `<h2>Memória de cálculo</h2>${memorias}` : ''}
 ${reg.observacoes ? `<h2>Observações</h2><div class="memoria">${esc(reg.observacoes)}</div>` : ''}
 <div class="aviso-legal"><b>Fonte dos dados:</b> ${esc(reg.fonte || '')}. Este demonstrativo informa os critérios efetivamente utilizados para permitir a conferência profissional; o valor retornado pela ferramenta não substitui a análise do caso concreto, do título executivo, do contrato ou da decisão judicial aplicável.</div>
 </div></body></html>`;

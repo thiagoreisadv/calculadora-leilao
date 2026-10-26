@@ -129,7 +129,6 @@
                   {atual.secoes && atual.secoes[0] && <Botao icone="baixar" onClick={baixarCsv}>Baixar CSV</Botao>}
                   <Botao variante="perigo" icone="lixeira" onClick={() => definirExcluir(atual)}>Excluir</Botao>
                 </div>
-                {atual.calcIdDebit && <B.DemonstrativoOficial tipo={atual.tipoOficial || 'atualizacaoMonetaria'} calcId={atual.calcIdDebit} nomeBase={atual.subtitulo || atual.titulo} />}
               </div>
             )}
           </Cartao>

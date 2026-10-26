@@ -1,12 +1,11 @@
 /*
  * Monta o "registro" de memória de cálculo (guardado no histórico e usado pelo demonstrativo).
- * Só organiza dados já calculados pela API e conferidos por CentralRegras: não calcula nada.
+ * Só organiza resultados já calculados pelo motor local (CentralCalculo): não calcula nada.
  */
 (function (root) {
   'use strict';
   const R = root.CentralRegras;
   const m = (n) => R.formatarMoeda(n);
-  const mOuTraco = (n) => (n === null || n === undefined ? '—' : R.formatarMoeda(n));
 
   function profissional() {
     try {
@@ -15,33 +14,51 @@
     } catch (e) { return { nome: '', registro: '' }; }
   }
 
-  function linhasPorParcela(resumos) {
-    return resumos.map((p) => [
-      String(p.indice + 1),
-      p.competencia ? `${p.descricao} (${p.competencia})` : p.descricao,
-      p.vencimento,
-      m(p.original),
-      p.pagamentos ? m(p.pagamentos) : '—',
-      p.naoAtualizado ? 'Não atualizado' : mOuTraco(p.correcao),
-      p.naoAtualizado ? 'Não atualizado' : mOuTraco(p.encargos),
-      p.naoAtualizado ? 'Não atualizado' : mOuTraco(p.saldo),
-    ]);
+  function textoCorrecao(c) {
+    if (c.modo === 'percentual') return `${R.formatarPercentual(c.percentual)} → ${m(c.valorCorrecao)}`;
+    if (c.modo === 'valorCorrigido') return `Valor informado (${m(c.valorCorrecao)})`;
+    return 'Sem correção';
   }
 
-  function montarAtualizacao(o) {
+  /*
+   * o = { tipo, titulo, subtitulo, identificacao, criterios, parcelas:[{descricao, competencia, vencimento}],
+   *       resultados:[saída de calcularParcela], totais, dataFinal, alertas, observacoes, notasResumo }
+   */
+  function montarCalculo(o) {
     const t = o.totais;
+    const comHonorarios = t.honorarios !== 0;
     const resumo = [
       ['Valor original', m(t.original)],
-      ['Correção monetária', m(t.correcao)],
+      ['Correção monetária (informada manualmente pelo usuário)', m(t.correcao)],
+      ['Principal corrigido', m(t.principalCorrigido)],
       ['Juros', m(t.juros)],
       ['Multa', m(t.multa)],
     ];
-    if (t.honorarios !== 0) resumo.push(['Honorários', m(t.honorarios)]);
+    if (comHonorarios) resumo.push(['Honorários', m(t.honorarios)]);
     if (t.encargosNominais !== 0) resumo.push(['Outros encargos (valores informados, sem atualização)', m(t.encargosNominais)]);
-    resumo.push(['Pagamentos (valores nominais)', m(t.pagamentos)]);
+    resumo.push(['Pagamentos', t.pagamentos ? `-${m(t.pagamentos)}` : m(0)]);
+    if (t.creditoNaoImputado !== 0) resumo.push(['Excedente de pagamentos (não imputado)', m(t.creditoNaoImputado)]);
 
-    const rodape = ['', 'Totais', '', m(t.original), t.pagamentos ? m(t.pagamentos) : '—', m(t.correcao), '', m(t.saldo)];
-    const memorias = (o.memorias || []).filter((x) => x.texto);
+    const colunas = ['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Correção monetária (informada)', 'Principal corrigido', 'Juros', 'Multa'];
+    if (comHonorarios) colunas.push('Honorários');
+    colunas.push('Pagamentos', 'Saldo atualizado');
+    const linhas = o.resultados.map((r, i) => {
+      const p = o.parcelas[i];
+      const base = [String(i + 1), p.competencia ? `${p.descricao} (${p.competencia})` : p.descricao, p.vencimento, m(r.original), textoCorrecao(r.correcao), m(r.principalCorrigido), m(r.juros), m(r.multa)];
+      if (comHonorarios) base.push(m(r.honorarios));
+      base.push(r.pagamentos ? `-${m(r.pagamentos)}` : '—', m(r.saldo));
+      return base;
+    });
+    const numericas = colunas.map((c, i) => (i >= 3 && i !== 4 ? i : -1)).filter((i) => i >= 0);
+    const rodape = ['', 'Totais', '', m(t.original), m(t.correcao), m(t.principalCorrigido), m(t.juros), m(t.multa)];
+    if (comHonorarios) rodape.push(m(t.honorarios - t.honorariosFixos));
+    rodape.push(t.pagamentos ? `-${m(t.pagamentos)}` : '—', m(t.saldo));
+
+    const secoes = [{ titulo: 'Detalhamento por parcela', colunas, numericas, linhas, rodape }];
+    const notaTotal = [];
+    if (t.honorariosFixos) notaTotal.push(`honorários de valor fixo (${m(t.honorariosFixos)})`);
+    if (t.encargosNominais) notaTotal.push(`outros encargos informados (${m(t.encargosNominais)})`);
+
     return {
       tipo: o.tipo,
       titulo: o.titulo,
@@ -51,23 +68,16 @@
       profissional: profissional(),
       identificacao: o.identificacao || [],
       criterios: o.criterios || [],
-      resumo,
-      total: { rotulo: 'Saldo final atualizado', valor: m(t.saldoComEncargos) },
-      secoes: [{
-        titulo: 'Detalhamento por parcela',
-        colunas: ['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Pagamentos', 'Correção monetária', 'Juros, multa e encargos', 'Saldo atualizado'],
-        numericas: [3, 4, 5, 6, 7],
-        linhas: linhasPorParcela(o.resumosParcelas),
-        rodape,
-      }],
-      memorias,
+      resumo: resumo.concat(o.notasResumo || []),
+      total: { rotulo: 'Saldo final atualizado', valor: m(t.saldoFinal) },
+      secoes,
+      memorias: o.resultados.map((r, i) => ({ rotulo: `${o.parcelas[i].descricao}${o.parcelas[i].competencia ? ` (${o.parcelas[i].competencia})` : ''} — vencimento ${o.parcelas[i].vencimento}`, texto: r.memoria.join('\n') })),
       alertas: o.alertas || [],
-      observacoes: o.observacoes || '',
-      fonte: 'API da Debit (debit.com.br), acessada por meio de servidor intermediário seguro',
-      calcIdDebit: o.calcIdDebit || null,
+      observacoes: [o.observacoes, notaTotal.length ? `O saldo final inclui, além do total das parcelas: ${notaTotal.join(' e ')}.` : ''].filter(Boolean).join('\n'),
+      fonte: 'Cálculo realizado localmente neste navegador, com a correção monetária e os critérios informados pelo usuário (nenhum índice ou API foi consultado)',
       totais: t,
     };
   }
 
-  root.CentralRegistro = { montarAtualizacao, linhasPorParcela, profissional };
+  root.CentralRegistro = { montarCalculo, profissional, textoCorrecao };
 })(typeof self !== 'undefined' ? self : this);
