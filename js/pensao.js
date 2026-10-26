@@ -1,195 +1,214 @@
 /*
  * Módulo: Pensão alimentícia.
- * Usa o cálculo específico "pensaoAlimenticia" da API da Debit (competências, pagamentos,
- * prescrição e ritos do art. 528 do CPC). Os campos enviados são exatamente os documentados;
- * o resultado é exibido com os nomes que a API devolve, sem reinterpretação.
+ * Cada competência (mês) é uma parcela com o seu vencimento, valor devido, correção monetária
+ * informada manualmente e pagamentos. Juros, multa e saldo são calculados localmente
+ * (CentralCalculo), tal como a divisão entre os ritos da prisão e da expropriação (art. 528 do CPC).
+ * Nenhum índice ou API é consultado; a prescrição é aplicada apenas a partir da data de corte
+ * informada pelo usuário.
  */
 (() => {
   const { useState, useRef } = React;
   const UI = window.CentralUI;
   const B = window.CentralBlocos;
   const R = window.CentralRegras;
-  const Api = window.CentralApi;
-  const { Pagina, Cartao, Botao, Alerta, CampoTexto, CampoMoeda, CampoPercentual, CampoData, CampoCompetencia, Selecao, Chave, Indicador, Tabela } = UI;
+  const K = window.CentralCalculo;
+  const { Pagina, Cartao, Botao, Alerta, CampoTexto, CampoMoeda, CampoPercentual, CampoData, CampoCompetencia, Selecao, Indicador, Tabela } = UI;
 
   let sequencia = 0;
   const novoId = () => { sequencia += 1; return `n${Date.now().toString(36)}${sequencia}`; };
 
   const TIPOS_FIXACAO = [
-    { valor: 'percentual_sm', rotulo: 'Percentual do salário mínimo' },
     { valor: 'valor_fixo', rotulo: 'Valor fixo mensal' },
-    { valor: 'percentual_liquido', rotulo: 'Percentual dos rendimentos líquidos' },
-    { valor: 'percentual_bruto', rotulo: 'Percentual dos rendimentos brutos' },
-    { valor: 'mista', rotulo: 'Fixação mista' },
+    { valor: 'percentual', rotulo: 'Percentual sobre uma base informada em cada mês' },
+    { valor: 'manual', rotulo: 'Informar o valor devido de cada competência' },
   ];
-
-  const precisaPercentual = (t) => ['percentual_sm', 'percentual_liquido', 'percentual_bruto', 'mista'].includes(t);
-  const precisaValorFixo = (t) => ['valor_fixo', 'mista'].includes(t);
-  const precisaSalario = (t) => ['percentual_liquido', 'percentual_bruto'].includes(t);
 
   const inicial = () => ({
     descricao: '', alimentante: '', alimentando: '', observacoes: '',
-    fixacao: { tipo: '', percentual: '', valorFixo: '', inicioVigencia: '' },
-    dataBase: R.hojeBR(), gerador: { de: '', ate: '' }, competencias: [],
-    indice: '', jurosAtivo: false, jurosPct: '', prescricao: '', ajuizamento: '', imputacao: '',
-    pagamentos: [], manter: false,
+    fixacao: { tipo: '', valorFixo: '', percentual: '', baseDescricao: 'Salário mínimo' },
+    gerador: { de: '', ate: '', dia: '' }, competencias: [],
+    criterios: K.criteriosPadrao(), ajuizamento: '', corte: '', pagamentos: [],
   });
 
-  function proximasCompetencias(de, ate) {
-    const ini = R.competenciaParaData(de); const fim = R.competenciaParaData(ate);
-    if (!ini || !fim) return null;
-    const lista = [];
-    for (let i = 0; i < 600; i += 1) {
-      const d = R.adicionarMeses(ini, i);
-      const comp = d.slice(3);
-      lista.push(comp);
-      if (comp === ate) return lista;
-      if (R.lerData(d).ts > R.lerData(fim).ts) return null;
-    }
-    return null;
+  const novaCompetencia = (extra) => ({ id: novoId(), mes_ano: '', vencimento: '', base: '', valor: '', correcao: K.correcaoPadrao(), ...(extra || {}) });
+
+  function valorDevido(f, c) {
+    if (f.fixacao.tipo === 'valor_fixo') return R.arredondar(R.lerValor(f.fixacao.valorFixo));
+    if (f.fixacao.tipo === 'percentual') return R.arredondar(R.lerValor(f.fixacao.percentual) / 100 * R.lerValor(c.base));
+    if (f.fixacao.tipo === 'manual') return R.arredondar(R.lerValor(c.valor));
+    return NaN;
   }
 
-  function construirCampos(f) {
-    const campos = {
-      'fixacao.tipo': f.fixacao.tipo,
-      dia_atualiza: f.dataBase,
-      lista: f.competencias.map((c) => ({ mes_ano: c.mes_ano, ...(precisaSalario(f.fixacao.tipo) && c.salario ? { salario_base: R.lerValor(c.salario) } : {}) })),
-      'parametrosAtualizacao.prescricao.modo': f.prescricao,
-    };
-    if (precisaPercentual(f.fixacao.tipo) && f.fixacao.percentual) campos['fixacao.percentual'] = R.lerValor(f.fixacao.percentual);
-    if (precisaValorFixo(f.fixacao.tipo) && f.fixacao.valorFixo) campos['fixacao.valor_fixo'] = R.lerValor(f.fixacao.valorFixo);
-    if (f.fixacao.inicioVigencia) campos['fixacao.data_inicio_vigencia'] = f.fixacao.inicioVigencia;
-    if (f.indice) campos['parametrosAtualizacao.indice_correcao'] = Number(f.indice);
-    if (f.jurosAtivo) { campos['parametrosAtualizacao.juros.percentual'] = R.lerValor(f.jurosPct); campos['parametrosAtualizacao.juros.a_partir'] = 'vencimento'; }
-    if (f.ajuizamento) campos['processo.data_ajuizamento_execucao'] = f.ajuizamento;
-    if (f.imputacao) campos['parametrosAtualizacao.imputacao.modo'] = f.imputacao;
-    if (f.pagamentos.length) campos.pagamentos = f.pagamentos.map((p) => ({ valor: R.lerValor(p.valor), data: p.data, ...(p.desc ? { descricao: p.desc } : {}) }));
-    return campos;
+  function competenciasEmOrdem(lista) {
+    return lista.slice().sort((a, b) => (a.mes_ano.slice(3) + a.mes_ano.slice(0, 2)).localeCompare(b.mes_ano.slice(3) + b.mes_ano.slice(0, 2)));
   }
 
-  function validar(f) {
-    const erros = [];
-    const e = (campo, mensagem) => erros.push({ campo, mensagem });
-    if (!f.fixacao.tipo) e('tipo', 'Selecione como a pensão foi fixada.');
-    if (precisaPercentual(f.fixacao.tipo)) {
-      const p = R.lerValor(f.fixacao.percentual);
-      if (!(p > 0 && p <= 100)) e('percentual', 'Informe o percentual da pensão (entre 0 e 100).');
-    }
-    if (precisaValorFixo(f.fixacao.tipo) && !(R.lerValor(f.fixacao.valorFixo) > 0)) e('valorFixo', 'Informe o valor fixo mensal.');
-    if (f.fixacao.inicioVigencia && !R.dataEhValida(f.fixacao.inicioVigencia)) e('inicioVigencia', 'Data inválida (DD/MM/AAAA).');
-    if (!R.dataEhValida(f.dataBase)) e('dataBase', 'Informe a data de atualização (DD/MM/AAAA).');
-    if (!f.competencias.length) e('competencias', 'Inclua ao menos uma competência (mês devido).');
-    if (f.competencias.length > R.LIMITE_PARCELAS) e('competencias', `O limite é de ${R.LIMITE_PARCELAS} competências por cálculo.`);
-    f.competencias.forEach((c, i) => {
-      if (!/^(0[1-9]|1[0-2])\/\d{4}$/.test(c.mes_ano)) e('competencia', `Competência ${i + 1}: use MM/AAAA.`);
-      if (precisaSalario(f.fixacao.tipo) && !(R.lerValor(c.salario) > 0)) e('salario', `Competência ${i + 1} (${c.mes_ano || '—'}): informe o rendimento usado como base.`);
-    });
-    if (f.jurosAtivo && !(R.lerValor(f.jurosPct) >= 0)) e('jurosPct', 'Informe o percentual de juros.');
-    if (!f.prescricao) e('prescricao', 'Escolha explicitamente o critério de prescrição. Para alimentando menor sob poder familiar, a lei afasta a prescrição.');
-    if (f.ajuizamento && !R.dataEhValida(f.ajuizamento)) e('ajuizamento', 'Data inválida (DD/MM/AAAA).');
-    f.pagamentos.forEach((p, i) => {
-      if (!R.dataEhValida(p.data)) e('pagamento', `Pagamento ${i + 1}: data inválida.`);
-      if (!(R.lerValor(p.valor) > 0)) e('pagamento', `Pagamento ${i + 1}: informe um valor maior que zero.`);
-    });
-    return erros;
+  function LinhaCompetencia({ c, indice, f, onChange, onRemover, erros }) {
+    const [corrigir, definirCorrigir] = useState(c.correcao.modo !== 'nenhuma');
+    const erro = (campo) => (erros.find((e) => e.linha === indice && e.campo === campo) || {}).mensagem;
+    const devido = valorDevido(f, c);
+    const prescrita = f.corte && R.dataEhValida(f.corte) && R.dataEhValida(c.vencimento) && R.lerData(c.vencimento).ts < R.lerData(f.corte).ts;
+    const rotuloCorr = { percentual: `Correção: ${c.correcao.percentual || '—'}%`, valorCorrigido: 'Valor corrigido informado', nenhuma: 'Sem correção' }[c.correcao.modo];
+    return (
+      <div className={`p-3 sm:p-4 ${prescrita ? 'opacity-60' : ''}`}>
+        <div className="grid grid-cols-1 sm:grid-cols-[7rem_9rem_1fr_auto] gap-3 items-end">
+          <CampoCompetencia rotulo="Competência" valor={c.mes_ano} onChange={(v) => onChange({ mes_ano: v })} erro={erro('competencia')} />
+          <CampoData rotulo="Vencimento" obrigatorio valor={c.vencimento} onChange={(v) => onChange({ vencimento: v })} erro={erro('vencimento')} />
+          {f.fixacao.tipo === 'percentual' && <CampoMoeda rotulo={`${f.fixacao.baseDescricao || 'Base'} do mês`} valor={c.base} onChange={(v) => onChange({ base: v })} erro={erro('base')} />}
+          {f.fixacao.tipo === 'manual' && <CampoMoeda rotulo="Valor devido" valor={c.valor} onChange={(v) => onChange({ valor: v })} erro={erro('valor')} />}
+          {f.fixacao.tipo === 'valor_fixo' && <div className="text-sm font-semibold text-slate-600 dark:text-slate-300 pb-3">Valor devido: {Number.isNaN(devido) ? '—' : R.formatarMoeda(devido)}</div>}
+          <div className="flex gap-1">
+            <Botao tamanho="sm" variante="fantasma" aria-expanded={corrigir} onClick={() => definirCorrigir(!corrigir)}>{rotuloCorr}</Botao>
+            <Botao variante="perigo" tamanho="sm" icone="lixeira" aria-label={`Remover competência ${indice + 1}`} onClick={onRemover} />
+          </div>
+        </div>
+        {f.fixacao.tipo === 'percentual' && !Number.isNaN(devido) && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Valor devido: {R.formatarMoeda(devido)}</p>}
+        {prescrita && <p className="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-400">Anterior à data de corte da prescrição: não entra no cálculo.</p>}
+        {corrigir && (
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 section-open">
+            <B.CorrecaoManual compacto valor={c.correcao} onChange={(x) => onChange({ correcao: x })} valorOriginal={Number.isNaN(devido) ? '' : String(devido)} erro={erro('correcao')} titulo="Correção monetária desta competência" />
+          </div>
+        )}
+      </div>
+    );
   }
 
   function ModuloPensao() {
-    const [f, definirF, limpar] = UI.useRascunho('pensao', inicial);
-    const catalogo = UI.useCatalogo();
+    const [f, definirF, limpar] = UI.useRascunho('pensao2', inicial);
     const [errosForm, definirErros] = useState([]);
-    const [carregando, definirCarregando] = useState(false);
-    const [erroApi, definirErroApi] = useState(null);
-    const [espera, definirEspera] = useState(0);
     const [resultado, definirResultado] = useState(null);
     const topo = useRef(null);
 
     const alterar = (parte) => { definirF({ ...f, ...parte }); definirResultado(null); };
     const alterarFixacao = (parte) => alterar({ fixacao: { ...f.fixacao, ...parte } });
+    const alterarComp = (id, parte) => alterar({ competencias: f.competencias.map((x) => (x.id === id ? { ...x, ...parte } : x)) });
     const erroCampo = (campo) => (errosForm.find((x) => x.campo === campo) || {}).mensagem;
 
     function gerarCompetencias() {
-      const lista = proximasCompetencias(f.gerador.de, f.gerador.ate);
-      if (!lista) { UI.avisar('Informe o período no formato MM/AAAA, do mês inicial ao final.', 'erro'); return; }
+      const g = f.gerador;
+      const dia = Number.parseInt(g.dia, 10);
+      const ini = R.competenciaParaData(g.de);
+      const fim = R.competenciaParaData(g.ate);
+      if (!(dia >= 1 && dia <= 31)) { UI.avisar('Informe o dia de vencimento de cada mês (1 a 31).', 'erro'); return; }
+      if (!ini || !fim || R.lerData(fim).ts < R.lerData(ini).ts) { UI.avisar('Informe o período no formato MM/AAAA, do mês inicial ao final.', 'erro'); return; }
+      const lista = [];
+      for (let i = 0; i < 600; i += 1) {
+        const d = R.adicionarMeses(ini, i);
+        if (R.lerData(d).ts > R.lerData(fim).ts) break;
+        const comp = d.slice(3);
+        // Se o dia não existe no mês (ex.: 31 em fevereiro), usa o último dia do mês.
+        const ultimo = new Date(Date.UTC(Number(comp.slice(3)), Number(comp.slice(0, 2)), 0)).getUTCDate();
+        lista.push(novaCompetencia({ mes_ano: comp, vencimento: `${String(Math.min(dia, ultimo)).padStart(2, '0')}/${comp}` }));
+      }
       const existentes = new Set(f.competencias.map((c) => c.mes_ano));
-      const novas = lista.filter((c) => !existentes.has(c)).map((c) => ({ id: novoId(), mes_ano: c, salario: '' }));
-      alterar({ competencias: [...f.competencias, ...novas].sort((a, b) => (a.mes_ano.slice(3) + a.mes_ano.slice(0, 2)).localeCompare(b.mes_ano.slice(3) + b.mes_ano.slice(0, 2))) });
+      const novas = lista.filter((c) => !existentes.has(c.mes_ano));
+      if (f.competencias.length + novas.length > R.LIMITE_PARCELAS) { UI.avisar(`O limite é de ${R.LIMITE_PARCELAS} competências por cálculo.`, 'erro'); return; }
+      alterar({ competencias: competenciasEmOrdem([...f.competencias, ...novas]) });
       UI.avisar(`${novas.length} competência(s) adicionada(s).`);
     }
 
-    async function calcular() {
-      definirErroApi(null);
-      const erros = validar(f);
+    function validar() {
+      const erros = [];
+      const e = (campo, mensagem, linha) => erros.push({ campo, mensagem, linha });
+      if (!f.fixacao.tipo) e('tipo', 'Selecione como a pensão foi fixada.');
+      if (f.fixacao.tipo === 'valor_fixo' && !(R.lerValor(f.fixacao.valorFixo) > 0)) e('valorFixo', 'Informe o valor fixo mensal.');
+      if (f.fixacao.tipo === 'percentual' && !(R.lerValor(f.fixacao.percentual) > 0 && R.lerValor(f.fixacao.percentual) <= 100)) e('percentual', 'Informe o percentual da pensão (entre 0 e 100).');
+      if (f.corte && !R.dataEhValida(f.corte)) e('corte', 'Data de corte da prescrição inválida (DD/MM/AAAA).');
+      if (f.ajuizamento && !R.dataEhValida(f.ajuizamento)) e('ajuizamento', 'Data de ajuizamento inválida (DD/MM/AAAA).');
+      if (!f.competencias.length) e('competencias', 'Inclua ao menos uma competência (mês devido).');
+      f.competencias.forEach((c, i) => {
+        if (!/^(0[1-9]|1[0-2])\/\d{4}$/.test(c.mes_ano)) e('competencia', `Competência ${i + 1}: use MM/AAAA.`, i);
+        if (f.fixacao.tipo === 'percentual' && !(R.lerValor(c.base) > 0)) e('base', `Competência ${i + 1}: informe a base do percentual.`, i);
+        if (f.fixacao.tipo === 'manual' && !(R.lerValor(c.valor) > 0)) e('valor', `Competência ${i + 1}: informe o valor devido.`, i);
+      });
+      f.pagamentos.forEach((p, i) => {
+        if (!p.destino || !f.competencias.some((c) => c.id === p.destino)) e('pagamento', `Pagamento ${i + 1}: escolha a competência que ele abate.`);
+      });
+      if (erros.length) return erros;
+      const { parcelas } = montarParcelas();
+      return erros.concat(K.validarCalculo(f.criterios, parcelas.map((x) => x.parcela), 'Competência').map((x) => {
+        const origem = x.linha !== undefined ? parcelas[x.linha] : null;
+        return origem ? { ...x, linha: origem.indiceOriginal } : x;
+      }));
+    }
+
+    // Competências anteriores à data de corte (informada pelo usuário) ficam fora do cálculo.
+    function montarParcelas() {
+      const corte = R.dataEhValida(f.corte) ? R.lerData(f.corte).ts : null;
+      const parcelas = [];
+      const prescritas = [];
+      f.competencias.forEach((c, i) => {
+        const venc = R.lerData(c.vencimento);
+        if (corte !== null && venc && venc.ts < corte) { prescritas.push(c); return; }
+        parcelas.push({
+          indiceOriginal: i, id: c.id,
+          parcela: {
+            descricao: `Competência ${c.mes_ano}`, competencia: c.mes_ano, vencimento: c.vencimento, valor: String(valorDevido(f, c)), correcao: c.correcao,
+            pagamentos: f.pagamentos.filter((p) => p.destino === c.id).map((p) => ({ data: p.data, valor: p.valor })),
+          },
+        });
+      });
+      return { parcelas, prescritas };
+    }
+
+    function calcular() {
+      const erros = validar();
       definirErros(erros);
       if (erros.length) { UI.avisar('Corrija os campos destacados antes de calcular.', 'erro'); return; }
-      definirCarregando(true); definirEspera(0); definirResultado(null);
-      try {
-        const resposta = await Api.pensao({ fields: construirCampos(f), manter: f.manter, nome: 'Central de Cálculos — pensão alimentícia' }, { aoEsperar: definirEspera });
-        const dados = resposta && resposta.resultado;
-        if (!dados || typeof dados !== 'object') throw new Api.ErroApi('debit', 'A API da Debit não devolveu o resultado do cálculo.');
-        definirResultado({
-          dados, calcId: resposta.calcId,
-          total: typeof dados.debito_total_atualizado === 'number' ? dados.debito_total_atualizado : null,
-          tabela: R.extrairTabelaGenerica(dados), campos: R.achatarCampos(dados),
-        });
-        setTimeout(() => topo.current && topo.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-      } catch (e) { definirErroApi(e); }
-      definirCarregando(false); definirEspera(0);
+      const { parcelas, prescritas } = montarParcelas();
+      if (!parcelas.length) { definirErros([{ campo: 'competencias', mensagem: 'Todas as competências são anteriores à data de corte da prescrição; não há o que calcular.' }]); return; }
+      const lista = parcelas.map((x) => x.parcela);
+      const resultados = lista.map((x) => K.calcularParcela(x, f.criterios));
+      const totais = K.consolidar(resultados, { honorariosFixos: K.honorariosFixos(f.criterios) });
+      const ritos = K.particionarRitos(resultados.map((r, i) => ({ indice: i, vencimento: lista[i].vencimento, saldo: r.saldo })), f.ajuizamento, f.criterios.dataFinal);
+      definirResultado({ lista, resultados, totais, ritos, prescritas, criteriosDescritos: criteriosDescritos() });
+      setTimeout(() => topo.current && topo.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
     }
 
     function criteriosDescritos() {
       const t = TIPOS_FIXACAO.find((x) => x.valor === f.fixacao.tipo);
-      const idx = (catalogo.indices || []).find((i) => String(i.id) === String(f.indice));
       const lista = [['Fixação da pensão', t ? t.rotulo : f.fixacao.tipo]];
-      if (f.fixacao.percentual && precisaPercentual(f.fixacao.tipo)) lista.push(['Percentual fixado', R.formatarPercentual(R.lerValor(f.fixacao.percentual))]);
-      if (f.fixacao.valorFixo && precisaValorFixo(f.fixacao.tipo)) lista.push(['Valor fixo mensal', R.formatarMoeda(R.lerValor(f.fixacao.valorFixo))]);
-      if (f.fixacao.inicioVigencia) lista.push(['Início de vigência da fixação', f.fixacao.inicioVigencia]);
-      lista.push(['Data de atualização (data-base)', f.dataBase]);
-      lista.push(['Índice de correção', idx ? idx.name : (f.indice ? `id ${f.indice}` : 'Padrão da Debit para pensão alimentícia')]);
-      lista.push(['Juros', f.jurosAtivo ? `${R.formatarPercentual(R.lerValor(f.jurosPct))} a partir do vencimento (conforme motor da Debit)` : 'Conforme padrão da Debit para pensão alimentícia']);
-      lista.push(['Prescrição', { bienal: 'Bienal (art. 206, § 2º, CC)', quinquenal: 'Quinquenal', nenhuma: 'Não aplicada (arts. 197, II, e 198, I, CC)' }[f.prescricao]]);
-      if (f.ajuizamento) lista.push(['Ajuizamento da execução', f.ajuizamento]);
-      lista.push(['Imputação dos pagamentos', f.imputacao ? { retroativa: 'Retroativa (parcelas vencidas mais antigas)', prospectiva: 'Prospectiva' }[f.imputacao] : 'Padrão da Debit']);
-      lista.push(['Responsabilidade pelos critérios', 'Definidos pelo usuário para o caso concreto; a ferramenta não valida sua adequação jurídica.']);
-      return lista;
+      if (f.fixacao.tipo === 'valor_fixo') lista.push(['Valor fixo mensal', R.formatarMoeda(R.lerValor(f.fixacao.valorFixo))]);
+      if (f.fixacao.tipo === 'percentual') lista.push(['Percentual fixado', `${R.formatarPercentual(R.lerValor(f.fixacao.percentual))} sobre: ${f.fixacao.baseDescricao || 'base informada em cada mês'}`]);
+      lista.push(['Prescrição', f.corte ? `Competências com vencimento anterior a ${f.corte} (data de corte informada pelo usuário) foram excluídas` : 'Nenhuma competência excluída por prescrição']);
+      lista.push(['Ajuizamento da execução', f.ajuizamento || 'Não informado']);
+      return lista.concat(B.descreverCriterios(f.criterios));
     }
 
-    function gerarMemoria() {
-      const r = resultado;
+    function entrada() {
+      const x = resultado;
       const m = R.formatarMoeda;
-      const resumo = r.campos
-        .filter(([k, v]) => typeof v !== 'object' && v !== null && /debito_total|subtotal|prescricao|rito_prisao/i.test(k))
-        .map(([k, v]) => [R.rotuloCampo(k), R.formatarCampoApi(k, v)]);
-      const registro = {
+      const notas = [['Subtotal — rito da prisão (art. 528, §§ 3º e 7º, CPC)', m(x.ritos.prisao.total)], ['Subtotal — rito da expropriação (art. 528, § 8º, CPC)', m(x.ritos.expropriacao.total)]];
+      const obs = [f.observacoes, x.ritos.nota, x.prescritas.length ? `Competências excluídas por prescrição (data de corte ${f.corte}): ${x.prescritas.map((c) => c.mes_ano).join(', ')}.` : ''].filter(Boolean).join('\n');
+      return {
         tipo: 'pensao',
         titulo: 'Memória de cálculo — Pensão alimentícia',
         subtitulo: f.descricao || 'Débito de pensão alimentícia',
-        geradoEm: new Date().toISOString(),
-        dataReferencia: f.dataBase,
-        profissional: window.CentralRegistro.profissional(),
-        identificacao: [['Descrição', f.descricao], ['Alimentante', f.alimentante], ['Alimentando', f.alimentando], ['Competências informadas', String(f.competencias.length)]],
-        criterios: criteriosDescritos(),
-        resumo,
-        total: r.total !== null ? { rotulo: 'Débito total atualizado', valor: m(r.total) } : null,
-        secoes: r.tabela ? [{ titulo: 'Competências (campos conforme retornados pela API)', colunas: r.tabela.colunas.map(R.rotuloCampo), linhas: r.tabela.linhas.map((l) => l.map((v, i) => R.formatarCampoApi(r.tabela.colunas[i], v))), numericas: r.tabela.colunas.map((c, i) => (typeof r.tabela.linhas[0][i] === 'number' ? i : -1)).filter((i) => i >= 0) }] : [],
-        memorias: [],
-        alertas: r.total === null ? [{ tipo: 'aviso', mensagem: 'A API não devolveu o campo de total (debito_total_atualizado); confira o demonstrativo oficial.' }] : [],
-        observacoes: f.observacoes,
-        fonte: 'API da Debit (debit.com.br), cálculo específico de pensão alimentícia, acessada por meio de servidor intermediário seguro',
-        calcIdDebit: r.calcId || null,
-        tipoOficial: 'pensaoAlimenticia',
+        identificacao: [['Descrição', f.descricao], ['Alimentante', f.alimentante], ['Alimentando', f.alimentando], ['Competências calculadas', String(x.lista.length)]],
+        criterios: x.criteriosDescritos,
+        parcelas: x.lista.map((p) => ({ descricao: `Competência ${p.competencia}`, vencimento: p.vencimento })),
+        resultados: x.resultados, totais: x.totais, dataFinal: f.criterios.dataFinal, observacoes: obs, notasResumo: notas,
+        linhasExtras: [['Subtotal — rito da prisão (art. 528, §§ 3º e 7º, CPC)', x.ritos.prisao.total], ['Subtotal — rito da expropriação (art. 528, § 8º, CPC)', x.ritos.expropriacao.total]],
       };
-      B.guardarMemoria(registro, true);
     }
 
-    const r = resultado;
-    const opcoesIndice = (catalogo.indices || []).filter((i) => i.type !== 'moeda').map((i) => ({ valor: String(i.id), rotulo: i.name }));
-    return (
-      <Pagina titulo="Pensão alimentícia" descricao="Calcule o débito de parcelas vencidas de pensão com o motor específico da Debit, tratando cada competência individualmente.">
-        <B.AvisoConexao />
-        <B.AvisoConta />
+    function gerarMemoria() {
+      B.guardarMemoria(window.CentralRegistro.montarCalculo(entrada()), true);
+    }
 
-        <Cartao titulo="1. Identificação" descricao="Nomes e descrições ficam apenas neste navegador e aparecem no demonstrativo. Não são enviados à Debit.">
+    function gerarPlanilha() {
+      B.gerarPlanilhaCalculo(entrada(), f.descricao || 'pensao');
+    }
+
+    function gerarPdf() {
+      B.gerarPdfCalculo(entrada(), f.descricao || 'pensao');
+    }
+
+    const x = resultado;
+    const m = R.formatarMoeda;
+    return (
+      <Pagina titulo="Pensão alimentícia" descricao="Calcule o débito de parcelas vencidas de pensão, competência por competência, com a correção monetária que você informar.">
+        <Cartao titulo="1. Identificação" descricao="Nomes e descrições ficam apenas neste navegador e aparecem no demonstrativo.">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <CampoTexto rotulo="Descrição" valor={f.descricao} onChange={(v) => alterar({ descricao: v })} className="sm:col-span-2" placeholder="Ex.: Execução de alimentos — processo nº" />
             <CampoTexto rotulo="Alimentante (devedor)" valor={f.alimentante} onChange={(v) => alterar({ alimentante: v })} />
@@ -200,131 +219,119 @@
         <Cartao titulo="2. Fixação da pensão">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Selecao rotulo="Como foi fixada" obrigatorio valor={f.fixacao.tipo} onChange={(v) => alterarFixacao({ tipo: v })} opcoes={TIPOS_FIXACAO} placeholder="Selecione" erro={erroCampo('tipo')} className="sm:col-span-2" />
-            {precisaPercentual(f.fixacao.tipo) && <CampoPercentual rotulo="Percentual fixado" obrigatorio valor={f.fixacao.percentual} onChange={(v) => alterarFixacao({ percentual: v })} erro={erroCampo('percentual')} />}
-            {precisaValorFixo(f.fixacao.tipo) && <CampoMoeda rotulo="Valor fixo mensal" obrigatorio valor={f.fixacao.valorFixo} onChange={(v) => alterarFixacao({ valorFixo: v })} erro={erroCampo('valorFixo')} />}
-            <CampoData rotulo="Início de vigência da fixação" valor={f.fixacao.inicioVigencia} onChange={(v) => alterarFixacao({ inicioVigencia: v })} erro={erroCampo('inicioVigencia')} ajuda="Opcional." />
+            {f.fixacao.tipo === 'valor_fixo' && <CampoMoeda rotulo="Valor fixo mensal" obrigatorio valor={f.fixacao.valorFixo} onChange={(v) => alterarFixacao({ valorFixo: v })} erro={erroCampo('valorFixo')} />}
+            {f.fixacao.tipo === 'percentual' && (
+              <>
+                <CampoPercentual rotulo="Percentual fixado" obrigatorio valor={f.fixacao.percentual} onChange={(v) => alterarFixacao({ percentual: v })} erro={erroCampo('percentual')} />
+                <CampoTexto rotulo="Base do percentual" valor={f.fixacao.baseDescricao} onChange={(v) => alterarFixacao({ baseDescricao: v })} maxLength={60} ajuda="Ex.: Salário mínimo, rendimento líquido. Você informará o valor da base em cada mês." />
+              </>
+            )}
           </div>
         </Cartao>
 
-        <Cartao titulo="3. Competências devidas" descricao="Informe os meses em que a pensão era devida. Cada mês é calculado individualmente, com seu vencimento.">
+        <Cartao titulo="3. Competências devidas" descricao="Informe os meses devidos e o dia de vencimento. Cada mês é calculado individualmente, com sua própria correção monetária.">
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_8rem_auto] gap-3 items-end">
               <CampoCompetencia rotulo="Do mês" valor={f.gerador.de} onChange={(v) => alterar({ gerador: { ...f.gerador, de: v } })} />
               <CampoCompetencia rotulo="Até o mês" valor={f.gerador.ate} onChange={(v) => alterar({ gerador: { ...f.gerador, ate: v } })} />
+              <CampoTexto rotulo="Dia do vencimento" valor={f.gerador.dia} onChange={(v) => alterar({ gerador: { ...f.gerador, dia: v.replace(/\D/g, '').slice(0, 2) } })} inputMode="numeric" maxLength={2} />
               <Botao variante="primario" icone="mais" className="!h-11" onClick={gerarCompetencias}>Gerar meses</Botao>
             </div>
             {f.competencias.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">Nenhuma competência incluída.</p>}
             {f.competencias.length > 0 && (
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/50 max-h-96 overflow-y-auto">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/50 max-h-[32rem] overflow-y-auto">
                 {f.competencias.map((c, i) => (
-                  <div key={c.id} className="grid grid-cols-[1fr_auto] sm:grid-cols-[8rem_1fr_auto] gap-3 items-end p-3">
-                    <CampoCompetencia rotulo="Competência" valor={c.mes_ano} onChange={(v) => alterar({ competencias: f.competencias.map((x) => (x.id === c.id ? { ...x, mes_ano: v } : x)) })} />
-                    {precisaSalario(f.fixacao.tipo)
-                      ? <CampoMoeda rotulo="Rendimento base do mês" valor={c.salario} onChange={(v) => alterar({ competencias: f.competencias.map((x) => (x.id === c.id ? { ...x, salario: v } : x)) })} className="col-span-2 sm:col-span-1 order-last sm:order-none" />
-                      : <div className="hidden sm:block" />}
-                    <Botao variante="perigo" tamanho="sm" icone="lixeira" className="!h-11" aria-label={`Remover competência ${i + 1}`} onClick={() => alterar({ competencias: f.competencias.filter((x) => x.id !== c.id) })} />
-                  </div>
+                  <LinhaCompetencia key={c.id} c={c} indice={i} f={f} erros={errosForm} onChange={(parte) => alterarComp(c.id, parte)} onRemover={() => alterar({ competencias: f.competencias.filter((y) => y.id !== c.id), pagamentos: f.pagamentos.filter((p) => p.destino !== c.id) })} />
                 ))}
               </div>
             )}
             {erroCampo('competencias') && <p role="alert" className="text-xs font-medium text-red-600">{erroCampo('competencias')}</p>}
-            <Botao tamanho="sm" icone="mais" onClick={() => alterar({ competencias: [...f.competencias, { id: novoId(), mes_ano: '', salario: '' }] })}>Adicionar competência avulsa</Botao>
+            <Botao tamanho="sm" icone="mais" onClick={() => alterar({ competencias: [...f.competencias, novaCompetencia()] })}>Adicionar competência avulsa</Botao>
           </div>
         </Cartao>
 
-        <Cartao titulo="4. Pagamentos realizados" descricao="Pagamentos parciais ou totais já feitos. A destinação segue a regra de imputação escolhida abaixo.">
-          <M2_ListaPagamentos itens={f.pagamentos} onChange={(v) => alterar({ pagamentos: v })} erro={erroCampo('pagamento')} />
-        </Cartao>
-
-        <Cartao titulo="5. Critérios de atualização" descricao="Escolha conforme a decisão ou o caso concreto. Os itens sem escolha usam o padrão do motor de pensão da Debit.">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <CampoData rotulo="Atualizar até (data-base)" obrigatorio valor={f.dataBase} onChange={(v) => alterar({ dataBase: v })} erro={erroCampo('dataBase')} comHoje />
-            <Selecao rotulo="Índice de correção" valor={f.indice} onChange={(v) => alterar({ indice: v })} opcoes={opcoesIndice}
-              placeholder={catalogo.carregando ? 'Carregando índices…' : 'Padrão da Debit'} desabilitado={!catalogo.indices} ajuda="Deixe no padrão se a decisão não indicar um índice." />
-            <Selecao rotulo="Prescrição" obrigatorio valor={f.prescricao} onChange={(v) => alterar({ prescricao: v })} erro={erroCampo('prescricao')} placeholder="Selecione"
-              opcoes={[{ valor: 'nenhuma', rotulo: 'Não aplicar (alimentando menor sob poder familiar ou incapaz)' }, { valor: 'bienal', rotulo: 'Bienal (2 anos)' }, { valor: 'quinquenal', rotulo: 'Quinquenal (5 anos)' }]}
-              ajuda="A Debit usa prescrição bienal por padrão, o que reduz o total para filho menor. Por isso a escolha é obrigatória." />
-            <CampoData rotulo="Ajuizamento da execução" valor={f.ajuizamento} onChange={(v) => alterar({ ajuizamento: v })} erro={erroCampo('ajuizamento')} ajuda="Opcional. Define o corte entre o rito da prisão e o da expropriação (art. 528 do CPC)." />
-            <Selecao rotulo="Imputação dos pagamentos" valor={f.imputacao} onChange={(v) => alterar({ imputacao: v })} placeholder="Padrão da Debit"
-              opcoes={[{ valor: 'retroativa', rotulo: 'Retroativa (quita as parcelas vencidas mais antigas)' }, { valor: 'prospectiva', rotulo: 'Prospectiva' }]} />
-            <div className="sm:col-span-2 space-y-3">
-              <Chave rotulo="Informar juros" descricao="Se desligado, vale o padrão da Debit para pensão alimentícia." marcado={f.jurosAtivo} onChange={(v) => alterar({ jurosAtivo: v })} />
-              {f.jurosAtivo && <div className="max-w-xs section-open"><CampoPercentual rotulo="Percentual de juros" valor={f.jurosPct} onChange={(v) => alterar({ jurosPct: v })} erro={erroCampo('jurosPct')} /></div>}
-            </div>
+        <Cartao titulo="4. Pagamentos realizados" descricao="Cada pagamento abate a competência que você indicar. Nenhuma imputação automática é feita entre competências.">
+          <div className="space-y-3">
+            {f.pagamentos.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum pagamento informado.</p>}
+            {f.pagamentos.map((p, i) => (
+              <div key={p.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1.4fr_auto] gap-3 items-end p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 section-open">
+                <CampoData rotulo={`Data do pagamento ${i + 1}`} valor={p.data} onChange={(v) => alterar({ pagamentos: f.pagamentos.map((y) => (y.id === p.id ? { ...y, data: v } : y)) })} />
+                <CampoMoeda rotulo="Valor pago" valor={p.valor} onChange={(v) => alterar({ pagamentos: f.pagamentos.map((y) => (y.id === p.id ? { ...y, valor: v } : y)) })} />
+                <Selecao rotulo="Competência abatida" valor={p.destino} placeholder="Selecione" onChange={(v) => alterar({ pagamentos: f.pagamentos.map((y) => (y.id === p.id ? { ...y, destino: v } : y)) })}
+                  opcoes={f.competencias.map((c) => ({ valor: c.id, rotulo: c.mes_ano || '(sem competência)' }))} />
+                <Botao variante="perigo" tamanho="sm" icone="lixeira" className="!h-11" aria-label={`Remover pagamento ${i + 1}`} onClick={() => alterar({ pagamentos: f.pagamentos.filter((y) => y.id !== p.id) })}>Remover</Botao>
+              </div>
+            ))}
+            {erroCampo('pagamento') && <p role="alert" className="text-xs font-medium text-red-600">{erroCampo('pagamento')}</p>}
+            <Botao tamanho="sm" icone="mais" onClick={() => alterar({ pagamentos: [...f.pagamentos, { id: novoId(), data: '', valor: '', destino: '' }] })}>Adicionar pagamento</Botao>
           </div>
         </Cartao>
 
-        <Cartao titulo="6. Observações e demonstrativo oficial">
+        <Cartao titulo="5. Critérios de cálculo" descricao="Juros, multa e abatimento seguem o que você escolher. Nada é aplicado automaticamente.">
           <div className="space-y-5">
-            <div>
-              <label htmlFor="obs-pensao" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Observações (aparecem no demonstrativo)</label>
-              <textarea id="obs-pensao" rows={3} maxLength={1000} value={f.observacoes} onChange={(e) => alterar({ observacoes: e.target.value })}
-                className="block w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
+            <B.CriteriosCalculo valor={f.criterios} onChange={(c) => alterar({ criterios: c })} erros={errosForm} rotuloData="Atualizar até (data-base)" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <CampoData rotulo="Ajuizamento da execução" valor={f.ajuizamento} onChange={(v) => alterar({ ajuizamento: v })} erro={erroCampo('ajuizamento')} ajuda="Opcional. Define o corte entre o rito da prisão e o da expropriação (art. 528 do CPC)." />
+              <CampoData rotulo="Data de corte da prescrição" valor={f.corte} onChange={(v) => alterar({ corte: v })} erro={erroCampo('corte')} ajuda="Opcional. Competências com vencimento anterior a esta data ficam fora do cálculo. Para filho menor sob poder familiar, a prescrição não corre: deixe em branco." />
             </div>
-            <Chave rotulo="Emitir demonstrativo oficial da Debit" descricao="Mantém este cálculo na sua conta Debit para gerar PDF e Excel oficiais. Sem isso, o cálculo é feito e enviado para a lixeira da Debit logo em seguida." marcado={f.manter} onChange={(v) => alterar({ manter: v })} />
           </div>
+        </Cartao>
+
+        <Cartao titulo="6. Observações">
+          <label htmlFor="obs-pensao" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Observações (aparecem no demonstrativo)</label>
+          <textarea id="obs-pensao" rows={3} maxLength={1000} value={f.observacoes} onChange={(e) => alterar({ observacoes: e.target.value })}
+            className="block w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
         </Cartao>
 
         {errosForm.length > 0 && (
           <Alerta tipo="erro" titulo="Revise os dados informados">
-            <ul className="list-disc pl-5 space-y-0.5">{errosForm.slice(0, 8).map((x, i) => <li key={i}>{x.mensagem}</li>)}{errosForm.length > 8 && <li>… e mais {errosForm.length - 8} ajustes.</li>}</ul>
-          </Alerta>
-        )}
-        {erroApi && (
-          <Alerta tipo="erro" titulo={erroApi.tipo === 'limite' ? 'Limite de uso atingido' : 'Não foi possível calcular a pensão'}
-            acao={erroApi.podeTentarNovamente ? <Botao tamanho="sm" icone="atualizar" onClick={calcular}>Tentar novamente</Botao> : (['naoConfigurado', 'semCodigo', 'acesso'].includes(erroApi.tipo)) ? <Botao tamanho="sm" onClick={() => UI.navegar('conexao')}>Abrir configuração da conexão</Botao> : null}>
-            {Api.mensagemDeErro(erroApi)} Seus dados foram mantidos e nenhum valor foi calculado.
+            <ul className="list-disc pl-5 space-y-0.5">{errosForm.slice(0, 8).map((e, i) => <li key={i}>{e.mensagem}</li>)}{errosForm.length > 8 && <li>… e mais {errosForm.length - 8} ajustes.</li>}</ul>
           </Alerta>
         )}
 
         <div className="sticky bottom-3 z-20 flex flex-wrap gap-2 p-3 rounded-2xl bg-white/95 dark:bg-[#14243A]/95 border border-slate-200 dark:border-slate-700/60 shadow-card backdrop-blur">
-          <Botao variante="verde" icone="atualizar" carregando={carregando} onClick={calcular} className="flex-1 sm:flex-none sm:min-w-[240px]">
-            {carregando ? (espera ? `Aguardando limite de uso (${espera}s)…` : 'Calculando com a Debit…') : 'Calcular pensão'}
-          </Botao>
-          <Botao onClick={() => { limpar(); definirResultado(null); definirErros([]); definirErroApi(null); }}>Limpar tudo</Botao>
+          <Botao variante="verde" icone="atualizar" onClick={calcular} className="flex-1 sm:flex-none sm:min-w-[240px]">Calcular pensão</Botao>
+          <Botao onClick={() => { limpar(); definirResultado(null); definirErros([]); }}>Limpar tudo</Botao>
         </div>
 
         <div ref={topo} />
-        {r && (
-          <Cartao titulo="Resultado do cálculo" descricao={`Calculado pela API da Debit com data-base em ${f.dataBase}.`} className="section-open">
+        {x && (
+          <Cartao titulo="Resultado do cálculo" descricao={`Calculado até ${f.criterios.dataFinal} com a correção monetária informada em cada competência.`} className="section-open">
             <div className="space-y-5">
-              {r.total !== null
-                ? <Indicador tom="destaque" rotulo="Débito total atualizado" valor={R.formatarMoeda(r.total)} detalhe="Valor devolvido pela API da Debit" />
-                : <Alerta tipo="aviso" titulo="Total não identificado">A API não devolveu o campo debito_total_atualizado. Confira os dados retornados abaixo ou o demonstrativo oficial.</Alerta>}
+              <B.ResumoConsolidado totais={x.totais} mostrarHonorarios={f.criterios.honorarios.ativo} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {r.campos.filter(([k]) => /^(subtotal_528|prescricao_|rito_prisao_)/.test(k)).map(([k, v]) => (
-                  <Indicador key={k} rotulo={R.rotuloCampo(k)} valor={R.formatarCampoApi(k, v)} />
-                ))}
+                <Indicador rotulo="Rito da prisão (art. 528, §§ 3º e 7º, CPC)" valor={m(x.ritos.prisao.total)} detalhe={`${x.ritos.prisao.indices.length} competência(s)`} />
+                <Indicador rotulo="Rito da expropriação (art. 528, § 8º, CPC)" valor={m(x.ritos.expropriacao.total)} detalhe={`${x.ritos.expropriacao.indices.length} competência(s)`} />
               </div>
-              {r.tabela
-                ? <Tabela legenda="Competências retornadas pela API" colunas={r.tabela.colunas.map(R.rotuloCampo)} numericas={r.tabela.colunas.map((c, i) => (typeof r.tabela.linhas[0][i] === 'number' ? i : -1)).filter((i) => i >= 0)}
-                    linhas={r.tabela.linhas.map((l) => l.map((v, i) => R.formatarCampoApi(r.tabela.colunas[i], v)))} />
-                : <Alerta tipo="info">A resposta da API não trouxe uma lista de competências em formato reconhecível. Os dados completos estão abaixo e o demonstrativo oficial traz a tabela mês a mês.</Alerta>}
+              <p className="text-xs text-slate-500 dark:text-slate-400">{x.ritos.nota}</p>
+              {x.prescritas.length > 0 && <Alerta tipo="aviso">Competências fora do cálculo por serem anteriores à data de corte da prescrição ({f.corte}): {x.prescritas.map((c) => c.mes_ano).join(', ')}.</Alerta>}
+              <Tabela legenda="Resultado por competência" colunas={['Competência', 'Vencimento', 'Valor devido', 'Correção informada', 'Principal corrigido', 'Juros', 'Multa', 'Pagamentos', 'Saldo']} numericas={[2, 3, 4, 5, 6, 7, 8]}
+                linhas={x.resultados.map((r, i) => [x.lista[i].competencia, x.lista[i].vencimento, m(r.original), B.textoCorrecao(r.correcao), m(r.principalCorrigido), m(r.juros), m(r.multa), r.pagamentos ? `-${m(r.pagamentos)}` : '—', m(r.saldo)])}
+                rodape={['Total', '', m(x.totais.original), m(x.totais.correcao), m(x.totais.principalCorrigido), m(x.totais.juros), m(x.totais.multa), x.totais.pagamentos ? `-${m(x.totais.pagamentos)}` : '—', m(x.totais.saldo)]} />
               <details className="rounded-xl border border-slate-200 dark:border-slate-700/60 p-4 group">
                 <summary className="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-200 list-none flex items-center justify-between">
-                  Dados retornados pela API (conferência) <UI.Icone nome="chevron" className="w-4 h-4 transition-transform group-open:rotate-180" />
+                  Memória de cálculo por competência <UI.Icone nome="chevron" className="w-4 h-4 transition-transform group-open:rotate-180" />
                 </summary>
-                <dl className="mt-3 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-6 gap-y-1.5 text-sm">
-                  {r.campos.map(([k, v]) => <React.Fragment key={k}><dt className="text-slate-500 dark:text-slate-400 break-words">{R.rotuloCampo(k)}</dt><dd className="font-medium text-slate-800 dark:text-slate-100 break-words">{R.formatarCampoApi(k, v)}</dd></React.Fragment>)}
-                </dl>
+                <div className="mt-3 space-y-4">
+                  {x.resultados.map((r, i) => (
+                    <div key={i}>
+                      <div className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Competência {x.lista[i].competencia} — vencimento {x.lista[i].vencimento}</div>
+                      <ol className="list-decimal pl-5 space-y-1 text-sm text-slate-700 dark:text-slate-200">{r.memoria.map((l, k) => <li key={k}>{l}</li>)}</ol>
+                    </div>
+                  ))}
+                </div>
               </details>
-              <div>
-                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Critérios efetivamente utilizados</h3>
-                <dl className="grid grid-cols-1 sm:grid-cols-[220px_1fr] gap-x-4 gap-y-1.5 text-sm">
-                  {criteriosDescritos().map(([k, v]) => <React.Fragment key={k}><dt className="text-slate-500 dark:text-slate-400">{k}</dt><dd className="font-medium text-slate-800 dark:text-slate-100">{v}</dd></React.Fragment>)}
-                </dl>
+              <div className="flex flex-wrap gap-2">
+                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo (Excel)</Botao>
+                <Botao variante="verde" icone="baixar" onClick={gerarPdf}>Gerar planilha de cálculo (PDF)</Botao>
+                <Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao>
               </div>
-              <div className="flex flex-wrap gap-2"><Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao></div>
-              {r.calcId && <B.DemonstrativoOficial tipo="pensaoAlimenticia" calcId={r.calcId} nomeBase={f.descricao || 'pensao'} />}
             </div>
           </Cartao>
         )}
       </Pagina>
     );
   }
-
-  // A lista de pagamentos é a mesma do módulo de débitos.
-  function M2_ListaPagamentos(props) { return React.createElement(window.CentralModulos.ListaPagamentos, props); }
 
   window.CentralModulos = Object.assign(window.CentralModulos || {}, { ModuloPensao });
 })();

@@ -20,8 +20,6 @@
     { id: 'planilha', rotulo: 'Planilha consolidada', icone: 'planilha' },
     { grupo: 'Documentos' },
     { id: 'memorias', rotulo: 'Memórias de cálculo', icone: 'memoria' },
-    { grupo: 'Sistema' },
-    { id: 'conexao', rotulo: 'Conexão com a Debit', icone: 'conexao' },
   ];
   const VALIDOS = ITENS.filter((i) => i.id).map((i) => i.id);
 
@@ -120,7 +118,6 @@
     else if (modulo === 'acordo') conteudo = <M.ModuloParcelas preset="acordo" />;
     else if (modulo === 'planilha') conteudo = <M.ModuloPlanilha />;
     else if (modulo === 'memorias') conteudo = <M.ModuloMemorias abrirId={parametros.id} />;
-    else if (modulo === 'conexao') conteudo = <M.ModuloConexao />;
 
     return (
       <div className="min-h-screen">

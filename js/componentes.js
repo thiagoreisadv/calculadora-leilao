@@ -16,7 +16,6 @@
     acordo: <><path d="M11 17l2 2a1 1 0 0 0 3-3" /><path d="M14 14l2.5 2.5a1 1 0 0 0 3-3L16 10" /><path d="M3 11l3-3 4 1 4-2 4 3" /><path d="M5 13l4 4" /></>,
     planilha: <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M3 15h18" /><path d="M9 3v18" /><path d="M15 3v18" /></>,
     memoria: <><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /><path d="M12 7v5l3 2" /></>,
-    conexao: <><path d="M9 2v6" /><path d="M15 2v6" /><path d="M7 8h10v4a5 5 0 0 1-10 0z" /><path d="M12 17v5" /></>,
     sol: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
     lua: <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" />,
     mais: <><path d="M12 5v14" /><path d="M5 12h14" /></>,
@@ -359,41 +358,6 @@
     return `${limpo}.${extensao}`;
   }
 
-  // ---------- Dados compartilhados ----------
-  const catalogo = { indices: null, tabelas: null, carregando: false, erro: null, ouvintes: new Set() };
-  function notificarCatalogo() { catalogo.ouvintes.forEach((f) => f()); }
-
-  async function carregarCatalogo(forcar) {
-    const Api = window.CentralApi;
-    if (!Api.estaConfigurada() || catalogo.carregando) return;
-    if (!forcar && catalogo.indices && catalogo.tabelas) return;
-    catalogo.carregando = true; catalogo.erro = null; notificarCatalogo();
-    try {
-      const [i, t] = await Promise.all([Api.indices(), Api.tabelas()]);
-      catalogo.indices = i.indices || [];
-      catalogo.tabelas = t.tabelas || [];
-    } catch (e) {
-      catalogo.erro = Api.mensagemDeErro(e);
-    }
-    catalogo.carregando = false; notificarCatalogo();
-  }
-
-  function useCatalogo() {
-    const [, forcar] = useState(0);
-    useEffect(() => {
-      const f = () => forcar((n) => n + 1);
-      const aoMudarConexao = () => carregarCatalogo(true);
-      catalogo.ouvintes.add(f);
-      window.addEventListener('central-conexao', aoMudarConexao);
-      carregarCatalogo(false);
-      return () => {
-        catalogo.ouvintes.delete(f);
-        window.removeEventListener('central-conexao', aoMudarConexao);
-      };
-    }, []);
-    return { indices: catalogo.indices, tabelas: catalogo.tabelas, carregando: catalogo.carregando, erro: catalogo.erro, recarregar: () => carregarCatalogo(true) };
-  }
-
   // Guarda o rascunho de um formulário na sessão da aba, para não perder o preenchimento ao navegar
   // entre módulos nem quando a API falha. Não é histórico: some ao fechar a aba.
   function useRascunho(chave, inicial) {
@@ -423,6 +387,6 @@
 
   window.CentralUI = {
     Icone, Pagina, Cartao, Botao, Carregando, Alerta, Campo, CampoTexto, CampoMoeda, CampoPercentual, CampoData, CampoCompetencia,
-    Selecao, Chave, Indicador, Tabela, Confirmacao, avisar, navegar, baixarArquivo, nomeArquivo, useCatalogo, carregarCatalogo, identidade, mascararData, useRascunho,
+    Selecao, Chave, Indicador, Tabela, Confirmacao, avisar, navegar, baixarArquivo, nomeArquivo, identidade, mascararData, useRascunho,
   };
 })();

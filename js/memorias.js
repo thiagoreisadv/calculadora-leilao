@@ -125,11 +125,12 @@
                 </dl>
                 <div className="flex flex-wrap gap-2">
                   <Botao variante="primario" icone="imprimir" onClick={() => definirVisualizando(true)}>Visualizar e imprimir</Botao>
+                  {atual.planilha && <Botao variante="verde" icone="baixar" onClick={() => B.gerarPlanilhaCalculo(atual.planilha, atual.subtitulo || atual.titulo)}>Baixar planilha de cálculo (Excel)</Botao>}
+                  <Botao variante="verde" icone="baixar" onClick={() => B.gerarPdfRegistro(atual)}>Baixar planilha de cálculo (PDF)</Botao>
                   <Botao icone="baixar" onClick={() => UI.baixarArquivo(UI.nomeArquivo(atual.subtitulo || atual.titulo, 'html'), html, 'text/html;charset=utf-8')}>Baixar HTML</Botao>
                   {atual.secoes && atual.secoes[0] && <Botao icone="baixar" onClick={baixarCsv}>Baixar CSV</Botao>}
                   <Botao variante="perigo" icone="lixeira" onClick={() => definirExcluir(atual)}>Excluir</Botao>
                 </div>
-                {atual.calcIdDebit && <B.DemonstrativoOficial tipo={atual.tipoOficial || 'atualizacaoMonetaria'} calcId={atual.calcIdDebit} nomeBase={atual.subtitulo || atual.titulo} />}
               </div>
             )}
           </Cartao>

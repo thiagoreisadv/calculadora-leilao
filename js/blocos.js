@@ -1,147 +1,104 @@
 /*
- * Blocos reutilizados pelos módulos de cálculo: critérios de correção, avisos de conexão,
- * resumo consolidado, visualizador de documentos e ações do demonstrativo oficial da Debit.
+ * Blocos reutilizados pelos módulos de cálculo: correção monetária manual, critérios de cálculo,
+ * resumo consolidado, visualizador de documentos e guarda da memória de cálculo.
  * Exportados em window.CentralBlocos.
  */
 (() => {
-  const { useState, useEffect, useRef } = React;
+  const { useRef, useEffect } = React;
   const UI = window.CentralUI;
   const R = window.CentralRegras;
-  const Api = window.CentralApi;
-  const { Icone, Cartao, Botao, Alerta, CampoData, CampoPercentual, CampoMoeda, Selecao, Chave, Indicador, Carregando } = UI;
+  const K = window.CentralCalculo;
+  const { Icone, Botao, Alerta, CampoData, CampoPercentual, CampoMoeda, Selecao, Chave, Indicador } = UI;
 
-  function criteriosPadrao() {
-    return {
-      modoCorrecao: 'indice', indice: '', tabela: '', dataFinal: R.hojeBR(),
-      juros: { ativo: false, percentual: '', a_partir: 'vencimento' },
-      multa: { ativo: false, percentual: '' },
-      honorarios: { ativo: false, modo: 'p', valor: '' },
-      selic: { ativo: false, inicio: '', fim: '', base: 'am', versao: '2' },
-    };
-  }
-
-  function rotuloIndice(c, catalogo) {
-    if (c.modoCorrecao === 'tabela') {
-      const t = ((catalogo && catalogo.tabelas) || []).find((x) => String(x.id) === String(c.tabela) || x.slug === c.tabela);
-      return t ? `Tabela judicial: ${t.name}` : `Tabela judicial (id ${c.tabela})`;
-    }
-    const i = ((catalogo && catalogo.indices) || []).find((x) => String(x.slug || x.id) === String(c.indice));
-    return i ? `Índice: ${i.name}` : `Índice: ${c.indice}`;
-  }
-
-  // Lista legível dos critérios, para a tela e para o demonstrativo.
-  function descreverCriterios(c, catalogo) {
-    const linhas = [['Correção monetária', rotuloIndice(c, catalogo)], ['Data final da atualização', c.dataFinal]];
-    if (c.selic && c.selic.ativo) {
-      linhas.push(['Selic (EC 113/2021)', `Aplicada${c.selic.inicio ? ` a partir de ${c.selic.inicio}` : ''}${c.selic.fim ? ` até ${c.selic.fim}` : ''}; base de incidência: ${{ a: 'valor atualizado', am: 'valor atualizado + multa', aj: 'valor atualizado + juros', ajm: 'valor atualizado + juros + multa' }[c.selic.base] || c.selic.base}`]);
-    }
+  // ---------- Descrição dos critérios (tela e demonstrativo) ----------
+  function descreverCriterios(c) {
+    const linhas = [['Data final do cálculo', c.dataFinal]];
+    linhas.push(['Correção monetária', 'Informada manualmente pelo usuário (percentual acumulado ou valor já corrigido, por parcela); não calculada por índice oficial nem por consulta automática']);
     if (c.juros && c.juros.ativo) {
-      linhas.push(['Juros moratórios', `${R.formatarPercentual(R.lerValor(c.juros.percentual))} contados a partir do vencimento (modalidade e periodicidade conforme o motor de atualização da Debit; não configuráveis nesta tela)`]);
+      linhas.push(['Juros moratórios', `${R.formatarPercentual(R.lerValor(c.juros.percentual))} ${c.juros.periodicidade === 'anual' ? 'ao ano' : 'ao mês'}, ${c.juros.modalidade === 'compostos' ? 'compostos (capitalizados)' : 'simples'}, do vencimento até a data final, sobre o principal corrigido; período = meses completos + dias restantes ÷ 30`]);
     } else {
       linhas.push(['Juros moratórios', 'Não aplicados']);
     }
-    linhas.push(['Multa', c.multa && c.multa.ativo ? `${R.formatarPercentual(R.lerValor(c.multa.percentual))} (percentual informado pelo usuário)` : 'Não aplicada']);
+    linhas.push(['Multa', c.multa && c.multa.ativo ? `${R.formatarPercentual(R.lerValor(c.multa.percentual))} sobre o principal corrigido, aplicada uma única vez` : 'Não aplicada']);
     linhas.push(['Honorários', c.honorarios && c.honorarios.ativo
-      ? (c.honorarios.modo === 'p' ? `${R.formatarPercentual(R.lerValor(c.honorarios.valor))} (percentual)` : `${R.formatarMoeda(R.lerValor(c.honorarios.valor))} (valor fixo)`)
+      ? (c.honorarios.modo === 'p' ? `${R.formatarPercentual(R.lerValor(c.honorarios.valor))} sobre principal corrigido + juros + multa − pagamentos` : `${R.formatarMoeda(R.lerValor(c.honorarios.valor))} (valor fixo, uma única vez)`)
       : 'Não aplicados']);
+    linhas.push(['Abatimento de pagamentos', c.imputacao === 'art354' ? 'Imputação cronológica: primeiro nos juros e depois no principal (art. 354 do Código Civil), com juros recalculados sobre o principal restante' : 'Abatidos do saldo final de principal e juros, sem recalcular os juros']);
     linhas.push(['Responsabilidade pelos critérios', 'Definidos pelo usuário para o caso concreto; a ferramenta não valida sua adequação jurídica.']);
     return linhas;
   }
 
-  // ---------- Avisos de conexão e de conta ----------
-  function irParaConexao() { UI.navegar('conexao'); }
+  // ---------- Correção monetária informada manualmente ----------
+  const OPCOES_CORRECAO = [
+    ['percentual', 'Informar percentual de correção'],
+    ['valorCorrigido', 'Informar valor já corrigido'],
+    ['nenhuma', 'Sem correção monetária'],
+  ];
 
-  function AvisoConexao() {
-    const [, atualizar] = useState(0);
-    useEffect(() => {
-      const f = () => atualizar((n) => n + 1);
-      window.addEventListener('central-conexao', f);
-      return () => window.removeEventListener('central-conexao', f);
-    }, []);
-    if (Api.estaConfigurada()) return null;
-    return (
-      <Alerta tipo="aviso" titulo="Conexão com a Debit não configurada"
-        acao={<Botao tamanho="sm" onClick={irParaConexao}>Configurar conexão</Botao>}>
-        A atualização monetária usa a API da Debit por meio de um servidor intermediário seguro. Configure o endereço e o código de acesso para calcular. A calculadora de leilões continua funcionando sem isso.
-      </Alerta>
-    );
-  }
-
-  function AvisoConta() {
-    const [assinante, definir] = useState(null);
-    useEffect(() => {
-      let ativo = true;
-      if (Api.estaConfigurada()) {
-        Api.conta({ tentativas: 0 }).then((c) => { if (ativo) definir(c.assinante_calculos); }).catch(() => {});
+  function CorrecaoManual({ valor, onChange, valorOriginal, erro, titulo = 'Correção monetária', compacto }) {
+    const c = valor || K.correcaoPadrao();
+    const alterar = (parte) => onChange({ ...c, ...parte });
+    const original = R.lerValor(valorOriginal);
+    let previa = null;
+    if (original > 0) {
+      if (c.modo === 'percentual' && R.lerValor(c.percentual) >= 0) {
+        const r = K.aplicarCorrecao(original, c);
+        previa = `Correção: ${R.formatarMoeda(r.valorCorrecao)} · Principal corrigido: ${R.formatarMoeda(r.principalCorrigido)}`;
+      } else if (c.modo === 'valorCorrigido' && R.lerValor(c.valorCorrigido) > 0) {
+        const r = K.aplicarCorrecao(original, c);
+        previa = `Valor informado manualmente · Diferença para o valor original: ${R.formatarMoeda(r.valorCorrecao)}`;
+      } else if (c.modo === 'nenhuma') {
+        previa = `O valor original (${R.formatarMoeda(original)}) será usado diretamente.`;
       }
-      return () => { ativo = false; };
-    }, []);
-    if (assinante !== false) return null;
+    }
     return (
-      <Alerta tipo="aviso" titulo="Conta Debit sem assinatura ativa">
-        Nesta situação a Debit atualiza somente os últimos 2 anos. Parcelas mais antigas não recebem valor atualizado e aparecem marcadas como "não atualizado" — elas nunca entram no total como se tivessem sido calculadas.
-      </Alerta>
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">{titulo}</legend>
+        <div className={`flex flex-wrap gap-1 rounded-lg border border-slate-300 dark:border-slate-600 p-1 bg-slate-50 dark:bg-slate-800 ${compacto ? 'w-full' : 'w-fit max-w-full'}`} role="group" aria-label={titulo}>
+          {OPCOES_CORRECAO.map(([v, r]) => (
+            <button key={v} type="button" aria-pressed={c.modo === v} onClick={() => alterar({ modo: v })}
+              className={`px-3 h-9 text-sm font-semibold rounded-md ${c.modo === v ? 'bg-navy-900 text-white dark:bg-emerald-600' : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10'}`}>{r}</button>
+          ))}
+        </div>
+        {c.modo === 'percentual' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
+            <CampoPercentual rotulo="Correção monetária acumulada do período" obrigatorio valor={c.percentual} onChange={(v) => alterar({ percentual: v })} erro={erro}
+              ajuda="Percentual total que você apurou em outra ferramenta. O sistema soma a correção ao valor original uma única vez." />
+          </div>
+        )}
+        {c.modo === 'valorCorrigido' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
+            <CampoMoeda rotulo="Valor principal já corrigido" obrigatorio valor={c.valorCorrigido} onChange={(v) => alterar({ valorCorrigido: v })} erro={erro}
+              ajuda="Usado como base dos juros e da multa, sem aplicar nova correção." />
+          </div>
+        )}
+        {previa && <p className="text-xs font-semibold text-slate-600 dark:text-slate-300" aria-live="polite">{previa}</p>}
+      </fieldset>
     );
   }
 
-  // ---------- Critérios de correção ----------
-  function CriteriosCorrecao({ valor, onChange, erros = [], textoMulta = 'Multa (%)', notaMulta }) {
-    const catalogo = UI.useCatalogo();
+  // ---------- Critérios de cálculo (juros, multa, honorários, pagamentos) ----------
+  function CriteriosCalculo({ valor, onChange, erros = [], textoMulta = 'Multa (%)', notaMulta, rotuloData = 'Atualizar até' }) {
     const c = valor;
     const alterar = (parte) => onChange({ ...c, ...parte });
     const erro = (campo) => (erros.find((e) => e.campo === campo) || {}).mensagem;
-    const configurada = Api.estaConfigurada();
-
-    const grupos = [];
-    if (catalogo.indices) {
-      const perc = catalogo.indices.filter((i) => i.type !== 'moeda');
-      const moeda = catalogo.indices.filter((i) => i.type === 'moeda');
-      const opc = (i) => ({ valor: String(i.slug || i.id), rotulo: i.latestAvailable ? `${i.name} (até ${i.latestAvailable.slice(5, 7)}/${i.latestAvailable.slice(0, 4)})` : i.name });
-      if (perc.length) grupos.push({ titulo: 'Índices de variação', opcoes: perc.map(opc) });
-      if (moeda.length) grupos.push({ titulo: 'Moedas e valores', opcoes: moeda.map(opc) });
-    }
-    const opcoesTabela = (catalogo.tabelas || []).map((t) => ({ valor: String(t.id), rotulo: t.name }));
-
     return (
       <div className="space-y-5">
-        {catalogo.erro && (
-          <Alerta tipo="erro" titulo="Não foi possível carregar índices e tabelas" acao={<Botao tamanho="sm" onClick={catalogo.recarregar} icone="atualizar">Tentar novamente</Botao>}>
-            {catalogo.erro}
-          </Alerta>
-        )}
-
-        <fieldset>
-          <legend className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Como corrigir o valor</legend>
-          <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-600 p-1 bg-slate-50 dark:bg-slate-800">
-            {[['indice', 'Índice econômico'], ['tabela', 'Tabela judicial']].map(([v, r]) => (
-              <button key={v} type="button" aria-pressed={c.modoCorrecao === v} onClick={() => alterar({ modoCorrecao: v })}
-                className={`px-3 h-9 text-sm font-semibold rounded-md ${c.modoCorrecao === v ? 'bg-navy-900 text-white dark:bg-emerald-600' : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10'}`}>{r}</button>
-            ))}
-          </div>
-        </fieldset>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {c.modoCorrecao === 'indice' ? (
-            <Selecao rotulo="Índice de correção" obrigatorio valor={c.indice} onChange={(v) => alterar({ indice: v })} grupos={grupos}
-              placeholder={catalogo.carregando ? 'Carregando índices…' : configurada ? 'Selecione o índice' : 'Configure a conexão primeiro'}
-              desabilitado={!configurada || !catalogo.indices} erro={erro('indice')}
-              ajuda="Lista oferecida pela Debit. Escolha conforme o contrato, título ou decisão." />
-          ) : (
-            <Selecao rotulo="Tabela judicial" obrigatorio valor={c.tabela} onChange={(v) => alterar({ tabela: v })} opcoes={opcoesTabela}
-              placeholder={catalogo.carregando ? 'Carregando tabelas…' : configurada ? 'Selecione a tabela' : 'Configure a conexão primeiro'}
-              desabilitado={!configurada || !catalogo.tabelas} erro={erro('tabela')}
-              ajuda="A tabela define o índice de cada mês e os juros aplicáveis." />
-          )}
-          <CampoData rotulo="Atualizar até" obrigatorio valor={c.dataFinal} onChange={(v) => alterar({ dataFinal: v })} erro={erro('dataFinal')} comHoje />
+          <CampoData rotulo={rotuloData} obrigatorio valor={c.dataFinal} onChange={(v) => alterar({ dataFinal: v })} erro={erro('dataFinal')} comHoje />
+          <Selecao rotulo="Abatimento dos pagamentos" valor={c.imputacao} onChange={(v) => alterar({ imputacao: v })} erro={erro('imputacao')}
+            opcoes={[{ valor: 'final', rotulo: 'Abater do saldo final' }, { valor: 'art354', rotulo: 'Imputar em juros e depois principal (art. 354 CC)' }]}
+            ajuda="Só faz diferença quando há pagamentos informados." />
         </div>
-
         <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-200 dark:divide-slate-700/60">
           <div className="p-4 space-y-3">
             <Chave rotulo="Juros moratórios" descricao="Aplique somente se houver previsão contratual, legal ou na decisão." marcado={c.juros.ativo} onChange={(v) => alterar({ juros: { ...c.juros, ativo: v } })} />
             {c.juros.ativo && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
-                <CampoPercentual rotulo="Percentual de juros" valor={c.juros.percentual} onChange={(v) => alterar({ juros: { ...c.juros, percentual: v } })} erro={erro('jurosPercentual')}
-                  ajuda="Os juros contam a partir do vencimento. A modalidade (simples/compostos) e a periodicidade seguem o motor da Debit." />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 section-open">
+                <CampoPercentual rotulo="Taxa de juros" valor={c.juros.percentual} onChange={(v) => alterar({ juros: { ...c.juros, percentual: v } })} erro={erro('jurosPercentual')} />
+                <Selecao rotulo="Taxa" valor={c.juros.periodicidade} onChange={(v) => alterar({ juros: { ...c.juros, periodicidade: v } })} opcoes={[{ valor: 'mensal', rotulo: 'Ao mês' }, { valor: 'anual', rotulo: 'Ao ano' }]} erro={erro('jurosPeriodicidade')} />
+                <Selecao rotulo="Modalidade" valor={c.juros.modalidade} onChange={(v) => alterar({ juros: { ...c.juros, modalidade: v } })} opcoes={[{ valor: 'simples', rotulo: 'Juros simples' }, { valor: 'compostos', rotulo: 'Juros compostos' }]} erro={erro('jurosModalidade')} />
+                <p className="sm:col-span-3 text-xs text-slate-500 dark:text-slate-400">Os juros contam do vencimento até a data final, sobre o principal corrigido. Período = meses completos + dias restantes ÷ 30. Não escolha juros compostos sem previsão que o autorize.</p>
               </div>
             )}
           </div>
@@ -149,7 +106,7 @@
             <Chave rotulo="Multa" descricao={notaMulta || 'Aplique somente se prevista no contrato, na lei ou na decisão.'} marcado={c.multa.ativo} onChange={(v) => alterar({ multa: { ...c.multa, ativo: v } })} />
             {c.multa.ativo && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
-                <CampoPercentual rotulo={textoMulta} valor={c.multa.percentual} onChange={(v) => alterar({ multa: { ...c.multa, percentual: v } })} erro={erro('multaPercentual')} />
+                <CampoPercentual rotulo={textoMulta} valor={c.multa.percentual} onChange={(v) => alterar({ multa: { ...c.multa, percentual: v } })} erro={erro('multaPercentual')} ajuda="Incide uma única vez sobre o principal corrigido." />
               </div>
             )}
           </div>
@@ -160,30 +117,11 @@
                 <Selecao rotulo="Forma" valor={c.honorarios.modo} onChange={(v) => alterar({ honorarios: { ...c.honorarios, modo: v, valor: '' } })}
                   opcoes={[{ valor: 'p', rotulo: 'Percentual' }, { valor: 'v', rotulo: 'Valor fixo (R$)' }]} />
                 {c.honorarios.modo === 'p'
-                  ? <CampoPercentual rotulo="Percentual" valor={c.honorarios.valor} onChange={(v) => alterar({ honorarios: { ...c.honorarios, valor: v } })} erro={erro('honorarios')} />
-                  : <CampoMoeda rotulo="Valor dos honorários" valor={c.honorarios.valor} onChange={(v) => alterar({ honorarios: { ...c.honorarios, valor: v } })} erro={erro('honorarios')} />}
+                  ? <CampoPercentual rotulo="Percentual" valor={c.honorarios.valor} onChange={(v) => alterar({ honorarios: { ...c.honorarios, valor: v } })} erro={erro('honorarios')} ajuda="Sobre principal corrigido + juros + multa − pagamentos." />
+                  : <CampoMoeda rotulo="Valor dos honorários" valor={c.honorarios.valor} onChange={(v) => alterar({ honorarios: { ...c.honorarios, valor: v } })} erro={erro('honorarios')} ajuda="Somado uma única vez ao total." />}
               </div>
             )}
           </div>
-          <details className="p-4 group">
-            <summary className="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between list-none">
-              Opções avançadas: Selic (EC 113/2021)
-              <Icone nome="chevron" className="w-4 h-4 transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="mt-4 space-y-3">
-              <Chave rotulo="Aplicar a Selic" descricao="Substitui correção e juros no período indicado, conforme a metodologia da Debit." marcado={c.selic.ativo} onChange={(v) => alterar({ selic: { ...c.selic, ativo: v } })} />
-              {c.selic.ativo && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
-                  <CampoData rotulo="Selic a partir de" valor={c.selic.inicio} onChange={(v) => alterar({ selic: { ...c.selic, inicio: v } })} erro={erro('selicInicio')} ajuda="Opcional." />
-                  <CampoData rotulo="Selic até" valor={c.selic.fim} onChange={(v) => alterar({ selic: { ...c.selic, fim: v } })} erro={erro('selicFim')} ajuda="Opcional. Vazio = até a data final." />
-                  <Selecao rotulo="Base de incidência" valor={c.selic.base} onChange={(v) => alterar({ selic: { ...c.selic, base: v } })}
-                    opcoes={[{ valor: 'a', rotulo: 'Valor atualizado' }, { valor: 'am', rotulo: 'Valor atualizado + multa' }, { valor: 'aj', rotulo: 'Valor atualizado + juros' }, { valor: 'ajm', rotulo: 'Valor atualizado + juros + multa' }]} />
-                  <Selecao rotulo="Contagem das datas" valor={c.selic.versao} onChange={(v) => alterar({ selic: { ...c.selic, versao: v } })}
-                    opcoes={[{ valor: '2', rotulo: 'Por dia (proporcional)' }, { valor: '1', rotulo: 'Por mês inteiro' }]} />
-                </div>
-              )}
-            </div>
-          </details>
         </div>
       </div>
     );
@@ -195,16 +133,17 @@
       <div className="space-y-3">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           <Indicador rotulo="Valor original" valor={R.formatarMoeda(totais.original)} />
-          <Indicador rotulo="Correção monetária" valor={R.formatarMoeda(totais.correcao)} />
+          <Indicador rotulo="Correção monetária (informada)" valor={R.formatarMoeda(totais.correcao)} />
+          <Indicador rotulo="Principal corrigido" valor={R.formatarMoeda(totais.principalCorrigido)} />
           <Indicador rotulo="Juros" valor={R.formatarMoeda(totais.juros)} />
           <Indicador rotulo="Multa" valor={R.formatarMoeda(totais.multa)} />
           {(mostrarHonorarios || totais.honorarios !== 0) && <Indicador rotulo="Honorários" valor={R.formatarMoeda(totais.honorarios)} />}
           {totais.encargosNominais !== 0 && <Indicador rotulo="Outros encargos (nominais)" valor={R.formatarMoeda(totais.encargosNominais)} detalhe="Somados sem atualização" />}
-          <Indicador rotulo="Pagamentos (nominais)" valor={R.formatarMoeda(totais.pagamentos)} />
+          <Indicador rotulo="Pagamentos" valor={totais.pagamentos ? `-${R.formatarMoeda(totais.pagamentos)}` : R.formatarMoeda(0)} />
+          {totais.creditoNaoImputado !== 0 && <Indicador tom="alerta" rotulo="Excedente de pagamentos" valor={R.formatarMoeda(totais.creditoNaoImputado)} detalhe="Não imputado ao saldo" />}
         </div>
-        <Indicador tom="destaque" rotulo="Saldo final atualizado" valor={R.formatarMoeda(totais.saldoComEncargos)}
-          detalhe={totais.encargosNominais !== 0 ? `Inclui ${R.formatarMoeda(totais.encargosNominais)} de outros encargos informados` : 'Valor devolvido pela API da Debit'} />
-        {totais.semDetalhe && <p className="text-xs text-slate-500 dark:text-slate-400">A API não detalhou todas as categorias nesta resposta; categorias ausentes aparecem como R$ 0,00 e não foram estimadas.</p>}
+        <Indicador tom="destaque" rotulo="Saldo final atualizado" valor={R.formatarMoeda(totais.saldoFinal)}
+          detalhe="Principal corrigido + juros + multa + honorários + outros encargos − pagamentos" />
       </div>
     );
   }
@@ -216,6 +155,13 @@
         {alertas.map((a, i) => <Alerta key={i} tipo={a.tipo === 'erro' ? 'erro' : 'aviso'}>{a.mensagem}</Alerta>)}
       </div>
     );
+  }
+
+  // Descrição curta da correção de uma parcela, para tabelas.
+  function textoCorrecao(correcao) {
+    if (correcao.modo === 'percentual') return `${R.formatarPercentual(correcao.percentual)} → ${R.formatarMoeda(correcao.valorCorrecao)}`;
+    if (correcao.modo === 'valorCorrigido') return `Valor informado (${R.formatarMoeda(correcao.valorCorrecao)})`;
+    return 'Sem correção';
   }
 
   // ---------- Visualizador de documento (iframe isolado: sem scripts) ----------
@@ -243,53 +189,6 @@
     );
   }
 
-  // ---------- Demonstrativo oficial da Debit (cálculo salvo na conta) ----------
-  const FORMATOS = {
-    atualizacaoMonetaria: [['html', 'Visualizar'], ['pdf', 'PDF'], ['docx', 'Word']],
-    pensaoAlimenticia: [['html', 'Visualizar'], ['pdf', 'PDF'], ['excel', 'Excel']],
-  };
-
-  function DemonstrativoOficial({ tipo, calcId, nomeBase }) {
-    const [ocupado, definirOcupado] = useState('');
-    const [erro, definirErro] = useState('');
-    const [html, definirHtml] = useState(null);
-    const [excluido, definirExcluido] = useState(false);
-
-    async function obter(formato) {
-      definirErro(''); definirOcupado(formato);
-      try {
-        const blob = await Api.exportar(tipo, calcId, formato);
-        if (formato === 'html') definirHtml(await blob.text());
-        else UI.baixarArquivo(UI.nomeArquivo(`${nomeBase || 'demonstrativo'}-debit`, formato === 'excel' ? 'xlsx' : formato), blob);
-      } catch (e) { definirErro(Api.mensagemDeErro(e)); }
-      definirOcupado('');
-    }
-
-    async function excluir() {
-      definirErro(''); definirOcupado('excluir');
-      try { await Api.excluir(tipo, calcId); definirExcluido(true); UI.avisar('Cálculo enviado para a lixeira da Debit.'); }
-      catch (e) { definirErro(Api.mensagemDeErro(e)); }
-      definirOcupado('');
-    }
-
-    if (excluido) return <Alerta tipo="info">Este cálculo foi enviado para a lixeira da sua conta Debit. O demonstrativo oficial não está mais disponível por aqui.</Alerta>;
-    return (
-      <div className="space-y-3">
-        <Alerta tipo="info" titulo="Demonstrativo oficial da Debit">
-          Este cálculo foi salvo na sua conta Debit (identificador {calcId}). Os documentos abaixo são gerados pela própria Debit.
-        </Alerta>
-        <div className="flex flex-wrap gap-2">
-          {FORMATOS[tipo].map(([f, r]) => (
-            <Botao key={f} tamanho="sm" icone={f === 'html' ? 'contrato' : 'baixar'} carregando={ocupado === f} onClick={() => obter(f)}>{r}</Botao>
-          ))}
-          <Botao tamanho="sm" variante="perigo" icone="lixeira" carregando={ocupado === 'excluir'} onClick={excluir}>Excluir da conta Debit</Botao>
-        </div>
-        {erro && <Alerta tipo="erro">{erro}</Alerta>}
-        {html && <VisualizadorDocumento html={html} titulo="Demonstrativo oficial da Debit" nomeBase={`${nomeBase || 'demonstrativo'}-debit`} onFechar={() => definirHtml(null)} />}
-      </div>
-    );
-  }
-
   // Salva (ou atualiza) um registro no histórico local e abre a memória de cálculo.
   function guardarMemoria(registro, abrir) {
     const r = window.CentralHistorico.salvar(registro);
@@ -299,8 +198,40 @@
     return r.id;
   }
 
+  // Gera e baixa a planilha de cálculo (.xlsx) do resultado atual. Toda calculadora oferece esta ação.
+  function gerarPlanilhaCalculo(entrada, nomeBase) {
+    try {
+      const { bytes, nome } = window.CentralRegistro.baixarPlanilha(entrada, nomeBase);
+      UI.baixarArquivo(nome, bytes, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      UI.avisar('Planilha de cálculo gerada.');
+    } catch (e) {
+      UI.avisar('Não foi possível gerar a planilha de cálculo.', 'erro');
+    }
+  }
+
+  // Gera e baixa o PDF da planilha de cálculo do resultado atual.
+  function gerarPdfCalculo(entrada, nomeBase) {
+    try {
+      const { bytes, nome } = window.CentralRegistro.baixarPdf(entrada, nomeBase);
+      UI.baixarArquivo(nome, bytes, 'application/pdf');
+      UI.avisar('PDF da planilha de cálculo gerado.');
+    } catch (e) {
+      UI.avisar('Não foi possível gerar o PDF.', 'erro');
+    }
+  }
+
+  function gerarPdfRegistro(registro) {
+    try {
+      const { bytes, nome } = window.CentralRegistro.baixarPdfRegistro(registro, registro.subtitulo || registro.titulo);
+      UI.baixarArquivo(nome, bytes, 'application/pdf');
+      UI.avisar('PDF gerado.');
+    } catch (e) {
+      UI.avisar('Não foi possível gerar o PDF.', 'erro');
+    }
+  }
+
   window.CentralBlocos = {
-    criteriosPadrao, descreverCriterios, rotuloIndice, AvisoConexao, AvisoConta, CriteriosCorrecao,
-    ResumoConsolidado, ListaAlertas, VisualizadorDocumento, DemonstrativoOficial, guardarMemoria, Carregando, Cartao,
+    descreverCriterios, CorrecaoManual, CriteriosCalculo, ResumoConsolidado, ListaAlertas,
+    textoCorrecao, VisualizadorDocumento, guardarMemoria, gerarPlanilhaCalculo, gerarPdfCalculo, gerarPdfRegistro,
   };
 })();
