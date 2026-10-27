@@ -49,7 +49,7 @@
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-navy-900 dark:text-white">{titulo}</h1>
-            {descricao && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-2xl">{descricao}</p>}
+            {descricao && <p className="mt-1 text-sm text-muted-foreground max-w-2xl">{descricao}</p>}
           </div>
           {acoes && <div className="flex flex-wrap gap-2">{acoes}</div>}
         </div>
@@ -60,12 +60,12 @@
 
   function Cartao({ titulo, descricao, acoes, children, className = '' }) {
     return (
-      <section className={`bg-white dark:bg-[#14243A] rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-card ${className}`}>
+      <section className={`bg-card text-card-foreground rounded-xl border border-border shadow-sm ${className}`}>
         {(titulo || acoes) && (
-          <div className="flex items-start justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-5">
+          <div className="flex items-start justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-6">
             <div className="min-w-0">
-              {titulo && <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">{titulo}</h2>}
-              {descricao && <p className="mt-0.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400">{descricao}</p>}
+              {titulo && <h2 className="text-base font-semibold leading-none text-foreground">{titulo}</h2>}
+              {descricao && <p className="mt-1.5 text-sm text-muted-foreground">{descricao}</p>}
             </div>
             {acoes && <div className="flex gap-2 flex-shrink-0">{acoes}</div>}
           </div>
@@ -76,19 +76,21 @@
   }
 
   // ---------- Botões e alertas ----------
+  // Botão no padrão shadcn/ui (variantes default, outline, ghost, destructive; foco com anel de 3px)
+  const BASE_BOTAO = 'inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50';
   const VARIANTES = {
-    primario: 'bg-navy-900 text-white hover:bg-navy-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 dark:text-white shadow-sm',
-    verde: 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm',
-    secundario: 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 dark:bg-white/5 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-white/10',
-    perigo: 'bg-white text-red-600 border border-red-200 hover:bg-red-50 dark:bg-transparent dark:text-red-400 dark:border-red-900/60 dark:hover:bg-red-950/30',
-    fantasma: 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10',
+    primario: 'bg-primary text-primary-foreground shadow-xs hover:bg-primary/90',
+    verde: 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700',
+    secundario: 'border border-input bg-card text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
+    perigo: 'border border-destructive/40 bg-card text-destructive shadow-xs hover:bg-destructive/10',
+    fantasma: 'text-foreground hover:bg-accent hover:text-accent-foreground',
   };
 
   function Botao({ variante = 'secundario', carregando = false, icone, children, className = '', tamanho = 'md', ...resto }) {
-    const dim = tamanho === 'sm' ? 'px-3 h-9 text-xs' : 'px-4 h-11 text-sm';
+    const dim = tamanho === 'sm' ? 'px-3 h-8 text-xs' : 'px-4 h-10 text-sm';
     return (
       <button type="button" {...resto} disabled={resto.disabled || carregando}
-        className={`inline-flex items-center justify-center gap-2 rounded-lg font-semibold disabled:opacity-60 disabled:cursor-not-allowed ${dim} ${VARIANTES[variante]} ${className}`}>
+        className={`${BASE_BOTAO} ${dim} ${VARIANTES[variante]} ${className}`}>
         {carregando ? <Carregando pequeno /> : icone ? <Icone nome={icone} className="w-4 h-4" /> : null}
         {children}
       </button>
@@ -111,7 +113,7 @@
   function Alerta({ tipo = 'info', titulo, children, acao }) {
     const [classes, icone] = ESTILO_ALERTA[tipo];
     return (
-      <div role={tipo === 'erro' ? 'alert' : 'status'} className={`flex gap-3 p-3 sm:p-4 rounded-xl border text-sm ${classes}`}>
+      <div role={tipo === 'erro' ? 'alert' : 'status'} className={`flex gap-3 px-4 py-3 rounded-lg border text-sm ${classes}`}>
         <Icone nome={icone} className="w-5 h-5 flex-shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
           {titulo && <div className="font-semibold">{titulo}</div>}
@@ -123,17 +125,18 @@
   }
 
   // ---------- Campos de formulário ----------
-  const CLASSE_ENTRADA = 'block w-full h-11 px-3 text-sm font-medium rounded-lg border bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-slate-900';
+  // Input no padrão shadcn/ui: borda --input, sombra xs, anel de foco de 3px, estado inválido em --destructive
+  const CLASSE_ENTRADA = 'block w-full h-10 min-w-0 px-3 py-1 text-base md:text-sm rounded-md border border-input bg-transparent dark:bg-input/30 text-foreground shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20';
 
   function Campo({ rotulo, ajuda, erro, obrigatorio, id, children, className = '' }) {
     return (
       <div className={className}>
-        <label htmlFor={id} className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+        <label htmlFor={id} className="block text-sm font-semibold text-foreground mb-1.5">
           {rotulo}{obrigatorio && <span className="text-red-600" aria-hidden="true"> *</span>}
         </label>
         {children}
         {erro ? <p id={id ? `${id}-erro` : undefined} role="alert" className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{erro}</p>
-          : ajuda ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{ajuda}</p> : null}
+          : ajuda ? <p className="mt-1 text-xs text-muted-foreground">{ajuda}</p> : null}
       </div>
     );
   }
@@ -145,7 +148,7 @@
     return ref.current;
   }
 
-  const bordaEntrada = (erro) => (erro ? 'border-red-400 dark:border-red-500' : 'border-slate-300 dark:border-slate-600');
+  const bordaEntrada = (erro) => (erro ? 'border-destructive' : '');
 
   function CampoTexto({ rotulo, valor, onChange, erro, ajuda, obrigatorio, placeholder, maxLength = 160, className, tipo = 'text', ...resto }) {
     const id = useId('txt');
@@ -237,7 +240,7 @@
             aria-invalid={Boolean(mensagem)} aria-describedby={mensagem ? `${id}-erro` : undefined}
             onChange={(e) => onChange(mascararData(e.target.value))}
             className={`${CLASSE_ENTRADA} tabular-nums ${bordaEntrada(mensagem)}`} />
-          {comHoje && <Botao tamanho="sm" className="!h-11 flex-shrink-0" onClick={() => onChange(R.hojeBR())}>Hoje</Botao>}
+          {comHoje && <Botao tamanho="sm" className="!h-10 flex-shrink-0" onClick={() => onChange(R.hojeBR())}>Hoje</Botao>}
         </div>
       </Campo>
     );
@@ -278,8 +281,8 @@
         <input id={id} type="checkbox" role="switch" checked={marcado} disabled={desabilitado} onChange={(e) => onChange(e.target.checked)}
           className="mt-0.5 w-5 h-5 rounded border-slate-300 text-emerald-600 accent-emerald-600" />
         <span className="min-w-0">
-          <span className="block text-sm font-semibold text-slate-700 dark:text-slate-200">{rotulo}</span>
-          {descricao && <span className="block text-xs text-slate-500 dark:text-slate-400">{descricao}</span>}
+          <span className="block text-sm font-semibold text-foreground">{rotulo}</span>
+          {descricao && <span className="block text-xs text-muted-foreground">{descricao}</span>}
         </span>
       </label>
     );
@@ -287,7 +290,7 @@
 
   // ---------- Indicadores e tabelas ----------
   const TOM = {
-    neutro: 'bg-slate-50 border-slate-200 dark:bg-white/5 dark:border-slate-700',
+    neutro: 'bg-card border-border shadow-xs',
     positivo: 'bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/25 dark:border-emerald-900/50',
     destaque: 'bg-navy-900 border-navy-900 text-white dark:bg-emerald-700 dark:border-emerald-600',
     alerta: 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50',
@@ -297,9 +300,9 @@
     const escuro = tom === 'destaque';
     return (
       <div className={`rounded-xl border p-4 ${TOM[tom]} ${className}`}>
-        <div className={`text-[11px] font-semibold uppercase tracking-wide ${escuro ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>{rotulo}</div>
-        <div key={valor} className={`value-update mt-1 font-extrabold tabular-nums ${escuro ? 'text-2xl sm:text-3xl text-white' : 'text-lg sm:text-xl text-slate-900 dark:text-white'}`}>{valor}</div>
-        {detalhe && <div className={`mt-1 text-[11px] font-medium ${escuro ? 'text-white/80' : 'text-slate-500 dark:text-slate-400'}`}>{detalhe}</div>}
+        <div className={`text-[11px] font-semibold uppercase tracking-wide ${escuro ? 'text-white/70' : 'text-muted-foreground'}`}>{rotulo}</div>
+        <div key={valor} className={`value-update mt-1 font-extrabold tabular-nums ${escuro ? 'text-2xl sm:text-3xl text-white' : 'text-lg sm:text-xl text-foreground'}`}>{valor}</div>
+        {detalhe && <div className={`mt-1 text-[11px] font-medium ${escuro ? 'text-white/80' : 'text-muted-foreground'}`}>{detalhe}</div>}
       </div>
     );
   }
@@ -307,24 +310,24 @@
   function Tabela({ colunas, linhas, numericas = [], rodape, vazio = 'Nenhum item.', legenda }) {
     const nums = new Set(numericas);
     return (
-      <div className="overflow-x-auto -mx-4 sm:mx-0 rounded-lg border border-slate-200 dark:border-slate-700/60">
+      <div className="overflow-x-auto -mx-4 sm:mx-0 rounded-lg border border-border">
         <table className="w-full text-sm">
           {legenda && <caption className="sr-only">{legenda}</caption>}
-          <thead className="bg-slate-50 dark:bg-white/5">
-            <tr>{colunas.map((c, i) => <th key={c} scope="col" className={`px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 whitespace-nowrap ${nums.has(i) ? 'text-right' : 'text-left'}`}>{c}</th>)}</tr>
+          <thead className="bg-muted/50">
+            <tr>{colunas.map((c, i) => <th key={c} scope="col" className={`px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap ${nums.has(i) ? 'text-right' : 'text-left'}`}>{c}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
             {linhas.length === 0 ? (
               <tr><td colSpan={colunas.length} className="px-3 py-6 text-center text-slate-500">{vazio}</td></tr>
             ) : linhas.map((l, i) => (
               <tr key={i} className="hover:bg-slate-50/60 dark:hover:bg-white/5">
-                {l.map((c, j) => <td key={j} className={`px-3 py-2.5 align-top ${nums.has(j) ? 'text-right tabular-nums whitespace-nowrap' : ''} text-slate-700 dark:text-slate-200`}>{c}</td>)}
+                {l.map((c, j) => <td key={j} className={`px-3 py-2.5 align-top ${nums.has(j) ? 'text-right tabular-nums whitespace-nowrap' : ''} text-foreground`}>{c}</td>)}
               </tr>
             ))}
           </tbody>
           {rodape && (
-            <tfoot className="bg-slate-50 dark:bg-white/5 font-bold">
-              <tr>{rodape.map((c, j) => <td key={j} className={`px-3 py-2.5 text-slate-900 dark:text-white ${nums.has(j) ? 'text-right tabular-nums whitespace-nowrap' : ''}`}>{c}</td>)}</tr>
+            <tfoot className="bg-muted/50 font-bold">
+              <tr>{rodape.map((c, j) => <td key={j} className={`px-3 py-2.5 text-foreground ${nums.has(j) ? 'text-right tabular-nums whitespace-nowrap' : ''}`}>{c}</td>)}</tr>
             </tfoot>
           )}
         </table>
@@ -345,13 +348,13 @@
     if (!aberto) return null;
     return (
       <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-slate-900/50" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancelar(); }}>
-        <div role="alertdialog" aria-modal="true" aria-labelledby="dlg-titulo" className="section-open w-full max-w-md rounded-2xl bg-white dark:bg-[#14243A] border border-slate-200 dark:border-slate-700 shadow-card p-5">
-          <h2 id="dlg-titulo" className="text-base font-bold text-slate-900 dark:text-white">{titulo}</h2>
+        <div role="alertdialog" aria-modal="true" aria-labelledby="dlg-titulo" className="section-open w-full max-w-md rounded-xl bg-card border border-slate-200 dark:border-slate-700 shadow-card p-5">
+          <h2 id="dlg-titulo" className="text-base font-bold text-foreground">{titulo}</h2>
           <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{mensagem}</p>
           <div className="mt-5 flex justify-end gap-2">
             <Botao onClick={onCancelar}>Cancelar</Botao>
             <button ref={botao} type="button" onClick={onConfirmar}
-              className={`inline-flex items-center justify-center rounded-lg px-4 h-11 text-sm font-semibold text-white ${perigo ? 'bg-red-600 hover:bg-red-700' : 'bg-navy-900 hover:bg-navy-700'}`}>{rotuloConfirmar}</button>
+              className={`inline-flex items-center justify-center rounded-md px-4 h-10 text-sm font-medium text-white ${perigo ? 'bg-red-600 hover:bg-red-700' : 'bg-navy-900 hover:bg-navy-700'}`}>{rotuloConfirmar}</button>
           </div>
         </div>
       </div>
