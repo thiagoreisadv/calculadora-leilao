@@ -11,12 +11,13 @@
   const R = window.CentralRegras;
   const K = window.CentralCalculo;
   const M = window.CentralModulos;
-  const { Pagina, Cartao, Botao, Alerta, CampoTexto, CampoMoeda, CampoData, CampoPercentual, Tabela } = UI;
+  const { Pagina, Cartao, Botao, Alerta, CampoTexto, CampoMoeda, CampoData, CampoPercentual, AreaTexto, Grade, Col, Calculador, AcoesPainel, Tabela } = UI;
 
   const PRESETS = {
     aluguel: {
       chave: 'aluguel', titulo: 'Aluguéis e contratos',
       descricao: 'Atualize aluguéis atrasados e obrigações contratuais. Cada parcela tem seu vencimento, valor, correção e pagamentos.',
+      subtitulo: 'Várias parcelas com encargos e pagamentos.',
       credor: 'Locador / credor', devedor: 'Locatário / devedor', parcela: 'Aluguel',
       notaMulta: 'Aplique a multa somente se estiver prevista no contrato de locação e no percentual ali fixado.',
       textoMulta: 'Multa contratual por atraso (%)', tipoMemoria: 'contrato',
@@ -24,6 +25,7 @@
     acordo: {
       chave: 'acordo', titulo: 'Acordos e parcelas vencidas',
       descricao: 'Atualize parcelas vencidas de acordos extrajudiciais, parcelamentos e obrigações financeiras em geral.',
+      subtitulo: 'Parcelamentos e obrigações em geral.',
       credor: 'Credor', devedor: 'Devedor', parcela: 'Parcela',
       notaMulta: 'Aplique a multa somente se estiver prevista no acordo, no contrato ou na decisão.',
       textoMulta: 'Multa prevista (%)', tipoMemoria: 'acordo',
@@ -47,9 +49,9 @@
     const [correcao, definirCorrecao] = useState(parcela.correcao.modo !== 'nenhuma');
     const erro = (campo) => (erros.find((e) => e.linha === indice && e.campo === campo) || {}).mensagem;
     return (
-      <div className="rounded-xl border border-border p-3 sm:p-4 section-open">
+      <div className="rounded-[10px] border border-border p-3 sm:p-4 section-open">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{rotuloBase} {indice + 1}</span>
+          <span className="text-[12.5px] text-muted-foreground">{rotuloBase} {indice + 1}</span>
           <div className="flex flex-wrap gap-1 justify-end">
             <Botao tamanho="sm" variante="fantasma" onClick={() => definirCorrecao(!correcao)} aria-expanded={correcao}>{rotuloModo(parcela.correcao)}</Botao>
             <Botao tamanho="sm" variante="fantasma" onClick={() => definirPagamentos(!pagamentos)} aria-expanded={pagamentos}>
@@ -64,12 +66,12 @@
           <CampoMoeda rotulo="Valor original" obrigatorio valor={parcela.valor} onChange={(v) => onChange({ valor: v })} erro={erro('valor')} />
         </div>
         {correcao && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 section-open">
+          <div className="mt-4 pt-4 border-t border-border section-open">
             <B.CorrecaoManual compacto valor={parcela.correcao} onChange={(c) => onChange({ correcao: c })} valorOriginal={parcela.valor} erro={erro('correcao')} titulo={`Correção monetária desta ${rotuloBase.toLowerCase()}`} />
           </div>
         )}
         {pagamentos && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 section-open">
+          <div className="mt-4 pt-4 border-t border-border section-open">
             <M.ListaPagamentos itens={parcela.pagamentos} onChange={(v) => onChange({ pagamentos: v })} erro={erro('pagamento')} />
           </div>
         )}
@@ -82,6 +84,7 @@
     const [f, definirF, limpar] = UI.useRascunho(`parcelas2_${p.chave}`, inicial);
     const [errosForm, definirErros] = useState([]);
     const [resultado, definirResultado] = useState(null);
+    const [aba, definirAba] = useState('obrigacao');
     const topo = useRef(null);
 
     const alterar = (parte) => { definirF({ ...f, ...parte }); definirResultado(null); };
@@ -124,7 +127,7 @@
       const resultados = f.parcelas.map((x) => K.calcularParcela(x, f.criterios));
       const totais = K.consolidar(resultados, { honorariosFixos: K.honorariosFixos(f.criterios), encargosNominais: K.outrosEncargosTotal(f.encargos) });
       definirResultado({ resultados, totais, parcelas: f.parcelas.map((x) => ({ ...x })), criteriosDescritos: B.descreverCriterios(f.criterios) });
-      setTimeout(() => topo.current && topo.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+      if (window.innerWidth < 1024) setTimeout(() => topo.current && topo.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
     }
 
     function entrada() {
@@ -160,104 +163,114 @@
     }
 
     const r = resultado;
-    return (
-      <Pagina titulo={p.titulo} descricao={p.descricao}>
-        <Cartao titulo="1. Identificação" descricao="Nomes e descrições ficam apenas neste navegador e aparecem no demonstrativo.">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <CampoTexto rotulo="Descrição" valor={f.descricao} onChange={(v) => alterar({ descricao: v })} className="sm:col-span-2" placeholder="Ex.: Contrato de locação, imóvel da Rua X" />
-            <CampoTexto rotulo={p.credor} valor={f.credor} onChange={(v) => alterar({ credor: v })} />
-            <CampoTexto rotulo={p.devedor} valor={f.devedor} onChange={(v) => alterar({ devedor: v })} />
-          </div>
-        </Cartao>
+    const subtitulo = (t) => <h3 className="text-[13px] font-medium text-foreground mb-3">{t}</h3>;
 
-        <Cartao titulo="2. Parcelas" descricao="Inclua cada parcela vencida e informe, em cada uma, a correção monetária (percentual acumulado ou valor já corrigido).">
-          <div className="space-y-4">
-            <details className="rounded-xl border border-dashed border-input p-4 group">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground list-none flex items-center justify-between">
+    const abas = [
+      { id: 'obrigacao', rotulo: 'Obrigação', icone: 'arquivo', conteudo: (
+        <div className="space-y-6">
+          <Grade>
+            <Col span={6}><CampoTexto rotulo="Descrição" valor={f.descricao} onChange={(v) => alterar({ descricao: v })} placeholder="Ex.: Contrato de locação, imóvel da Rua X" /></Col>
+            <Col span={3}><CampoTexto rotulo={p.credor} valor={f.credor} onChange={(v) => alterar({ credor: v })} /></Col>
+            <Col span={3}><CampoTexto rotulo={p.devedor} valor={f.devedor} onChange={(v) => alterar({ devedor: v })} /></Col>
+          </Grade>
+          <div className="border-t border-border pt-5 space-y-4">
+            <div>
+              <h3 className="text-[13px] font-medium text-foreground">Parcelas</h3>
+              <p className="mt-1 text-[12px] text-muted-foreground">Inclua cada parcela vencida e informe, em cada uma, a correção monetária (percentual acumulado ou valor já corrigido).</p>
+            </div>
+            <details className="rounded-[10px] border border-dashed border-border p-4 group">
+              <summary className="cursor-pointer text-[13px] text-foreground list-none flex items-center justify-between">
                 Gerar parcelas mensais <UI.Icone nome="chevron" className="w-4 h-4 transition-transform group-open:rotate-180" />
               </summary>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
                 <CampoTexto rotulo="Quantidade" valor={f.gerador.quantidade} onChange={(v) => alterar({ gerador: { ...f.gerador, quantidade: v.replace(/\D/g, '') } })} inputMode="numeric" maxLength={3} />
                 <CampoData rotulo="Primeiro vencimento" valor={f.gerador.primeiro} onChange={(v) => alterar({ gerador: { ...f.gerador, primeiro: v } })} />
                 <CampoMoeda rotulo="Valor de cada parcela" valor={f.gerador.valor} onChange={(v) => alterar({ gerador: { ...f.gerador, valor: v } })} />
-                <Botao variante="primario" icone="mais" onClick={gerar}>Gerar</Botao>
+                <Botao variante="solido" icone="mais" onClick={gerar}>Gerar</Botao>
               </div>
             </details>
 
             {f.parcelas.length > 1 && (
-              <div className="rounded-xl border border-border p-4 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
+              <div className="rounded-[10px] border border-border p-4 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
                 <CampoPercentual rotulo="Aplicar o mesmo percentual de correção a todas as parcelas" valor={f.aplicarPercentual} onChange={(v) => definirF({ ...f, aplicarPercentual: v })} ajuda="Atalho: substitui a correção de cada parcela; depois você pode ajustar uma a uma." />
-                <Botao onClick={aplicarMesmoPercentual} className="!h-10">Aplicar a todas</Botao>
+                <Botao onClick={aplicarMesmoPercentual} className="!h-[38px]">Aplicar a todas</Botao>
               </div>
             )}
 
-            {f.parcelas.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma parcela incluída ainda.</p>}
+            {f.parcelas.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhuma parcela incluída ainda.</p>}
             {f.parcelas.map((x, i) => (
               <LinhaParcela key={x.id} parcela={x} indice={i} erros={errosForm} rotuloBase={p.parcela}
                 onChange={(parte) => alterarParcela(x.id, parte)} onRemover={() => alterar({ parcelas: f.parcelas.filter((y) => y.id !== x.id) })} />
             ))}
-            {errosForm.some((e) => e.campo === 'parcelas') && <p role="alert" className="text-xs font-medium text-red-600">{errosForm.find((e) => e.campo === 'parcelas').mensagem}</p>}
+            {errosForm.some((e) => e.campo === 'parcelas') && <p role="alert" className="text-[11.5px] text-destructive">{errosForm.find((e) => e.campo === 'parcelas').mensagem}</p>}
             <Botao icone="mais" onClick={() => alterar({ parcelas: [...f.parcelas, novaParcela()] })}>Adicionar parcela</Botao>
           </div>
-        </Cartao>
-
-        <Cartao titulo="3. Critérios de cálculo" descricao="Valem para todas as parcelas desta atualização.">
-          <B.CriteriosCalculo valor={f.criterios} onChange={(c) => alterar({ criterios: c })} erros={errosForm} textoMulta={p.textoMulta} notaMulta={p.notaMulta} />
-        </Cartao>
-
-        <Cartao titulo="4. Encargos adicionais e observações" descricao="Encargos informados aqui são somados ao final, sem atualização monetária, e só devem ser usados se houver previsão contratual ou fundamento jurídico.">
-          <div className="space-y-5">
-            <M.ListaEncargos itens={f.encargos} onChange={(v) => alterar({ encargos: v })} />
-            <div>
-              <label htmlFor={`obs-${p.chave}`} className="block text-sm font-semibold text-foreground mb-1.5">Observações (aparecem no demonstrativo)</label>
-              <textarea id={`obs-${p.chave}`} rows={3} maxLength={1000} value={f.observacoes} onChange={(e) => alterar({ observacoes: e.target.value })}
-                className="block w-full px-3 py-2 text-sm rounded-lg border border-input bg-white dark:bg-slate-800 text-foreground" />
-            </div>
+        </div>
+      ) },
+      { id: 'encargos', rotulo: 'Encargos e pagamentos', icone: 'percentual', conteudo: (
+        <div className="space-y-6">
+          <div>
+            {subtitulo('Critérios de cálculo')}
+            <p className="-mt-1 mb-3 text-[12px] text-muted-foreground">Valem para todas as parcelas desta atualização. Os pagamentos de cada parcela são informados na aba Obrigação.</p>
+            <B.CriteriosCalculo valor={f.criterios} onChange={(c) => alterar({ criterios: c })} erros={errosForm} textoMulta={p.textoMulta} notaMulta={p.notaMulta} />
           </div>
-        </Cartao>
+          <div className="border-t border-border pt-5">
+            {subtitulo('Encargos adicionais')}
+            <p className="-mt-1 mb-3 text-[12px] text-muted-foreground">Somados ao final, sem atualização monetária; use só se houver previsão contratual ou fundamento jurídico.</p>
+            <M.ListaEncargos itens={f.encargos} onChange={(v) => alterar({ encargos: v })} />
+          </div>
+          <div className="border-t border-border pt-5">
+            <AreaTexto rotulo="Observações (aparecem no demonstrativo)" valor={f.observacoes} onChange={(v) => alterar({ observacoes: v })} />
+          </div>
+        </div>
+      ) },
+    ];
 
-        {errosForm.length > 0 && (
+    const rotuloCalcular = `Atualizar ${f.parcelas.length || ''} parcela${f.parcelas.length === 1 ? '' : 's'}`.replace('  ', ' ');
+    const painel = (
+      <B.PainelTotais totais={r && r.totais} mostrarHonorarios={f.criterios.honorarios.ativo} vazio="Inclua as parcelas e clique em Atualizar."
+        kpis={r ? [{ l: 'Parcelas', v: String(r.resultados.length) }, { l: 'Principal corrigido', v: R.formatarMoeda(r.totais.principalCorrigido) }, { l: 'Pagamentos', v: r.totais.pagamentos ? `-${R.formatarMoeda(r.totais.pagamentos)}` : R.formatarMoeda(0) }] : undefined}
+        topo={errosForm.length > 0 && (
           <Alerta tipo="erro" titulo="Revise os dados informados">
             <ul className="list-disc pl-5 space-y-0.5">{errosForm.slice(0, 8).map((e, i) => <li key={i}>{e.mensagem}</li>)}{errosForm.length > 8 && <li>… e mais {errosForm.length - 8} ajustes.</li>}</ul>
           </Alerta>
         )}
+        acoes={
+          <AcoesPainel
+            solido={{ rotulo: rotuloCalcular, icone: 'atualizar', onClick: calcular }}
+            principal={{ rotulo: 'Gerar planilha (PDF)', icone: 'pdf', onClick: gerarPdf, desabilitado: !r }}
+            linha={[{ rotulo: 'Excel', icone: 'xls', onClick: gerarPlanilha, desabilitado: !r }, { rotulo: 'Salvar memória', icone: 'salvar', onClick: gerarMemoria, desabilitado: !r }]}
+            onLimpar={() => { limpar(); definirResultado(null); definirErros([]); }} />
+        } />
+    );
 
-        <div className="sticky bottom-3 z-20 flex flex-wrap gap-2 p-3 rounded-xl bg-card/95 border border-border shadow-card backdrop-blur">
-          <Botao variante="verde" icone="atualizar" onClick={calcular} className="flex-1 sm:flex-none sm:min-w-[240px]">
-            {`Atualizar ${f.parcelas.length || ''} parcela${f.parcelas.length === 1 ? '' : 's'}`.replace('  ', ' ')}
-          </Botao>
-          <Botao onClick={() => { limpar(); definirResultado(null); definirErros([]); }}>Limpar tudo</Botao>
-        </div>
-
-        <div ref={topo} />
-        {r && (
-          <Cartao titulo="Resultado da atualização" descricao={`Calculado até ${f.criterios.dataFinal} com a correção monetária informada por parcela.`} className="section-open">
-            <div className="space-y-5">
-              <B.ResumoConsolidado totais={r.totais} mostrarHonorarios={f.criterios.honorarios.ativo} />
-              <Tabela legenda="Resultado por parcela" colunas={['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Correção informada', 'Principal corrigido', 'Juros', 'Multa', 'Pagamentos', 'Saldo']} numericas={[3, 4, 5, 6, 7, 8, 9]}
-                linhas={r.resultados.map((x, i) => [i + 1, r.parcelas[i].descricao || `${p.parcela} ${i + 1}`, r.parcelas[i].vencimento, R.formatarMoeda(x.original), B.textoCorrecao(x.correcao), R.formatarMoeda(x.principalCorrigido), R.formatarMoeda(x.juros), R.formatarMoeda(x.multa), x.pagamentos ? `-${R.formatarMoeda(x.pagamentos)}` : '—', R.formatarMoeda(x.saldo)])} />
-              <details className="rounded-xl border border-border p-4 group">
-                <summary className="cursor-pointer text-sm font-semibold text-foreground list-none flex items-center justify-between">
-                  Memória de cálculo por parcela <UI.Icone nome="chevron" className="w-4 h-4 transition-transform group-open:rotate-180" />
-                </summary>
-                <div className="mt-3 space-y-4">
-                  {r.resultados.map((x, i) => (
-                    <div key={i}>
-                      <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">{r.parcelas[i].descricao || `${p.parcela} ${i + 1}`} — {r.parcelas[i].vencimento}</div>
-                      <ol className="list-decimal pl-5 space-y-1 text-sm text-foreground">{x.memoria.map((l, k) => <li key={k}>{l}</li>)}</ol>
-                    </div>
-                  ))}
-                </div>
-              </details>
-              <div className="flex flex-wrap gap-2">
-                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo (Excel)</Botao>
-                <Botao variante="verde" icone="baixar" onClick={gerarPdf}>Gerar planilha de cálculo (PDF)</Botao>
-                <Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao>
-                <Botao icone="baixar" onClick={exportarCsv}>Exportar CSV</Botao>
+    const detalhes = r && (
+      <div ref={topo}>
+        <Cartao titulo="Detalhes do cálculo" descricao={`Calculado até ${f.criterios.dataFinal} com a correção monetária informada por parcela.`} acoes={<Botao tamanho="sm" icone="csv" onClick={exportarCsv}>Exportar CSV</Botao>} className="section-open print-hide">
+          <div className="space-y-5">
+            <Tabela legenda="Resultado por parcela" colunas={['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Correção informada', 'Principal corrigido', 'Juros', 'Multa', 'Pagamentos', 'Saldo']} numericas={[3, 4, 5, 6, 7, 8, 9]}
+              linhas={r.resultados.map((x, i) => [i + 1, r.parcelas[i].descricao || `${p.parcela} ${i + 1}`, r.parcelas[i].vencimento, R.formatarMoeda(x.original), B.textoCorrecao(x.correcao), R.formatarMoeda(x.principalCorrigido), R.formatarMoeda(x.juros), R.formatarMoeda(x.multa), x.pagamentos ? `-${R.formatarMoeda(x.pagamentos)}` : '—', R.formatarMoeda(x.saldo)])} />
+            <details className="rounded-[10px] border border-border p-4 group">
+              <summary className="cursor-pointer text-[13px] text-foreground list-none flex items-center justify-between">
+                Memória de cálculo por parcela <UI.Icone nome="chevron" className="w-4 h-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="mt-3 space-y-4">
+                {r.resultados.map((x, i) => (
+                  <div key={i}>
+                    <div className="text-xs text-muted-foreground mb-1">{r.parcelas[i].descricao || `${p.parcela} ${i + 1}`} — {r.parcelas[i].vencimento}</div>
+                    <ol className="list-decimal pl-5 space-y-1 text-[13px] text-foreground">{x.memoria.map((l, k) => <li key={k}>{l}</li>)}</ol>
+                  </div>
+                ))}
               </div>
-            </div>
-          </Cartao>
-        )}
+            </details>
+          </div>
+        </Cartao>
+      </div>
+    );
+
+    return (
+      <Pagina titulo={p.titulo} descricao={p.subtitulo} nota="Correção monetária informada por você · cálculo local no navegador">
+        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} textoRodape="o resultado aparece ao clicar em Atualizar" />
       </Pagina>
     );
   }

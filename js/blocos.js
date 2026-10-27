@@ -8,7 +8,7 @@
   const UI = window.CentralUI;
   const R = window.CentralRegras;
   const K = window.CentralCalculo;
-  const { Icone, Botao, Alerta, CampoData, CampoPercentual, CampoMoeda, Selecao, Chave, Indicador } = UI;
+  const { Icone, Botao, Alerta, CampoData, CampoPercentual, CampoMoeda, Selecao, Chave, Indicador, Segmentado, PainelResultado } = UI;
 
   // ---------- Descrição dos critérios (tela e demonstrativo) ----------
   function descreverCriterios(c) {
@@ -30,9 +30,9 @@
 
   // ---------- Correção monetária informada manualmente ----------
   const OPCOES_CORRECAO = [
-    ['percentual', 'Informar percentual de correção'],
-    ['valorCorrigido', 'Informar valor já corrigido'],
-    ['nenhuma', 'Sem correção monetária'],
+    ['percentual', 'Percentual de correção'],
+    ['valorCorrigido', 'Valor já corrigido'],
+    ['nenhuma', 'Sem correção'],
   ];
 
   function CorrecaoManual({ valor, onChange, valorOriginal, erro, titulo = 'Correção monetária', compacto }) {
@@ -53,13 +53,9 @@
     }
     return (
       <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold text-foreground mb-2">{titulo}</legend>
-        <div className={`flex flex-wrap gap-1 rounded-lg border border-input p-1 bg-slate-50 dark:bg-slate-800 ${compacto ? 'w-full' : 'w-fit max-w-full'}`} role="group" aria-label={titulo}>
-          {OPCOES_CORRECAO.map(([v, r]) => (
-            <button key={v} type="button" aria-pressed={c.modo === v} onClick={() => alterar({ modo: v })}
-              className={`px-3 h-9 text-sm font-semibold rounded-md ${c.modo === v ? 'bg-navy-900 text-white dark:bg-emerald-600' : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10'}`}>{r}</button>
-          ))}
-        </div>
+        <legend className="text-[12.5px] text-muted-foreground mb-1.5">{titulo}</legend>
+        <Segmentado rotulo={titulo} valor={c.modo} onChange={(v) => alterar({ modo: v })} cheio={!compacto}
+          opcoes={OPCOES_CORRECAO.map(([valor, rotulo]) => ({ valor, rotulo }))} />
         {c.modo === 'percentual' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
             <CampoPercentual rotulo="Correção monetária acumulada do período" obrigatorio valor={c.percentual} onChange={(v) => alterar({ percentual: v })} erro={erro}
@@ -72,7 +68,7 @@
               ajuda="Usado como base dos juros e da multa, sem aplicar nova correção." />
           </div>
         )}
-        {previa && <p className="text-xs font-semibold text-slate-600 dark:text-slate-300" aria-live="polite">{previa}</p>}
+        {previa && <p className="text-xs text-muted-foreground" aria-live="polite">{previa}</p>}
       </fieldset>
     );
   }
@@ -90,7 +86,7 @@
             opcoes={[{ valor: 'final', rotulo: 'Abater do saldo final' }, { valor: 'art354', rotulo: 'Imputar em juros e depois principal (art. 354 CC)' }]}
             ajuda="Só faz diferença quando há pagamentos informados." />
         </div>
-        <div className="rounded-xl border border-border divide-y divide-slate-200 dark:divide-slate-700/60">
+        <div className="rounded-[10px] border border-border divide-y divide-border">
           <div className="p-4 space-y-3">
             <Chave rotulo="Juros moratórios" descricao="Aplique somente se houver previsão contratual, legal ou na decisão." marcado={c.juros.ativo} onChange={(v) => alterar({ juros: { ...c.juros, ativo: v } })} />
             {c.juros.ativo && (
@@ -124,6 +120,32 @@
           </div>
         </div>
       </div>
+    );
+  }
+
+  // ---------- Painel de resultado dos módulos jurídicos ----------
+  // totais = saída de consolidar(); sem totais (ainda não calculado) o painel mostra o estado vazio.
+  function PainelTotais({ totais, mostrarHonorarios, rotulo = 'Saldo final atualizado', vazio, topo, acoes, kpis, children }) {
+    const m = R.formatarMoeda;
+    const t = totais;
+    const linhas = !t ? [] : [
+      { l: 'Valor original', v: m(t.original), n: t.original },
+      { l: 'Correção informada', v: m(t.correcao), n: t.correcao },
+      { l: 'Juros', v: m(t.juros), n: t.juros },
+      { l: 'Multa', v: m(t.multa), n: t.multa },
+      (mostrarHonorarios || t.honorarios !== 0) && { l: 'Honorários', v: m(t.honorarios), n: t.honorarios },
+      t.encargosNominais !== 0 && { l: 'Outros encargos', v: m(t.encargosNominais), n: t.encargosNominais },
+      { l: '(−) Pagamentos', v: t.pagamentos ? `-${m(t.pagamentos)}` : m(0), n: t.pagamentos, skip: true, neg: t.pagamentos > 0 },
+      t.creditoNaoImputado !== 0 && { l: 'Excedente de pagamentos', v: m(t.creditoNaoImputado), n: t.creditoNaoImputado, skip: true },
+    ].filter(Boolean);
+    const encargos = t && t.original ? R.formatarPercentual(((t.saldoFinal + t.pagamentos - t.original) / t.original) * 100, 1) : '—';
+    return (
+      <PainelResultado rotulo={rotulo} valor={t ? m(t.saldoFinal) : '—'} topo={topo} acoes={acoes} linhas={linhas}
+        kpis={t ? (kpis || [{ l: 'Principal corrigido', v: m(t.principalCorrigido) }, { l: 'Encargos', v: encargos }, { l: 'Pagamentos', v: t.pagamentos ? `-${m(t.pagamentos)}` : m(0) }]) : []}>
+        {!t && <p className="mt-4 text-[12.5px] text-muted-foreground">{vazio || 'Preencha os dados e use "Calcular". O resultado aparece aqui.'}</p>}
+        {t && <p className="mt-4 text-[11.5px] text-muted-foreground">Principal corrigido + juros + multa + honorários + outros encargos − pagamentos. Alterar qualquer dado limpa o resultado: calcule novamente.</p>}
+        {children}
+      </PainelResultado>
     );
   }
 
@@ -175,9 +197,9 @@
     }, []);
     const imprimir = () => { if (quadro.current && quadro.current.contentWindow) { quadro.current.contentWindow.focus(); quadro.current.contentWindow.print(); } };
     return (
-      <div className="fixed inset-0 z-[70] bg-slate-900/60 flex flex-col" role="dialog" aria-modal="true" aria-label={titulo}>
-        <div className="bg-navy-900 text-white px-4 py-3 flex flex-wrap items-center gap-2 justify-between">
-          <div className="font-semibold text-sm truncate">{titulo}</div>
+      <div className="fixed inset-0 z-[70] bg-black/60 flex flex-col" role="dialog" aria-modal="true" aria-label={titulo}>
+        <div className="bg-card text-foreground border-b border-border px-4 py-3 flex flex-wrap items-center gap-2 justify-between">
+          <div className="text-[13.5px] font-medium truncate">{titulo}</div>
           <div className="flex gap-2">
             <Botao tamanho="sm" variante="verde" icone="imprimir" onClick={imprimir}>Imprimir / Salvar PDF</Botao>
             <Botao tamanho="sm" icone="baixar" onClick={() => UI.baixarArquivo(UI.nomeArquivo(nomeBase || titulo, 'html'), html, 'text/html;charset=utf-8')}>Baixar HTML</Botao>
@@ -231,7 +253,7 @@
   }
 
   window.CentralBlocos = {
-    descreverCriterios, CorrecaoManual, CriteriosCalculo, ResumoConsolidado, ListaAlertas,
+    descreverCriterios, CorrecaoManual, CriteriosCalculo, PainelTotais, ResumoConsolidado, ListaAlertas,
     textoCorrecao, VisualizadorDocumento, guardarMemoria, gerarPlanilhaCalculo, gerarPdfCalculo, gerarPdfRegistro,
   };
 })();

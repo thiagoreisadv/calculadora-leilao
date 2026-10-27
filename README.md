@@ -53,9 +53,13 @@ Todos os campos de valor usam a mesma máscara (`EntradaMoeda` em `js/componente
 - o `.` do teclado numérico vira vírgula; colar `R$ 1.500,00` funciona;
 - ao sair do campo, completa as casas decimais (`1.500` → `1.500,00`).
 
-## Design system (shadcn/ui, sem build)
+## Visual e navegação
 
-O visual segue o shadcn/ui: tokens de cor em CSS (`--background`, `--card`, `--primary`, `--muted`, `--border`, `--input`, `--ring`, `--destructive`, `--radius`) em `:root` e `html.dark`, mapeados no `tailwind.config` do `index.html`. Botão, cartão, campo, abas (`Segmentado`) e selo usam as mesmas classes dos componentes do shadcn (anel de foco de 3px, `shadow-xs`, `rounded-md`). Para mudar a paleta, altere só os tokens.
+- **Menu lateral recolhível** (64 px só com ícones ou 240 px com rótulos; a escolha fica guardada no navegador). No celular, menu em gaveta.
+- **Calculadores em uma tela**: formulário em abas (ex.: Leilões = Bem / Valores / Custos; Escritura = Negócio / Custos / Outros) ao lado do painel de resultado, sempre visível, com valor principal, status, barra de composição, indicadores e ações. Detalhes longos (tabelas por parcela, memória de cálculo) ficam abaixo.
+- Nos módulos jurídicos o resultado continua aparecendo ao clicar em **Calcular**, com a mesma validação de antes.
+- **Tokens de cor** no padrão shadcn/ui (`--background`, `--card`, `--sidebar`, `--field`, `--primary`, `--primary-text`, `--border`, `--ring`, `--success`, `--warning`, `--destructive`) em `:root` (claro) e `html.dark` (escuro, tema "Nocturne"), mapeados no `tailwind.config` do `index.html`. Para mudar a paleta, altere só os tokens.
+- **Ícones Phosphor** embutidos em `js/icones.js` (SVG, sem depender de CDN).
 
 O repositório inclui `.mcp.json` com o servidor [shadcn-ui-mcp-server](https://github.com/Jpisnice/shadcn-ui-mcp-server), para consultar o código oficial dos componentes ao evoluir a interface (precisa de acesso a `raw.githubusercontent.com`; um token do GitHub em `GITHUB_PERSONAL_ACCESS_TOKEN` evita o limite de 60 consultas por hora).
 

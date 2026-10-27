@@ -7,7 +7,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -15,52 +15,69 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js" crossorigin="anonymous"></script>
 
   <style>
-    /* Tokens no padrão shadcn/ui (canais RGB, para aceitar opacidade). Paleta da marca: azul-marinho + verde-esmeralda. */
+    /* Tokens no padrão shadcn/ui (canais RGB, para aceitar opacidade). Tema "Nocturne": roxo sobre neutros frios.
+       Para mudar a paleta, altere só estes valores. */
     :root {
-      --background: 244 247 251;
-      --foreground: 30 41 59;
+      --background: 242 243 248;
+      --foreground: 28 30 43;
       --card: 255 255 255;
-      --card-foreground: 30 41 59;
-      --primary: 20 36 58;
+      --card-foreground: 28 30 43;
+      --sidebar: 255 255 255;
+      --field: 247 248 251;
+      --primary: 109 95 199;
       --primary-foreground: 255 255 255;
-      --secondary: 237 242 247;
-      --secondary-foreground: 30 41 59;
-      --muted: 237 242 247;
-      --muted-foreground: 100 116 139;
-      --accent: 237 242 247;
-      --accent-foreground: 30 41 59;
-      --destructive: 220 38 38;
-      --border: 226 232 240;
-      --input: 203 213 225;
-      --ring: 15 139 104;
-      --success: 15 139 104;
-      --warning: 180 83 9;
-      --radius: 0.625rem;
+      --primary-text: 85 70 176;
+      --secondary: 242 241 250;
+      --secondary-foreground: 28 30 43;
+      --muted: 242 241 250;
+      --muted-foreground: 102 106 126;
+      --accent: 242 241 250;
+      --accent-foreground: 28 30 43;
+      --destructive: 179 52 75;
+      --border: 220 222 233;
+      --input: 220 222 233;
+      --ring: 109 95 199;
+      --success: 28 116 88;
+      --warning: 148 96 22;
+      --radius: 0.5rem;
     }
     html.dark {
-      --background: 11 20 36;
-      --foreground: 241 245 249;
-      --card: 20 36 58;
-      --card-foreground: 241 245 249;
-      --primary: 5 150 105;
-      --primary-foreground: 255 255 255;
-      --secondary: 30 52 80;
-      --secondary-foreground: 241 245 249;
-      --muted: 30 52 80;
-      --muted-foreground: 148 163 184;
-      --accent: 38 62 92;
-      --accent-foreground: 241 245 249;
-      --destructive: 248 113 113;
-      --border: 41 73 107;
-      --input: 51 85 122;
-      --ring: 52 211 153;
-      --success: 52 211 153;
-      --warning: 251 191 36;
+      --background: 22 24 38;
+      --foreground: 233 233 237;
+      --card: 29 31 45;
+      --card-foreground: 233 233 237;
+      --sidebar: 18 20 31;
+      --field: 22 24 38;
+      --primary: 145 132 217;
+      --primary-foreground: 22 24 38;
+      --primary-text: 181 171 252;
+      --secondary: 43 43 66;
+      --secondary-foreground: 233 233 237;
+      --muted: 43 43 66;
+      --muted-foreground: 147 151 171;
+      --accent: 43 43 66;
+      --accent-foreground: 233 233 237;
+      --destructive: 232 131 143;
+      --border: 49 52 74;
+      --input: 49 52 74;
+      --ring: 145 132 217;
+      --success: 111 196 166;
+      --warning: 224 181 106;
     }
     html, body {
       font-family: Inter, system-ui, sans-serif;
       background: rgb(var(--background));
+      color: rgb(var(--foreground));
+      color-scheme: light;
     }
+    html.dark, html.dark body { color-scheme: dark; }
+    * { scrollbar-width: thin; scrollbar-color: rgb(var(--border)) transparent; }
+    select {
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239397ab' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px !important;
+    }
+    input::placeholder, textarea::placeholder { opacity: .5; }
     /* Layout de impressão dedicado: documento formal (tabelas, cabeçalho, assinatura),
        não uma cópia com CSS forçado do dashboard da tela. */
     @page {
@@ -72,6 +89,8 @@
         background: #ffffff !important;
       }
       .print-hide { display: none !important; }
+      .app-shell, .app-main, .app-body { display: block !important; height: auto !important; overflow: visible !important; }
+      .app-shell { background: #ffffff !important; }
       .print-page-wrapper { margin: 0 !important; padding: 0 !important; }
       .avoid-break { page-break-inside: avoid; break-inside: avoid; }
       table { page-break-inside: auto; }
@@ -83,14 +102,14 @@
     button, a, input, select, textarea {
       transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease, transform .15s ease, opacity .15s ease;
     }
-    button:active:not(:disabled) { transform: scale(.98); }
+    button:active:not(:disabled) { opacity: .85; }
     :focus { outline: none; }
     :focus-visible { outline: 2px solid rgb(var(--ring)); outline-offset: 2px; border-radius: 6px; }
-    /* Foco no padrão shadcn: borda + anel de 3px a 50% */
+    /* Foco: borda de acento + anel de 3px */
     input:focus-visible, select:focus-visible, textarea:focus-visible {
       outline: none;
       border-color: rgb(var(--ring));
-      box-shadow: 0 0 0 3px rgb(var(--ring) / .5);
+      box-shadow: 0 0 0 3px rgb(var(--ring) / .2);
     }
 
     @keyframes section-in {
@@ -126,16 +145,14 @@
             // Tokens shadcn/ui (valores em :root e html.dark)
             background: 'rgb(var(--background) / <alpha-value>)', foreground: 'rgb(var(--foreground) / <alpha-value>)',
             card: { DEFAULT: 'rgb(var(--card) / <alpha-value>)', foreground: 'rgb(var(--card-foreground) / <alpha-value>)' },
-            primary: { DEFAULT: 'rgb(var(--primary) / <alpha-value>)', foreground: 'rgb(var(--primary-foreground) / <alpha-value>)' },
+            sidebar: 'rgb(var(--sidebar) / <alpha-value>)', field: 'rgb(var(--field) / <alpha-value>)',
+            primary: { DEFAULT: 'rgb(var(--primary) / <alpha-value>)', foreground: 'rgb(var(--primary-foreground) / <alpha-value>)', text: 'rgb(var(--primary-text) / <alpha-value>)' },
             secondary: { DEFAULT: 'rgb(var(--secondary) / <alpha-value>)', foreground: 'rgb(var(--secondary-foreground) / <alpha-value>)' },
             muted: { DEFAULT: 'rgb(var(--muted) / <alpha-value>)', foreground: 'rgb(var(--muted-foreground) / <alpha-value>)' },
             accent: { DEFAULT: 'rgb(var(--accent) / <alpha-value>)', foreground: 'rgb(var(--accent-foreground) / <alpha-value>)' },
             destructive: 'rgb(var(--destructive) / <alpha-value>)',
             border: 'rgb(var(--border) / <alpha-value>)', input: 'rgb(var(--input) / <alpha-value>)', ring: 'rgb(var(--ring) / <alpha-value>)',
             success: 'rgb(var(--success) / <alpha-value>)', warning: 'rgb(var(--warning) / <alpha-value>)',
-            // Paleta da marca: azul-marinho, azul secundário e verde-esmeralda
-            navy: { 100: '#E8EDF4', 500: '#29496B', 700: '#29496B', 900: '#14243A' },
-            emerald: { 50: '#ECFDF5', 100: '#D1FAE5', 300: '#6EE7B7', 400: '#34D399', 500: '#10B981', 600: '#0F8B68', 700: '#0B6F55', 800: '#0A5A46', 900: '#084536' },
             // Tons neutros: fundo #F4F7FB, bordas #E2E8F0, texto #1E293B / #64748B
             slate: { 50: '#F4F7FB', 100: '#EDF2F7', 200: '#E2E8F0', 300: '#CBD5E1', 400: '#94A3B8', 500: '#64748B', 600: '#475569', 700: '#334155', 800: '#1E293B', 900: '#14243A', 950: '#0B1424' },
             gray: { 50: '#F4F7FB', 100: '#EDF2F7', 200: '#E2E8F0', 300: '#CBD5E1', 400: '#94A3B8', 500: '#64748B', 600: '#475569', 700: '#334155', 800: '#1E293B', 900: '#14243A' },
@@ -144,14 +161,13 @@
           },
           borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)', xl: 'calc(var(--radius) + 4px)' },
           borderColor: { DEFAULT: 'rgb(var(--border) / <alpha-value>)' },
-          boxShadow: {
-            xs: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-            card: '0 1px 2px rgba(20, 36, 58, 0.04), 0 4px 16px rgba(20, 36, 58, 0.06)',
-          },
+          // Sem sombras em repouso: a elevação é a borda. Só menus e avisos flutuantes usam sombra.
+          boxShadow: { xs: 'none', sm: 'none', DEFAULT: 'none', card: 'none' },
         },
       },
     }
   </script>
+  <script src="js/icones.js"></script>
   <!-- Módulos da plataforma (camadas separadas: utilitários, motor de cálculo local, interface) -->
   <script src="js/regras.js"></script>
   <script src="js/calculo.js"></script>
@@ -161,7 +177,7 @@
   <script src="js/pdf.js"></script>
   <script src="js/registro.js"></script>
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+<body class="bg-background text-foreground">
   <div id="root"></div>
 
   <script type="text/babel" src="js/componentes.js"></script>
@@ -177,17 +193,7 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // --- Ícones SVG ---
-    const Building = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2Z"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2Z"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>;
-    const FileText = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
-    const Printer = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>;
-    const Settings = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
-    const Moon = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
-    const Sun = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>;
-    const Tree = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2L3 9h3v10h12V9h3L12 2z"/><path d="M12 22V19"/></svg>;
-    const Car = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a2 2 0 0 0-1.6-.8H9.3a2 2 0 0 0-1.6.8L5 11l-5.16.86a1 1 0 0 0-.84.99V16h3m10 0a2 2 0 1 1-4 0m4 0a2 2 0 1 0-4 0m-7 0a2 2 0 1 1-4 0m4 0a2 2 0 1 0-4 0"/></svg>;
-    const Home = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
-    const ChevronDown = ({ className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"/></svg>;
+    const { Icone, Pagina, Segmentado, Revelar, Grade, Col, Calculador, PainelResultado, AcoesPainel, Alerta, Botao, Tabela, EntradaMoeda, CLASSE_ENTRADA } = window.CentralUI;
 
     // --- Helpers Core ---
     const formatCurrencyStr = (value) => {
@@ -205,96 +211,6 @@
     // ROI a partir do qual a arrematação é tratada como confortável (abaixo disso: margem apertada)
     const ROI_CONFORTAVEL = 15;
 
-    // Indicador secundário do painel de resultado: o texto da legenda comunica o resultado, não só a cor
-    const Estatistica = ({ label, value, sub, tone = 'neutral' }) => {
-      const cor = {
-        good: 'text-emerald-700 dark:text-emerald-400',
-        bad: 'text-red-600 dark:text-red-400',
-        neutral: 'text-foreground',
-      }[tone];
-      return (
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-          <div key={value} className={`value-update mt-1 text-base sm:text-lg font-bold tabular-nums truncate ${cor}`}>{value}</div>
-          {sub && <div className="mt-0.5 text-[11px] text-muted-foreground">{sub}</div>}
-        </div>
-      );
-    };
-
-    // Controle segmentado (escolha única entre poucas opções)
-    const Segmentado = ({ opcoes, valor, onChange, rotulo, className = '' }) => (
-      <div role="radiogroup" aria-label={rotulo} className={`inline-flex items-center justify-center h-9 w-fit p-[3px] rounded-lg bg-muted text-muted-foreground ${className}`}>
-        {opcoes.map((o) => (
-          <button key={o.valor} type="button" role="radio" aria-checked={valor === o.valor} onClick={() => onChange(o.valor)}
-            className={`inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 px-3 text-sm font-medium whitespace-nowrap rounded-md border border-transparent transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 ${valor === o.valor ? 'bg-background text-foreground shadow-sm dark:bg-input/40 dark:border-input' : 'text-foreground/60 hover:text-foreground'}`}>
-            {o.icone && <o.icone className="w-4 h-4" />}{o.rotulo}
-          </button>
-        ))}
-      </div>
-    );
-
-    // Bloco recolhível para campos opcionais (abre sozinho quando já há algo preenchido)
-    const Revelar = ({ titulo, aberto, onAlternar, children }) => (
-      <div className="border-t border-slate-100 dark:border-slate-700/60 pt-3">
-        <button type="button" onClick={onAlternar} aria-expanded={aberto}
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300">
-          <ChevronDown className={`w-4 h-4 transition-transform ${aberto ? 'rotate-180' : ''}`} /> {titulo}
-        </button>
-        {aberto && <div className="mt-4 space-y-4 section-open">{children}</div>}
-      </div>
-    );
-
-    // Menu "Exportar": reúne as saídas secundárias para deixar um único botão principal
-    const MenuExportar = ({ itens }) => {
-      const [aberto, setAberto] = useState(false);
-      const ref = React.useRef(null);
-      useEffect(() => {
-        if (!aberto) return undefined;
-        const fora = (e) => { if (ref.current && !ref.current.contains(e.target)) setAberto(false); };
-        const tecla = (e) => { if (e.key === 'Escape') setAberto(false); };
-        document.addEventListener('mousedown', fora);
-        window.addEventListener('keydown', tecla);
-        return () => { document.removeEventListener('mousedown', fora); window.removeEventListener('keydown', tecla); };
-      }, [aberto]);
-      return (
-        <div ref={ref} className="relative flex-1">
-          <button type="button" onClick={() => setAberto(!aberto)} aria-expanded={aberto} aria-haspopup="menu"
-            className="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-md border border-input bg-card text-sm font-medium text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50">
-            Exportar <ChevronDown className={`w-4 h-4 transition-transform ${aberto ? 'rotate-180' : ''}`} />
-          </button>
-          {aberto && (
-            <div role="menu" className="absolute bottom-full left-0 right-0 mb-2 z-20 py-1 rounded-lg border border-border bg-card shadow-md section-open">
-              {itens.map((item) => (
-                <button key={item.rotulo} type="button" role="menuitem" onClick={() => { setAberto(false); item.acao(); }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-slate-50 dark:hover:bg-white/5">
-                  <span className="font-semibold">{item.rotulo}</span>
-                  {item.detalhe && <span className="block text-xs text-muted-foreground">{item.detalhe}</span>}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    };
-
-    // Ações do painel de resultado: uma ação principal, as demais no menu "Exportar"
-    const AcoesResultado = ({ rotuloPrincipal, onPrincipal, onExcel, onPdfPlanilha, onCopiar, onWhatsapp, onLimpar }) => (
-      <div className="mt-6 space-y-2 print-hide">
-        <button type="button" onClick={onPrincipal} className="w-full inline-flex items-center justify-center gap-2 h-10 rounded-md bg-primary text-primary-foreground text-sm font-medium shadow-xs hover:bg-primary/90 outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50">
-          <Printer className="w-5 h-5 flex-shrink-0" /> {rotuloPrincipal}
-        </button>
-        <div className="flex gap-2">
-          <MenuExportar itens={[
-            { rotulo: 'Planilha de cálculo (Excel)', detalhe: 'Arquivo .xlsx com fórmulas', acao: onExcel },
-            { rotulo: 'Planilha de cálculo (PDF)', detalhe: 'Tabela pronta para enviar', acao: onPdfPlanilha },
-            { rotulo: 'Copiar resumo', detalhe: 'Texto curto para colar', acao: onCopiar },
-            { rotulo: 'Enviar pelo WhatsApp', acao: onWhatsapp },
-          ]} />
-          <button type="button" onClick={onLimpar} className="h-10 px-4 rounded-md text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground outline-none transition-all focus-visible:ring-[3px] focus-visible:ring-ring/50">Limpar</button>
-        </div>
-      </div>
-    );
-
     const formatDateTime = (date) => date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
     const safeNumber = (val) => {
@@ -305,11 +221,10 @@
         return isNaN(num) ? 0 : num;
     };
 
-    // --- Componentes de entrada (mesmo visual dos demais módulos: js/componentes.js) ---
-    const ENTRADA = 'block w-full h-10 min-w-0 px-3 py-1 text-base md:text-sm rounded-md border border-input bg-transparent dark:bg-input/30 text-foreground shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-muted/50';
-    const ROTULO = 'block text-sm font-medium leading-none text-foreground mb-2';
-    const AJUDA = 'mt-1 text-xs text-muted-foreground';
-    const BORDA_MOEDA = '';
+    // --- Campos (mesmo visual dos demais módulos: js/componentes.js) ---
+    const ENTRADA = CLASSE_ENTRADA;
+    const ROTULO = 'block text-[12.5px] text-muted-foreground mb-1.5';
+    const AJUDA = 'mt-1.5 text-[11.5px] text-muted-foreground';
 
     let contadorCampos = 0;
     const useIdCampo = () => {
@@ -335,12 +250,15 @@
       return val;
     };
 
-    const DecimalInput = ({ label, value, onChange, placeholder, subText }) => {
+    const DecimalInput = ({ label, value, onChange, placeholder, subText, sufixo }) => {
       const id = useIdCampo();
       return (
         <div>
           <label htmlFor={id} className={ROTULO}>{label}</label>
-          <input id={id} type="text" inputMode="decimal" value={value} onChange={(e) => onChange(limparDecimal(e.target.value))} placeholder={placeholder} className={`${ENTRADA} tabular-nums`} />
+          <div className="relative">
+            <input id={id} type="text" inputMode="decimal" value={value} onChange={(e) => onChange(limparDecimal(e.target.value))} placeholder={placeholder} className={`${ENTRADA} tabular-nums ${sufixo ? 'pr-10' : ''}`} />
+            {sufixo && <span className="absolute right-[11px] top-1/2 -translate-y-1/2 text-[12.5px] text-muted-foreground pointer-events-none">{sufixo}</span>}
+          </div>
           {subText && <p className={AJUDA}>{subText}</p>}
         </div>
       );
@@ -357,10 +275,10 @@
         <div>
           <label htmlFor={id} className={ROTULO}>{label}</label>
           <div className="relative">
-            <input id={id} type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className={`${ENTRADA} pr-9 tabular-nums`} />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 pointer-events-none">%</span>
+            <input id={id} type="text" inputMode="decimal" value={value} onChange={handleChange} placeholder={placeholder} className={`${ENTRADA} pr-8 tabular-nums`} />
+            <span className="absolute right-[11px] top-1/2 -translate-y-1/2 text-[12.5px] text-muted-foreground pointer-events-none">%</span>
           </div>
-          {extraElement && <div className="mt-1">{extraElement}</div>}
+          {extraElement && <div className="mt-1.5">{extraElement}</div>}
         </div>
       );
     };
@@ -390,11 +308,10 @@
     const MoneyInput = ({ label, value, onChange, placeholder, subText }) => {
       const id = useIdCampo();
       const [texto, alterar] = useTextoMoeda(value, onChange);
-      const { EntradaMoeda } = window.CentralUI;
       return (
         <div>
           <label htmlFor={id} className={ROTULO}>{label}</label>
-          <EntradaMoeda id={id} valor={texto} onChange={alterar} placeholder={placeholder || '0,00'} className={BORDA_MOEDA} />
+          <EntradaMoeda id={id} valor={texto} onChange={alterar} placeholder={placeholder || '0,00'} />
           {subText && <p className={AJUDA}>{subText}</p>}
         </div>
       );
@@ -403,28 +320,27 @@
     const TaxInput = ({ label, value, onChangeValue, type, onChangeType, description, disabled }) => {
       const id = useIdCampo();
       const [texto, alterar] = useTextoMoeda(value, onChangeValue || (() => {}));
-      const { EntradaMoeda } = window.CentralUI;
       const emReais = type === 'fixed' || disabled;
       return (
         <div>
-          <div className="flex justify-between items-end gap-2 mb-1.5">
-            <label htmlFor={id} className="block text-sm font-semibold text-foreground">{label}</label>
+          <div className="flex justify-between items-center h-[19px] mb-1.5">
+            <label htmlFor={id} className="block text-[12.5px] text-muted-foreground">{label}</label>
             {!disabled && (
               <Segmentado rotulo={`Tipo de valor: ${label}`} valor={type} onChange={onChangeType}
-                opcoes={[{ valor: 'percent', rotulo: '%' }, { valor: 'fixed', rotulo: 'R$' }]} className="!p-0.5 [&>button]:h-6 [&>button]:px-2.5" />
+                opcoes={[{ valor: 'percent', rotulo: '%' }, { valor: 'fixed', rotulo: 'R$' }]} className="!p-0.5 -my-1 [&>button]:!h-5 [&>button]:!px-2 [&>button]:!text-[11px]" />
             )}
           </div>
           {disabled ? (
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 pointer-events-none">R$</span>
-              <input id={id} type="text" disabled value={formatCurrencyStr(value) || '0,00'} className={`${ENTRADA} pl-10 tabular-nums`} />
+              <span className="absolute left-[11px] top-1/2 -translate-y-1/2 text-[12.5px] text-muted-foreground pointer-events-none">R$</span>
+              <input id={id} type="text" disabled value={formatCurrencyStr(value) || '0,00'} className={`${ENTRADA} pl-8 tabular-nums`} />
             </div>
           ) : emReais ? (
-            <EntradaMoeda id={id} valor={texto} onChange={alterar} placeholder="0,00" className={BORDA_MOEDA} />
+            <EntradaMoeda id={id} valor={texto} onChange={alterar} placeholder="0,00" />
           ) : (
             <div className="relative">
-              <input id={id} type="text" inputMode="decimal" value={value} onChange={(e) => onChangeValue(limparDecimal(e.target.value))} placeholder="0" className={`${ENTRADA} pr-9 tabular-nums`} />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 pointer-events-none">%</span>
+              <input id={id} type="text" inputMode="decimal" value={value} onChange={(e) => onChangeValue(limparDecimal(e.target.value))} placeholder="0" className={`${ENTRADA} pr-8 tabular-nums`} />
+              <span className="absolute right-[11px] top-1/2 -translate-y-1/2 text-[12.5px] text-muted-foreground pointer-events-none">%</span>
             </div>
           )}
           {description && <p className={AJUDA}>{description}</p>}
@@ -434,46 +350,10 @@
 
     const ShowInBudgetToggle = ({ checked, onChange }) => (
       <label className="flex items-center gap-1.5 mt-1.5 cursor-pointer select-none w-fit">
-        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-3.5 h-3.5 rounded accent-emerald-600" />
-        <span className="text-xs text-muted-foreground">Mostrar no orçamento</span>
+        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-3.5 h-3.5 rounded accent-primary" />
+        <span className="text-[11.5px] text-muted-foreground">Mostrar no orçamento</span>
       </label>
     );
-
-    // Etapa numerada do formulário. No celular funciona como acordeão (uma etapa aberta por vez,
-    // com um resumo de uma linha quando fechada); no computador fica sempre aberta.
-    const Card = ({ title, numero, resumo, children, extraHeader, step, activeStep, onStepChange, isLast }) => {
-      const steppable = step != null;
-      const isOpen = !steppable || step === activeStep;
-      const titulo = (
-        <span className="flex items-center gap-3 min-w-0">
-          {numero != null && <span className="flex-shrink-0 w-6 h-6 rounded-full bg-navy-900 dark:bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">{numero}</span>}
-          <span className="min-w-0">
-            <span className="block text-base font-semibold text-foreground truncate">{title}</span>
-            {resumo && !isOpen && <span className="block sm:hidden text-xs text-muted-foreground truncate">{resumo}</span>}
-          </span>
-        </span>
-      );
-      return (
-        <section className="bg-card text-card-foreground rounded-xl border border-border shadow-sm">
-          <div className="flex flex-wrap justify-between items-center gap-3 px-5 sm:px-6 pt-5">
-            {steppable ? (
-              <button type="button" onClick={() => onStepChange(isOpen ? -1 : step)} className="flex-1 sm:flex-none min-w-0 flex items-center justify-between gap-2 text-left sm:pointer-events-none" aria-expanded={isOpen}>
-                {titulo}
-                <ChevronDown className={`w-4 h-4 text-slate-400 flex-shrink-0 sm:hidden transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-              </button>
-            ) : titulo}
-            {extraHeader && <div className={`${isOpen ? '' : 'hidden'} sm:block`}>{extraHeader}</div>}
-          </div>
-          <div className={`${isOpen ? 'block section-open' : 'hidden'} sm:block px-5 sm:px-6 pb-5 sm:pb-6 pt-5 space-y-4`}>
-            {children}
-            {steppable && !isLast && (
-              <button type="button" onClick={() => onStepChange(step + 1)} className="sm:hidden w-full h-10 bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 font-medium text-sm rounded-md">Continuar</button>
-            )}
-          </div>
-          {!isOpen && <div className="h-5 sm:hidden" />}
-        </section>
-      );
-    };
 
     // --- Matemática Paraná (TJ-PR - Lei 6.183/2023 e Lei 21.869/2023, atualizada 2026) ---
 
@@ -579,16 +459,9 @@
       const [darkLocal, setDarkLocal] = useState(initialState?.darkMode || false);
       const darkMode = props && props.dark !== undefined ? props.dark : darkLocal;
       const setDarkMode = props && props.setDark ? props.setDark : setDarkLocal;
-      const [activeTab, setActiveTab] = useState(initialState?.activeTab || 'leilao');
-
-      // Acordeão de preenchimento (só tem efeito visual no celular; no desktop os cartões ficam sempre abertos)
-      const [leilaoStep, setLeilaoStep] = useState(0);
-      const [escrituraStep, setEscrituraStep] = useState(0);
-
-      // Campos opcionais recolhidos: abrem sozinhos quando já há algo preenchido (ex.: caso salvo)
-      const [mostrarIdentificacao, setMostrarIdentificacao] = useState(Boolean(initialState?.clienteNomeLeilao || initialState?.imovelDescLeilao));
-      const [mostrarOpcoes, setMostrarOpcoes] = useState(Boolean(initialState?.valorVenalLeilao || initialState?.segundaPracaValue || initialState?.maxBudget));
-      const [editarTaxas, setEditarTaxas] = useState(false);
+      // O módulo ativo (leilão ou escritura) vem do menu; sem ele, usa o último valor guardado.
+      const [activeTabLocal, setActiveTab] = useState(initialState?.activeTab || 'leilao');
+      const activeTab = props && props.modo ? props.modo : activeTabLocal;
 
       // Estados: LEILÃO
       const [assetType, setAssetType] = useState(initialState?.assetType || 'urbano');
@@ -685,8 +558,6 @@
          }
       }, [assetType, assetSize]);
 
-      // Reinicia o acordeão de preenchimento ao trocar o tipo de bem (os cartões mudam)
-      useEffect(() => { setLeilaoStep(0); }, [assetType]);
 
       const persistCases = (list) => {
         setSavedCases(list);
@@ -750,11 +621,14 @@
 
       const handleLoadCase = (id) => {
         const found = savedCases.find(c => c.id === id);
-        if (found) {
-          const s = found.state;
-          applyState(s); setIsCasesOpen(false);
-          setMostrarIdentificacao(Boolean(s.clienteNomeLeilao || s.imovelDescLeilao));
-          setMostrarOpcoes(Boolean(s.valorVenalLeilao || s.segundaPracaValue || s.maxBudget));
+        if (!found) return;
+        const alvo = found.state.activeTab === 'escritura' ? 'escritura' : 'leilao';
+        applyState(found.state);
+        setIsCasesOpen(false);
+        // Caso de outro calculador: guarda o estado e abre o módulo correspondente (ele recarrega o estado ao montar)
+        if (props && props.modo && props.modo !== alvo) {
+          try { localStorage.setItem('central_calc_imob_v14', JSON.stringify({ ...found.state, darkMode, advName: found.state.advName ?? advName, advOab: found.state.advOab ?? advOab })); } catch (e) { /* ignora */ }
+          window.CentralUI.navegar(alvo === 'escritura' ? 'escritura' : 'leiloes');
         }
       };
 
@@ -1172,447 +1046,390 @@
         else baixarPlanilhaApp(Reg.baixarPlanilhaSimples(m.linhas, 'Cálculo', criterios, clienteNome || imovelDesc || 'escritura'));
       };
 
-      const leilaoLastStep = 2;
       const ehVeiculo = assetType === 'veiculo';
-      const tituloAnalise = ehVeiculo ? (isRegularizacao ? 'Análise de compra com regularização' : 'Análise veicular') : 'Análise imobiliária';
-
-      // Resumo das taxas (modo padrão): regra aplicada + valor, sem expor os campos de edição
-      const regraTaxa = (t) => (t.type === 'percent' ? `${safeNumber(t.value).toLocaleString('pt-BR')}%` : 'valor fixo');
-      const linhasTaxas = [
-        !isRegularizacao && { rotulo: 'Leiloeiro', regra: regraTaxa(leiloeiro), valor: leiloeiroCost },
-        !ehVeiculo && { rotulo: 'ITBI', regra: `${regraTaxa(itbi)}${safeNumber(valorVenalLeilao) > safeBid ? ' · base: valor venal' : ''}`, valor: itbiCostLeilao },
-        !ehVeiculo && { rotulo: 'Registro de imóveis', regra: cartorioModeLeilao === 'pr' ? 'tabela TJ-PR' : regraTaxa(cartorioManualLeilao), valor: cartorioCostLeilao },
-        { rotulo: isRegularizacao ? 'Honorários judiciais' : 'Assessoria jurídica', regra: regraTaxa(legal), valor: legalCost },
-      ].filter(Boolean);
-      const totalTaxasLeilao = linhasTaxas.reduce((soma, l) => soma + l.valor, 0);
-
-      // Veredito do painel: o rótulo comunica o resultado, a cor só reforça
-      const veredito = !temVendaEstimada ? null
-        : lucroAbsoluto < 0 ? { rotulo: 'Inviável', chip: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/60', ponto: 'bg-red-500', fundo: 'bg-red-50 dark:bg-red-950/25', valor: 'text-red-600 dark:text-red-400' }
-        : margemLucroPorcentagem < ROI_CONFORTAVEL ? { rotulo: 'Margem apertada', chip: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/60', ponto: 'bg-amber-500', fundo: 'bg-amber-50/70 dark:bg-amber-950/20', valor: 'text-foreground' }
-        : { rotulo: 'Viável', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/60', ponto: 'bg-emerald-500', fundo: 'bg-emerald-50/70 dark:bg-emerald-950/25', valor: 'text-emerald-700 dark:text-emerald-400' };
-
+      const eLeilao = activeTab === 'leilao';
       const rotuloUnidade = getUnitLabel();
       const porUnidade = valMode !== 'total';
+      const [abaLeilao, setAbaLeilao] = useState('bem');
+      const [abaEscritura, setAbaEscritura] = useState('negocio');
 
-      return (
-        <div className="min-h-screen pb-24 print-page-wrapper">
-          {toast && (
-            <div role="status" aria-live="polite" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-[90vw] px-4 py-2.5 rounded-lg bg-navy-900 dark:bg-emerald-600 text-white text-sm font-semibold shadow-sm print-hide section-open">
-              ✓ {toast}
+      // ---- Painel de resultado: leilão ----
+      const orcamentoMax = safeNumber(maxBudget);
+      const acimaDoOrcamento = orcamentoMax > 0 && finalLeilao > orcamentoMax && safeBid > 0;
+      const statusLeilao = safeBid <= 0 ? null
+        : acimaDoOrcamento ? { tom: 'ruim', texto: 'Acima do orçamento máximo' }
+        : !temVendaEstimada ? null
+        : lucroAbsoluto < 0 ? { tom: 'ruim', texto: 'Prejuízo estimado' }
+        : margemLucroPorcentagem >= ROI_CONFORTAVEL ? { tom: 'bom', texto: `Margem confortável (ROI ≥ ${ROI_CONFORTAVEL}%)` }
+        : { tom: 'aviso', texto: 'Margem apertada' };
+      const rotuloMercado = ehVeiculo ? 'tabela FIPE' : 'mercado';
+      const linhasLeilao = [
+        { l: isRegularizacao ? 'Compra acordada' : 'Lance', v: formatMoney(safeBid), n: safeBid },
+        !isRegularizacao && { l: 'Leiloeiro', v: formatMoney(leiloeiroCost), n: leiloeiroCost },
+        !ehVeiculo && { l: 'ITBI', v: formatMoney(itbiCostLeilao), n: itbiCostLeilao },
+        !ehVeiculo && { l: 'Registro de imóveis', v: formatMoney(cartorioCostLeilao), n: cartorioCostLeilao },
+        { l: isRegularizacao ? 'Honorários judiciais' : 'Assessoria jurídica', v: formatMoney(legalCost), n: legalCost },
+        { l: ehVeiculo ? 'Multas / IPVA / débitos' : 'Dívidas do imóvel', v: formatMoney(safeNumber(debts)), n: safeNumber(debts) },
+        { l: ehVeiculo ? 'Mecânica / reparos' : 'Reformas / outros', v: formatMoney(safeNumber(renovation)), n: safeNumber(renovation) },
+      ].filter(Boolean);
+
+      const painelLeilao = (
+        <PainelResultado
+          rotulo={temVendaEstimada ? (lucroAbsoluto >= 0 ? 'Lucro estimado' : 'Prejuízo estimado') : (safeBid > 0 ? 'Investimento total' : 'Lucro estimado')}
+          valor={safeBid <= 0 ? '—' : formatMoney(temVendaEstimada ? lucroAbsoluto : finalLeilao)}
+          tomValor={temVendaEstimada && lucroAbsoluto < 0 ? 'ruim' : undefined}
+          status={statusLeilao}
+          kpis={[
+            { l: 'ROI', v: temVendaEstimada ? `${margemLucroPorcentagem > 0 ? '+' : ''}${formatPercent(margemLucroPorcentagem)}` : '—', tom: temVendaEstimada ? (lucroAbsoluto >= 0 ? 'bom' : 'ruim') : undefined },
+            { l: 'Desconto', v: descontoMercadoPercent !== null ? formatPercent(descontoMercadoPercent) : '—', tom: descontoMercadoPercent === null ? undefined : (descontoMercadoPercent >= 0 ? 'bom' : 'ruim') },
+            { l: 'Investimento', v: safeBid > 0 ? formatMoney(finalLeilao) : '—' },
+          ]}
+          linhas={safeBid > 0 ? linhasLeilao : []}
+          acoes={
+            <AcoesPainel
+              principal={{ rotulo: 'Gerar relatório (PDF)', icone: 'pdf', onClick: handlePrint, desabilitado: safeBid <= 0 }}
+              linha={[
+                { rotulo: 'Excel', icone: 'xls', onClick: () => handleGerarPlanilhaLeilao(), desabilitado: safeBid <= 0 },
+                { rotulo: 'Exportar', icone: 'baixar', desabilitado: safeBid <= 0, menu: [
+                  { rotulo: 'Planilha de cálculo (PDF)', detalhe: 'Tabela pronta para enviar', onClick: () => handleGerarPlanilhaLeilao('pdf') },
+                  { rotulo: 'Copiar resumo', detalhe: 'Texto curto para colar', onClick: handleCopyResumo },
+                  { rotulo: 'Enviar pelo WhatsApp', onClick: handleShareWhatsapp },
+                  { rotulo: 'Salvar como caso', detalhe: 'Guarda este cálculo em "Casos salvos"', onClick: handleSaveCase },
+                ] },
+              ]}
+              onLimpar={handleReset}
+            />
+          }
+        >
+          {safeBid <= 0 && <p className="mt-4 text-[12.5px] text-muted-foreground">Informe o valor do lance e o de {rotuloMercado} para ver o lucro, o ROI e o custo total.</p>}
+          {safeBid > 0 && !temVendaEstimada && <p className="mt-4 text-[12.5px] text-warning">Informe o valor de {rotuloMercado} para calcular lucro, ROI e desconto.</p>}
+          {descontoMercadoPercent !== null && descontoMercadoPercent < 0 && <p className="mt-4 text-[12.5px] text-warning">Atenção: o lance está acima do valor de {rotuloMercado} informado.</p>}
+          {temVendaEstimada && maxBidForProfit > 0 && (
+            <div className="mt-4 flex items-center justify-between gap-3 text-[13px]">
+              <span className="text-muted-foreground">Lance máximo sem prejuízo</span>
+              <span className="tabular-nums text-foreground">{formatMoney(maxBidForProfit)}</span>
             </div>
           )}
-
-          {/* Cabeçalho da página: mesmo padrão dos demais módulos (sem segunda barra escura) */}
-          <header className="max-w-5xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8 print-hide">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-              <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-navy-900 dark:text-white">Calculadora de leilões</h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {activeTab === 'leilao' ? 'Custo total, lucro e ROI da arrematação de imóveis e veículos.' : 'Custas de escritura, ITBI e registro de uma compra e venda.'}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button type="button" onClick={() => setIsCasesOpen(!isCasesOpen)} aria-expanded={isCasesOpen}
-                  className={`h-9 px-3 rounded-lg border text-xs font-semibold ${isCasesOpen ? 'border-emerald-500 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30' : 'border-input text-foreground bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10'}`}>
-                  Casos salvos{savedCases.length > 0 ? ` (${savedCases.length})` : ''}
-                </button>
-                <button type="button" onClick={() => setIsSettingsOpen(!isSettingsOpen)} aria-expanded={isSettingsOpen} aria-label="Identificação do profissional" title="Identificação do profissional"
-                  className={`w-9 h-9 flex items-center justify-center rounded-lg border ${isSettingsOpen ? 'border-emerald-500 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30' : 'border-input text-slate-600 dark:text-slate-300 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10'}`}>
-                  <Settings className="w-4 h-4" />
-                </button>
-              </div>
+          {ehVeiculo && safeMarket > 0 && (
+            <p className="mt-3 text-xs text-muted-foreground">FIPE {formatMoney(safeMarket)} · {isRegularizacao ? 'compra' : 'arremate'} = {arremateFipePercent.toFixed(1).replace('.', ',')}% da FIPE{safeEval > 0 ? ` · avaliação ${formatMoney(safeEval)}` : ''}</p>
+          )}
+          {segundaPracaResult && (
+            <div className="mt-4 rounded-[10px] border border-border px-3.5 py-3">
+              <h4 className="text-xs text-muted-foreground mb-2">Comparativo com a 2ª praça ({formatMoney(safeSegundaPraca)})</h4>
+              <ul className="space-y-1.5 text-[13px]">
+                <li className="flex justify-between gap-3"><span className="text-muted-foreground">Custo total</span><span className="tabular-nums text-foreground">{formatMoney(segundaPracaResult.total)}</span></li>
+                <li className="flex justify-between gap-3"><span className="text-muted-foreground">{economiaSegundaPraca >= 0 ? 'Economia sobre a 1ª praça' : 'Custo a mais que a 1ª praça'}</span><span className={`tabular-nums ${economiaSegundaPraca >= 0 ? 'text-success' : 'text-destructive'}`}>{formatMoney(Math.abs(economiaSegundaPraca))}</span></li>
+                {discountedSaleValue > 0 && <li className="flex justify-between gap-3"><span className="text-muted-foreground">Lucro estimado</span><span className={`tabular-nums ${segundaPracaResult.lucro >= 0 ? 'text-success' : 'text-destructive'}`}>{formatMoney(segundaPracaResult.lucro)}</span></li>}
+              </ul>
             </div>
-            <Segmentado rotulo="Tipo de cálculo" valor={activeTab} onChange={setActiveTab} className="mt-5 [&>button]:h-9 [&>button]:px-4 [&>button]:text-sm"
-              opcoes={[{ valor: 'leilao', rotulo: 'Arrematação (leilão)' }, { valor: 'escritura', rotulo: 'Compra, venda e RGI' }]} />
-          </header>
+          )}
+        </PainelResultado>
+      );
 
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 print-hide">
-            {isSettingsOpen && (
-              <div className="bg-card p-5 rounded-xl border border-border shadow-sm mt-4 section-open">
-                <h3 className="text-sm font-semibold mb-4 text-foreground">Identificação do profissional</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <TextInput label="Nome do profissional ou escritório" value={advName} onChange={setAdvName} />
-                  <TextInput label="Registro profissional (ex.: OAB/PR)" value={advOab} onChange={setAdvOab} />
-                </div>
-                <p className="text-xs text-muted-foreground mt-3">Aparece no relatório em PDF. Tabelas de custas TJ-PR vigentes desde {VIGENCIA_TABELAS_PR}; verifique as atualizações anuais antes de confiar em valores altos.</p>
-              </div>
+      // Comparação de preço por área (imóveis): consulta, fica abaixo do formulário
+      const detalhesLeilao = (!ehVeiculo && safeSize > 0 && safeBid > 0) ? (
+        <section className="bg-card border border-border rounded-[14px] px-4 sm:px-6 py-5 print-hide">
+          <h2 className="text-[15px] font-medium text-foreground">Comparação de preço por área</h2>
+          <p className="mt-1 mb-3 text-[13px] text-muted-foreground">
+            {assetType === 'rural' ? `${formatCurrencyStr(areaInM2)} m² · ${formatCurrencyStr(areaInHa)} ha · ${formatCurrencyStr(areaInAlq)} ${alqName}` : `${formatCurrencyStr(areaInM2)} m²`}
+          </p>
+          <Tabela legenda="Preço por área"
+            colunas={['Métrica', 'Por m²', ...(assetType === 'rural' ? ['Por ha', `Por ${alqName}`] : [])]} numericas={assetType === 'rural' ? [1, 2, 3] : [1]}
+            linhas={[
+              safeEval > 0 && ['Avaliação', formatMoney(ratesEval.m2), ...(assetType === 'rural' ? [formatMoney(ratesEval.ha), formatMoney(ratesEval.alq)] : [])],
+              safeMarket > 0 && ['Mercado', formatMoney(ratesMarket.m2), ...(assetType === 'rural' ? [formatMoney(ratesMarket.ha), formatMoney(ratesMarket.alq)] : [])],
+              ['Arrematação', formatMoney(ratesBid.m2), ...(assetType === 'rural' ? [formatMoney(ratesBid.ha), formatMoney(ratesBid.alq)] : [])],
+            ].filter(Boolean)} />
+        </section>
+      ) : null;
+
+      // ---- Abas do formulário: leilão ----
+      const abasLeilao = [
+        { id: 'bem', rotulo: 'Bem', icone: 'casa', conteudo: (
+          <Grade>
+            <Col span={6}>
+              <Segmentado rotulo="Tipo de bem" valor={assetType} onChange={setAssetType} cheio
+                opcoes={[{ valor: 'urbano', rotulo: 'Urbano', icone: 'casa' }, { valor: 'rural', rotulo: 'Rural', icone: 'arvore' }, { valor: 'veiculo', rotulo: 'Veículo', icone: 'carro' }]} />
+            </Col>
+            {ehVeiculo && (
+              <Col span={6}>
+                <Segmentado rotulo="Modalidade" valor={veiculoMode} onChange={setVeiculoMode} cheio
+                  opcoes={[{ valor: 'leilao', rotulo: 'Arrematação em leilão' }, { valor: 'regularizacao', rotulo: 'Compra com regularização judicial' }]} />
+              </Col>
             )}
-
-            {isCasesOpen && (
-              <div className="bg-card p-5 rounded-xl border border-border shadow-sm mt-4 section-open">
-                <div className="flex justify-between items-center gap-3 mb-3">
-                  <h3 className="text-sm font-semibold text-foreground">Casos salvos</h3>
-                  <button type="button" onClick={handleSaveCase} className="h-9 px-3 bg-navy-900 hover:bg-navy-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg">Salvar caso atual</button>
-                </div>
-                {savedCases.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nenhum caso salvo ainda. Preencha os dados e clique em "Salvar caso atual" para voltar a este cálculo depois.</p>
-                ) : (
-                  <ul className="divide-y divide-border max-h-64 overflow-y-auto">
-                    {savedCases.map(c => (
-                      <li key={c.id} className="flex justify-between items-center gap-3 py-2.5">
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-foreground truncate">{c.nome}</div>
-                          <div className="text-xs text-muted-foreground">{c.tipo === 'leilao' ? 'Leilão' : 'Escritura'} · {c.data}</div>
-                        </div>
-                        <div className="flex gap-1 flex-shrink-0">
-                          <button type="button" onClick={() => handleLoadCase(c.id)} className="h-8 px-3 text-xs font-semibold border border-input hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-white rounded-lg">Abrir</button>
-                          <button type="button" onClick={() => handleDeleteCase(c.id)} className="h-8 px-3 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg">Excluir</button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+            {!ehVeiculo && (
+              <Col span={3}>
+                <DecimalInput label={assetType === 'urbano' ? 'Área total' : 'Tamanho total'} value={assetSize} onChange={setAssetSize} placeholder="Ex.: 250,50"
+                  sufixo={assetType === 'urbano' ? 'm²' : undefined} subText={assetType === 'urbano' ? 'Opcional. Permite informar valores por m².' : undefined} />
+              </Col>
             )}
-          </div>
-
-          <div className="h-6 print-hide" />
-
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 print:mt-0 print:px-0">
-
-            {/* --- ABA LEILÃO --- */}
-            {activeTab === 'leilao' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 items-start">
-                <div className="space-y-4 print-hide">
-
-                  {/* Etapa 1: o bem */}
-                  <Card title={ehVeiculo ? 'O veículo' : 'O imóvel'} numero={1} step={0} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={false}
-                    resumo={[{ urbano: 'Urbano', rural: 'Rural', veiculo: 'Veículo' }[assetType], !ehVeiculo && safeSize > 0 ? `${formatCurrencyStr(safeSize)} ${assetType === 'urbano' ? 'm²' : rotuloUnidade}` : null].filter(Boolean).join(' · ')}>
-                    <Segmentado rotulo="Tipo de bem" valor={assetType} onChange={setAssetType} className="w-full [&>button]:h-10 [&>button]:text-sm"
-                      opcoes={[{ valor: 'urbano', rotulo: 'Urbano', icone: Home }, { valor: 'rural', rotulo: 'Rural', icone: Tree }, { valor: 'veiculo', rotulo: 'Veículo', icone: Car }]} />
-
-                    {ehVeiculo && (
-                      <Segmentado rotulo="Modalidade" valor={veiculoMode} onChange={setVeiculoMode} className="w-full"
-                        opcoes={[{ valor: 'leilao', rotulo: 'Arrematação em leilão' }, { valor: 'regularizacao', rotulo: 'Compra com regularização' }]} />
-                    )}
-
-                    {!ehVeiculo && (
-                      <div className={`grid grid-cols-1 gap-4 ${assetType === 'rural' ? 'sm:grid-cols-2' : ''}`}>
-                        <DecimalInput label={assetType === 'urbano' ? 'Área total (m²)' : 'Área total'} value={assetSize} onChange={setAssetSize} placeholder="Ex.: 250,50"
-                          subText={assetType === 'urbano' ? 'Opcional. Permite informar valores por m².' : undefined} />
-                        {assetType === 'rural' && (
-                          <div>
-                            <label htmlFor="unidade-rural" className={ROTULO}>Unidade</label>
-                            <select id="unidade-rural" value={ruralUnit} onChange={(e) => setRuralUnit(e.target.value)} className={ENTRADA}>
-                              <option value="m2">Metro quadrado (m²)</option>
-                              <option value="ha">Hectare (ha)</option>
-                              {Object.entries(ALQUEIRES).map(([key, val]) => (
-                                <option key={key} value={key}>{val.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <Revelar titulo="Identificar cliente e bem (para o relatório)" aberto={mostrarIdentificacao} onAlternar={() => setMostrarIdentificacao(!mostrarIdentificacao)}>
-                      <TextInput label={isRegularizacao ? 'Comprador / cliente' : 'Arrematante / cliente'} value={clienteNomeLeilao} onChange={setClienteNomeLeilao} placeholder="Ex.: Thiago de Souza Reis" />
-                      <TextInput label={ehVeiculo ? 'Identificação do veículo' : 'Identificação do imóvel'} value={imovelDescLeilao} onChange={setImovelDescLeilao} placeholder={ehVeiculo ? 'Ex.: Toyota Corolla 2022' : 'Ex.: Casa - Centro, Loanda/PR'} />
-                    </Revelar>
-                  </Card>
-
-                  {/* Etapa 2: valores */}
-                  <Card title="Valores" numero={2} step={1} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={false}
-                    resumo={safeBid > 0 ? `Lance ${formatMoney(safeBid)}${safeMarket > 0 ? ` · mercado ${formatMoney(safeMarket)}` : ''}` : 'Lance, avaliação e mercado'}
-                    extraHeader={!ehVeiculo && safeSize > 0 && (
-                      <Segmentado rotulo="Forma de informar os valores" valor={valMode} onChange={handleValModeChange}
-                        opcoes={[{ valor: 'total', rotulo: 'Total' }, { valor: 'unit', rotulo: `Por ${rotuloUnidade}` }]} />
-                    )}
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className={ehVeiculo ? '' : 'sm:col-span-2'}>
-                        <MoneyInput
-                          label={porUnidade ? `Lance por ${rotuloUnidade}` : (isRegularizacao ? 'Valor de compra acordado' : 'Valor do lance')}
-                          value={porUnidade ? bidUnitValue : bidValue}
-                          onChange={porUnidade ? setBidUnitValue : setBidValue}
-                          subText={!ehVeiculo ? getSubText(!porUnidade, porUnidade ? bidUnitValue : bidValue, safeSize) : undefined}
-                        />
-                      </div>
-                      <MoneyInput
-                        label={porUnidade ? `Avaliação por ${rotuloUnidade}` : 'Valor de avaliação'}
-                        value={porUnidade ? evalUnitValue : evalValue}
-                        onChange={porUnidade ? setEvalUnitValue : setEvalValue}
-                        subText={!ehVeiculo ? getSubText(!porUnidade, porUnidade ? evalUnitValue : evalValue, safeSize) : undefined}
-                      />
-                      <MoneyInput
-                        label={ehVeiculo ? 'Tabela FIPE (cheia)' : (porUnidade ? `Mercado por ${rotuloUnidade}` : 'Valor de mercado')}
-                        value={porUnidade ? marketUnitValue : marketValue}
-                        onChange={porUnidade ? setMarketUnitValue : setMarketValue}
-                        subText={!ehVeiculo ? getSubText(!porUnidade, porUnidade ? marketUnitValue : marketValue, safeSize) : undefined}
-                      />
-                      {ehVeiculo && (
-                        <div className="sm:col-span-2">
-                          <PercentInput label="Desvalorização na revenda" value={fipeDiscount} onChange={setFipeDiscount} placeholder="30" max={100}
-                            extraElement={<p className="text-xs text-muted-foreground">Venda estimada: <span className="font-semibold text-foreground tabular-nums">{formatMoney(discountedSaleValue)}</span></p>} />
-                        </div>
-                      )}
-                    </div>
-
-                    <Revelar titulo={ehVeiculo ? 'Mais opções: 2ª praça e orçamento' : 'Mais opções: valor venal, 2ª praça e orçamento'} aberto={mostrarOpcoes} onAlternar={() => setMostrarOpcoes(!mostrarOpcoes)}>
-                      {!ehVeiculo && (
-                        <MoneyInput label="Valor venal" value={valorVenalLeilao} onChange={setValorVenalLeilao}
-                          subText="Se for maior que o lance, o ITBI usa este valor como base (regra comum nos municípios)." />
-                      )}
-                      <MoneyInput label="Lance na 2ª praça" value={segundaPracaValue} onChange={setSegundaPracaValue}
-                        subText="Mostra no resultado o comparativo de custo e lucro com a 1ª praça." />
-                      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-start">
-                        <MoneyInput label="Orçamento máximo (teto pessoal)" value={maxBudget} onChange={setMaxBudget}
-                          subText="Calcula o maior lance cujo custo total cabe no orçamento." />
-                        <button type="button" onClick={handleSuggestBid} disabled={!(safeNumber(maxBudget) > 0)}
-                          className="sm:mt-[26px] h-10 px-4 rounded-md border border-input bg-card text-sm font-medium text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50">
-                          Calcular lance ideal
-                        </button>
-                      </div>
-                    </Revelar>
-                  </Card>
-
-                  {/* Etapa 3: custos */}
-                  <Card title="Custos" numero={3} step={2} activeStep={leilaoStep} onStepChange={setLeilaoStep} isLast={true}
-                    resumo={`Taxas e custas ${formatMoney(totalTaxasLeilao)}${fixedCostsLeilao > 0 ? ` · extras ${formatMoney(fixedCostsLeilao)}` : ''}`}>
-                    <div>
-                      <div className="flex items-center justify-between gap-3 mb-2">
-                        <span className="text-sm font-semibold text-foreground">Taxas e custas de entrada</span>
-                        <button type="button" onClick={() => setEditarTaxas(!editarTaxas)} aria-expanded={editarTaxas}
-                          className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300">
-                          {editarTaxas ? 'Concluir' : 'Editar taxas'}
-                        </button>
-                      </div>
-
-                      {!editarTaxas ? (
-                        <ul className="divide-y divide-border rounded-xl border border-border">
-                          {linhasTaxas.map((l) => (
-                            <li key={l.rotulo} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                              <span className="min-w-0 truncate"><span className="text-foreground">{l.rotulo}</span> <span className="text-xs text-slate-400">· {l.regra}</span></span>
-                              <span className="font-semibold tabular-nums text-foreground whitespace-nowrap">{safeBid > 0 ? formatMoney(l.valor) : '—'}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <div className="space-y-4 section-open">
-                          {!ehVeiculo && (
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="text-xs text-muted-foreground">Registro de imóveis</span>
-                              <Segmentado rotulo="Cálculo do registro de imóveis" valor={cartorioModeLeilao} onChange={setCartorioModeLeilao}
-                                opcoes={[{ valor: 'pr', rotulo: 'Tabela TJ-PR' }, { valor: 'manual', rotulo: 'Manual' }]} />
-                            </div>
-                          )}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {!isRegularizacao && (
-                              <TaxInput label="Leiloeiro" value={leiloeiro.value} type={leiloeiro.type} onChangeValue={(val) => setLeiloeiro({ ...leiloeiro, value: val })} onChangeType={(t) => setLeiloeiro({ ...leiloeiro, type: t })} description="Padrão: 5%" />
-                            )}
-                            {!ehVeiculo && (
-                              <TaxInput label="ITBI" value={itbi.value} type={itbi.type} onChangeValue={(val) => setItbi({ ...itbi, value: val })} onChangeType={(t) => setItbi({ ...itbi, type: t })} description="Padrão: 2%" />
-                            )}
-                            {!ehVeiculo && (
-                              cartorioModeLeilao === 'pr' ? (
-                                <TaxInput label="Registro de imóveis" value={cartorioCostLeilao} type="fixed" disabled description={`Tabela TJ-PR vigente desde ${VIGENCIA_TABELAS_PR}`} />
-                              ) : (
-                                <TaxInput label="Registro de imóveis" value={cartorioManualLeilao.value} type={cartorioManualLeilao.type} onChangeValue={(val) => setCartorioManualLeilao({ ...cartorioManualLeilao, value: val })} onChangeType={(t) => setCartorioManualLeilao({ ...cartorioManualLeilao, type: t })} description="Custas informadas manualmente" />
-                              )
-                            )}
-                            <TaxInput label={isRegularizacao ? 'Honorários judiciais' : 'Assessoria jurídica'} value={legal.value} type={legal.type} onChangeValue={(val) => setLegal({ ...legal, value: val })} onChangeType={(t) => setLegal({ ...legal, type: t })} description={isRegularizacao ? 'Regularização' : 'Honorários'} />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="border-t border-slate-100 dark:border-slate-700/60 pt-4">
-                      <span className="block text-sm font-semibold text-foreground mb-3">{isRegularizacao ? 'Débitos, documentação e reparos' : (ehVeiculo ? 'Débitos e reparos' : 'Dívidas e reformas')}</span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <MoneyInput label={ehVeiculo ? 'Multas / IPVA / débitos' : 'Dívidas do imóvel'} value={debts} onChange={setDebts} />
-                        <MoneyInput label={ehVeiculo ? 'Mecânica / reparos' : 'Reformas / outros'} value={renovation} onChange={setRenovation} />
-                      </div>
-                    </div>
-                  </Card>
+            {assetType === 'rural' && (
+              <Col span={3}>
+                <label htmlFor="unidade-rural" className={ROTULO}>Unidade</label>
+                <select id="unidade-rural" value={ruralUnit} onChange={(e) => setRuralUnit(e.target.value)} className={ENTRADA}>
+                  <option value="m2">Metro quadrado (m²)</option>
+                  <option value="ha">Hectare (ha)</option>
+                  {Object.entries(ALQUEIRES).map(([key, val]) => <option key={key} value={key}>{val.name}</option>)}
+                </select>
+              </Col>
+            )}
+            <Col span={3}><TextInput label={isRegularizacao ? 'Comprador / cliente' : 'Cliente / arrematante'} value={clienteNomeLeilao} onChange={setClienteNomeLeilao} placeholder="Ex.: João Silva" /></Col>
+            <Col span={3}><TextInput label={ehVeiculo ? 'Descrição do veículo' : 'Descrição do imóvel'} value={imovelDescLeilao} onChange={setImovelDescLeilao} placeholder={ehVeiculo ? 'Ex.: Toyota Corolla 2022' : 'Ex.: Chácara São Pedro – Loanda/PR'} /></Col>
+          </Grade>
+        ) },
+        { id: 'valores', rotulo: 'Valores', icone: 'moeda', conteudo: (
+          <Grade>
+            {!ehVeiculo && safeSize > 0 && (
+              <Col span={6}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[12.5px] text-muted-foreground">Informar os valores</span>
+                  <Segmentado rotulo="Forma de informar os valores" valor={valMode} onChange={handleValModeChange}
+                    opcoes={[{ valor: 'total', rotulo: 'Total' }, { valor: 'unit', rotulo: `Por ${rotuloUnidade}` }]} />
                 </div>
+              </Col>
+            )}
+            <Col span={2}>
+              <MoneyInput label={porUnidade ? `Lance por ${rotuloUnidade}` : (isRegularizacao ? 'Valor de compra acordado' : 'Lance')}
+                value={porUnidade ? bidUnitValue : bidValue} onChange={porUnidade ? setBidUnitValue : setBidValue}
+                subText={!ehVeiculo ? getSubText(!porUnidade, porUnidade ? bidUnitValue : bidValue, safeSize) : undefined} />
+            </Col>
+            <Col span={2}>
+              <MoneyInput label={porUnidade ? `Avaliação por ${rotuloUnidade}` : 'Valor de avaliação'}
+                value={porUnidade ? evalUnitValue : evalValue} onChange={porUnidade ? setEvalUnitValue : setEvalValue}
+                subText={!ehVeiculo ? getSubText(!porUnidade, porUnidade ? evalUnitValue : evalValue, safeSize) : undefined} />
+            </Col>
+            <Col span={2}>
+              <MoneyInput label={ehVeiculo ? 'Tabela FIPE (cheia)' : (porUnidade ? `Mercado por ${rotuloUnidade}` : 'Valor de mercado')}
+                value={porUnidade ? marketUnitValue : marketValue} onChange={porUnidade ? setMarketUnitValue : setMarketValue}
+                subText={!ehVeiculo ? getSubText(!porUnidade, porUnidade ? marketUnitValue : marketValue, safeSize) : undefined} />
+            </Col>
+            {ehVeiculo ? (
+              <Col span={2}>
+                <PercentInput label="Desvalorização na revenda" value={fipeDiscount} onChange={setFipeDiscount} placeholder="30" max={100}
+                  extraElement={<p className="text-[11.5px] text-muted-foreground">Venda estimada: <span className="tabular-nums text-foreground">{formatMoney(discountedSaleValue)}</span></p>} />
+              </Col>
+            ) : (
+              <Col span={2}><MoneyInput label="Valor venal" value={valorVenalLeilao} onChange={setValorVenalLeilao} subText="Se maior que o lance, o ITBI usa esta base." /></Col>
+            )}
+            <Col span={2}><MoneyInput label="Lance na 2ª praça" value={segundaPracaValue} onChange={setSegundaPracaValue} subText="Compara custo e lucro com a 1ª praça." /></Col>
+            <Col span={2}>
+              <MoneyInput label="Orçamento máximo" value={maxBudget} onChange={setMaxBudget} subText="Teto pessoal de investimento." />
+              <Botao onClick={handleSuggestBid} disabled={!(safeNumber(maxBudget) > 0)} className="w-full mt-2" tamanho="sm">Calcular lance ideal</Botao>
+            </Col>
+          </Grade>
+        ) },
+        { id: 'custos', rotulo: 'Custos', icone: 'debito', conteudo: (
+          <Grade>
+            {!ehVeiculo && (
+              <Col span={6}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[12.5px] text-muted-foreground">Registro de imóveis</span>
+                  <Segmentado rotulo="Cálculo do registro de imóveis" valor={cartorioModeLeilao} onChange={setCartorioModeLeilao}
+                    opcoes={[{ valor: 'pr', rotulo: 'Tabela TJ-PR' }, { valor: 'manual', rotulo: 'Manual' }]} />
+                </div>
+              </Col>
+            )}
+            {!isRegularizacao && <Col span={2}><TaxInput label="Leiloeiro" value={leiloeiro.value} type={leiloeiro.type} onChangeValue={(val) => setLeiloeiro({ ...leiloeiro, value: val })} onChangeType={(t) => setLeiloeiro({ ...leiloeiro, type: t })} description="Padrão: 5%" /></Col>}
+            {!ehVeiculo && <Col span={2}><TaxInput label="ITBI" value={itbi.value} type={itbi.type} onChangeValue={(val) => setItbi({ ...itbi, value: val })} onChangeType={(t) => setItbi({ ...itbi, type: t })} description="Padrão: 2%" /></Col>}
+            {!ehVeiculo && (
+              <Col span={2}>
+                {cartorioModeLeilao === 'pr'
+                  ? <TaxInput label="Registro de imóveis" value={cartorioCostLeilao} type="fixed" disabled description={`Tabela TJ-PR vigente desde ${VIGENCIA_TABELAS_PR}`} />
+                  : <TaxInput label="Registro de imóveis" value={cartorioManualLeilao.value} type={cartorioManualLeilao.type} onChangeValue={(val) => setCartorioManualLeilao({ ...cartorioManualLeilao, value: val })} onChangeType={(t) => setCartorioManualLeilao({ ...cartorioManualLeilao, type: t })} description="Custas informadas manualmente" />}
+              </Col>
+            )}
+            <Col span={2}><TaxInput label={isRegularizacao ? 'Honorários judiciais' : 'Assessoria jurídica'} value={legal.value} type={legal.type} onChangeValue={(val) => setLegal({ ...legal, value: val })} onChangeType={(t) => setLegal({ ...legal, type: t })} description={isRegularizacao ? 'Regularização' : 'Honorários'} /></Col>
+            <Col span={2}><MoneyInput label={ehVeiculo ? 'Multas / IPVA / débitos' : 'Dívidas do imóvel'} value={debts} onChange={setDebts} /></Col>
+            <Col span={2}><MoneyInput label={ehVeiculo ? 'Mecânica / reparos' : 'Reformas / outros'} value={renovation} onChange={setRenovation} /></Col>
+          </Grade>
+        ) },
+      ];
 
-                {/* RESULTADO (LEILÃO): fica visível ao rolar o formulário no computador */}
-                <div className="lg:sticky lg:top-6 print:static">
-                  <div id="pdf-leilao" className="bg-card rounded-xl border border-border shadow-sm p-5 sm:p-6 shadow-sm lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto print:max-h-none print:overflow-visible print:shadow-none print:border-none print:p-0">
-                    <div className="print:hidden">
-                    <div className="flex items-start justify-between gap-3 mb-5">
+      // ---- Painel de resultado: escritura ----
+      const totalEscrituraTela = incluirRgi ? totalEscrituraComRegistro : custoInicialEsc;
+      const baseItbiTela = Math.max(safeNegocio, safeNumber(valorVenalEsc));
+      const linhasEscritura = [
+        showItbiEsc && { l: `ITBI${safeNumber(valorVenalEsc) > safeNegocio ? ' (s/ valor venal)' : ''}`, v: formatMoney(itbiCostEsc), n: itbiCostEsc },
+        showLavraturaEsc && { l: 'Escritura', v: formatMoney(lavraturaCostExibido), n: lavraturaCostExibido },
+        showFunrejusEsc && { l: 'Funrejus', v: formatMoney(funrejusCost), n: funrejusCost },
+        showCertidoesEsc && safeCertidoesEsc > 0 && { l: 'Certidões e buscas', v: formatMoney(safeCertidoesEsc), n: safeCertidoesEsc },
+        showDiligenciasEsc && safeDiligenciasEsc > 0 && { l: 'Diligências / assessoria', v: formatMoney(safeDiligenciasEsc), n: safeDiligenciasEsc },
+        outrosNoTotal && showOutrosEsc && safeOutrosEsc > 0 && { l: outrosDescEsc || 'Outros', v: formatMoney(safeOutrosEsc), n: safeOutrosEsc },
+        incluirRgi && { l: 'Registro (RGI)', v: formatMoney(cartorioCostEsc), n: cartorioCostEsc },
+        !outrosNoTotal && safeOutrosEsc > 0 && { l: `${outrosDescEsc || 'Outros'} (à parte, fora do total)`, v: formatMoney(safeOutrosEsc), n: safeOutrosEsc, skip: true },
+      ].filter(Boolean);
+
+      const painelEscritura = (
+        <PainelResultado
+          rotulo={`Total do orçamento${incluirRgi ? ' (com registro)' : ''}`}
+          valor={safeNegocio > 0 ? formatMoney(totalEscrituraTela) : '—'}
+          status={escrituraMode === 'pr' && escrituraExtrapolada ? { tom: 'aviso', texto: 'Acima do teto da tabela (R$ 226 mil): confirme no tabelionato' } : null}
+          kpis={[
+            { l: 'Negócio', v: safeNegocio > 0 ? formatMoney(safeNegocio) : '—' },
+            { l: '% do negócio', v: safeNegocio > 0 ? formatPercent((totalEscrituraTela / safeNegocio) * 100) : '—' },
+            { l: 'Base do ITBI', v: safeNegocio > 0 ? formatMoney(baseItbiTela) : '—' },
+          ]}
+          linhas={safeNegocio > 0 ? linhasEscritura : []}
+          acoes={
+            <AcoesPainel
+              principal={{ rotulo: 'Gerar PDF do orçamento', icone: 'pdf', onClick: handlePrint, desabilitado: safeNegocio <= 0 }}
+              linha={[
+                { rotulo: 'Excel', icone: 'xls', onClick: () => handleGerarPlanilhaEscritura(), desabilitado: safeNegocio <= 0 },
+                { rotulo: 'Exportar', icone: 'baixar', desabilitado: safeNegocio <= 0, menu: [
+                  { rotulo: 'Planilha de cálculo (PDF)', detalhe: 'Tabela pronta para enviar', onClick: () => handleGerarPlanilhaEscritura('pdf') },
+                  { rotulo: 'Copiar resumo', detalhe: 'Texto curto para colar', onClick: handleCopyResumo },
+                  { rotulo: 'Enviar pelo WhatsApp', onClick: handleShareWhatsapp },
+                  { rotulo: 'Salvar como caso', detalhe: 'Guarda este cálculo em "Casos salvos"', onClick: handleSaveCase },
+                ] },
+              ]}
+              onLimpar={handleReset}
+            />
+          }
+        >
+          {safeNegocio <= 0 && <p className="mt-4 text-[12.5px] text-muted-foreground">Informe o valor real da negociação para ver o orçamento de custas.</p>}
+          {safeNegocio > 0 && (
+            <div className="mt-4 flex items-center justify-between gap-3 text-[13px]">
+              <span className="text-muted-foreground">Subtotal sem registro</span>
+              <span className="tabular-nums text-foreground">{formatMoney(custoInicialEsc)}</span>
+            </div>
+          )}
+        </PainelResultado>
+      );
+
+      const abasEscritura = [
+        { id: 'negocio', rotulo: 'Negócio', icone: 'acordo', conteudo: (
+          <Grade>
+            <Col span={3}><TextInput label="Nome do adquirente" value={clienteNome} onChange={setClienteNome} placeholder="Ex.: João Silva" /></Col>
+            <Col span={3}><TextInput label="Descrição do imóvel" value={imovelDesc} onChange={setImovelDesc} placeholder="Ex.: Chácara São Pedro – Loanda/PR" /></Col>
+            <Col span={2}><MoneyInput label="Valor real da negociação" value={negocioValor} onChange={setNegocioValor} /></Col>
+            <Col span={2}><MoneyInput label="Valor venal (opcional)" value={valorVenalEsc} onChange={setValorVenalEsc} subText="Se maior que o negócio, o ITBI usa esta base." /></Col>
+            <Col span={2}>
+              <span className={ROTULO}>Registro de imóveis (RGI)</span>
+              <Segmentado rotulo="Registro de imóveis (RGI) no total" valor={incluirRgi ? 'sim' : 'nao'} onChange={(v) => setIncluirRgi(v === 'sim')} cheio
+                opcoes={[{ valor: 'sim', rotulo: 'Incluir' }, { valor: 'nao', rotulo: 'Não incluir' }]} />
+            </Col>
+          </Grade>
+        ) },
+        { id: 'custos', rotulo: 'Custos', icone: 'debito', conteudo: (
+          <Grade>
+            <Col span={6}>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[12.5px] text-muted-foreground">Cálculo das custas</span>
+                <Segmentado rotulo="Cálculo das custas" valor={escrituraMode} onChange={setEscrituraMode}
+                  opcoes={[{ valor: 'pr', rotulo: 'Tabela TJ-PR' }, { valor: 'manual', rotulo: 'Manual' }]} />
+              </div>
+            </Col>
+            <Col span={2}>
+              <TaxInput label="ITBI" value={itbiEscritura.value} type={itbiEscritura.type} onChangeValue={(val) => setItbiEscritura({ ...itbiEscritura, value: val })} onChangeType={(t) => setItbiEscritura({ ...itbiEscritura, type: t })} description="Imposto de transmissão" />
+              <ShowInBudgetToggle checked={showItbiEsc} onChange={setShowItbiEsc} />
+            </Col>
+            <Col span={2}>
+              {escrituraMode === 'pr'
+                ? <TaxInput label="Escritura de compra" value={Math.round(lavraturaCost * 100) / 100} type="fixed" disabled description={escrituraExtrapolada ? 'Acima do teto da tabela (226 mil)' : 'Tabela XI/TJ-PR 2026'} />
+                : <TaxInput label="Escritura de compra" value={escrituraManual.value} type={escrituraManual.type} onChangeValue={(val) => setEscrituraManual({ ...escrituraManual, value: val })} onChangeType={(t) => setEscrituraManual({ ...escrituraManual, type: t })} description="Tabelionato" />}
+              <ShowInBudgetToggle checked={showLavraturaEsc} onChange={setShowLavraturaEsc} />
+            </Col>
+            <Col span={2}>
+              <TaxInput label="Funrejus obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="0,2% (teto de R$ 7.408,87)" />
+              <ShowInBudgetToggle checked={showFunrejusEsc} onChange={setShowFunrejusEsc} />
+            </Col>
+            <Col span={2}>
+              {escrituraMode === 'pr'
+                ? <TaxInput label="Registro de imóveis" value={Math.round(cartorioCostEsc * 100) / 100} type="fixed" disabled description="Tabela III-C/TJ-PR 2026" />
+                : <TaxInput label="Registro de imóveis" value={rgiManual.value} type={rgiManual.type} onChangeValue={(val) => setRgiManual({ ...rgiManual, value: val })} onChangeType={(t) => setRgiManual({ ...rgiManual, type: t })} description="Cartório de registro" />}
+            </Col>
+            <Col span={2}>
+              <MoneyInput label="Certidões e buscas" value={certidoesEsc} onChange={setCertidoesEsc} />
+              <ShowInBudgetToggle checked={showCertidoesEsc} onChange={setShowCertidoesEsc} />
+            </Col>
+            <Col span={2}>
+              <MoneyInput label="Diligências / assessoria" value={diligenciasEsc} onChange={setDiligenciasEsc} />
+              <ShowInBudgetToggle checked={showDiligenciasEsc} onChange={setShowDiligenciasEsc} />
+            </Col>
+            {escrituraMode === 'pr' && escrituraExtrapolada && (
+              <Col span={6}>
+                <Alerta tipo="aviso">A tabela oficial de emolumentos do Tabelionato de Notas (Tabela XI) não define faixas acima de R$ 226.000,00. O valor exibido usa a última faixa conhecida como estimativa mínima: confirme o valor exato com o tabelionato.</Alerta>
+              </Col>
+            )}
+          </Grade>
+        ) },
+        { id: 'outros', rotulo: 'Outros', icone: 'maisCirculo', conteudo: (
+          <Grade>
+            <Col span={4}><TextInput label="Outros (especifique)" value={outrosDescEsc} onChange={setOutrosDescEsc} placeholder="Ex.: Averbação de óbito" /></Col>
+            <Col span={2}><MoneyInput label="Valor de outros" value={outrosValorEsc} onChange={setOutrosValorEsc} /></Col>
+            <Col span={3}>
+              <span className={ROTULO}>Somar outros ao total</span>
+              <Segmentado rotulo="Como tratar o valor de outros" valor={outrosNoTotal ? 'total' : 'parte'} onChange={(v) => setOutrosNoTotal(v === 'total')} cheio
+                opcoes={[{ valor: 'total', rotulo: 'Somar ao total' }, { valor: 'parte', rotulo: 'Valor à parte' }]} />
+            </Col>
+            <Col span={3}>
+              {outrosNoTotal
+                ? <div className="sm:pt-[25px]"><ShowInBudgetToggle checked={showOutrosEsc} onChange={setShowOutrosEsc} /></div>
+                : <p className="sm:pt-[25px] text-[11.5px] text-muted-foreground">Exibido à parte, fora do total do orçamento.</p>}
+            </Col>
+          </Grade>
+        ) },
+      ];
+
+      // ---- Cabeçalho, casos salvos e identificação ----
+      const acoesCabecalho = (
+        <>
+          <Botao tamanho="sm" icone="salvar" onClick={() => setIsCasesOpen(!isCasesOpen)} aria-expanded={isCasesOpen}>Casos salvos{savedCases.length > 0 ? ` (${savedCases.length})` : ''}</Botao>
+          <Botao tamanho="sm" icone="engrenagem" onClick={() => setIsSettingsOpen(!isSettingsOpen)} aria-expanded={isSettingsOpen} aria-label="Identificação do profissional" title="Identificação do profissional" className="!px-2.5" />
+        </>
+      );
+
+      return (
+        <Pagina
+          titulo={eLeilao ? 'Calculadora de leilões' : 'Orçamento de escritura'}
+          descricao={eLeilao ? 'Custo de arrematação, lucro e ROI.' : 'ITBI, escritura, Funrejus e registro (tabelas TJ-PR 2026).'}
+          nota="Cálculo local no navegador" acoes={acoesCabecalho}>
+          {isSettingsOpen && (
+            <section className="bg-card border border-border rounded-[14px] px-4 sm:px-6 py-5 print-hide section-open">
+              <h2 className="text-[15px] font-medium text-foreground mb-4">Identificação do profissional</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <TextInput label="Nome do profissional ou escritório" value={advName} onChange={setAdvName} />
+                <TextInput label="Registro profissional (ex.: OAB/PR)" value={advOab} onChange={setAdvOab} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">Aparece no relatório em PDF. Tabelas de custas TJ-PR vigentes desde {VIGENCIA_TABELAS_PR}; verifique as atualizações anuais antes de confiar em valores altos.</p>
+            </section>
+          )}
+
+          {isCasesOpen && (
+            <section className="bg-card border border-border rounded-[14px] px-4 sm:px-6 py-5 print-hide section-open">
+              <div className="flex justify-between items-center gap-3 mb-3">
+                <h2 className="text-[15px] font-medium text-foreground">Casos salvos</h2>
+                <Botao tamanho="sm" variante="primario" onClick={handleSaveCase}>Salvar caso atual</Botao>
+              </div>
+              {savedCases.length === 0 ? (
+                <p className="text-[13px] text-muted-foreground">Nenhum caso salvo ainda. Preencha os dados e clique em "Salvar caso atual" para voltar a este cálculo depois.</p>
+              ) : (
+                <ul className="divide-y divide-border max-h-64 overflow-y-auto">
+                  {savedCases.map((c) => (
+                    <li key={c.id} className="flex justify-between items-center gap-3 py-2.5">
                       <div className="min-w-0">
-                        <h2 className="text-base font-semibold text-foreground">{tituloAnalise}</h2>
-                        {(clienteNomeLeilao || imovelDescLeilao) && (
-                          <p className="mt-0.5 text-xs text-muted-foreground truncate">{[clienteNomeLeilao, imovelDescLeilao].filter(Boolean).join(' · ')}</p>
-                        )}
+                        <div className="text-[13.5px] text-foreground truncate">{c.nome}</div>
+                        <div className="text-xs text-muted-foreground">{c.tipo === 'leilao' ? 'Leilão' : 'Escritura'} · {c.data}</div>
                       </div>
-                      {veredito && safeBid > 0 && (
-                        <span className={`inline-flex w-fit shrink-0 items-center justify-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium whitespace-nowrap ${veredito.chip}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${veredito.ponto}`} aria-hidden="true" />{veredito.rotulo}
-                        </span>
-                      )}
-                    </div>
-
-                    {safeBid <= 0 ? (
-                      <div className="py-10 text-center">
-                        <div className="mx-auto w-11 h-11 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                          <FileText className="w-5 h-5" />
-                        </div>
-                        <p className="mt-3 text-sm font-semibold text-foreground">Informe o valor do lance</p>
-                        <p className="mt-1 text-xs text-muted-foreground max-w-xs mx-auto">O lucro, o ROI e o custo total aparecem aqui assim que você preencher o lance e o valor de {ehVeiculo ? 'tabela FIPE' : 'mercado'}.</p>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <Botao tamanho="sm" onClick={() => handleLoadCase(c.id)}>Abrir</Botao>
+                        <Botao tamanho="sm" variante="perigo" onClick={() => handleDeleteCase(c.id)}>Excluir</Botao>
                       </div>
-                    ) : (
-                      <>
-                        {/* Destaque: o número que decide o lance */}
-                        <div className={`rounded-xl p-4 sm:p-5 ${veredito ? veredito.fundo : 'bg-muted/50'}`}>
-                          <div className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                            {temVendaEstimada ? (lucroAbsoluto >= 0 ? 'Lucro líquido estimado' : 'Prejuízo estimado') : 'Investimento total'}
-                          </div>
-                          <div key={temVendaEstimada ? lucroAbsoluto : finalLeilao} className={`value-update mt-1 text-3xl sm:text-4xl font-bold tracking-tight tabular-nums ${veredito ? veredito.valor : 'text-foreground'}`}>
-                            {formatMoney(temVendaEstimada ? lucroAbsoluto : finalLeilao)}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {temVendaEstimada
-                              ? `Venda estimada de ${formatMoney(discountedSaleValue)} menos o investimento total`
-                              : 'Lance + taxas e custos'}
-                          </div>
-                        </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
 
-                        {!temVendaEstimada && (
-                          <p className="mt-3 text-xs font-medium text-amber-700 dark:text-amber-300">Informe o valor de {ehVeiculo ? 'tabela FIPE' : 'mercado'} para calcular lucro, ROI e desconto.</p>
-                        )}
-                        {descontoMercadoPercent !== null && descontoMercadoPercent < 0 && (
-                          <p className="mt-3 text-xs font-medium text-amber-700 dark:text-amber-300">Atenção: o lance está acima do valor de {ehVeiculo ? 'tabela FIPE' : 'mercado'} informado.</p>
-                        )}
+          {eLeilao
+            ? <Calculador abas={abasLeilao} aba={abaLeilao} onAba={setAbaLeilao} painel={painelLeilao} detalhes={detalhesLeilao} />
+            : <Calculador abas={abasEscritura} aba={abaEscritura} onAba={setAbaEscritura} painel={painelEscritura} />}
 
-                        {temVendaEstimada && (
-                          <div className="grid grid-cols-3 gap-3 mt-5">
-                            <Estatistica label="ROI" value={`${margemLucroPorcentagem > 0 ? '+' : ''}${formatPercent(margemLucroPorcentagem)}`} tone={resultadoTone} sub="Sobre o investimento" />
-                            <Estatistica label="Desconto" value={descontoMercadoPercent !== null ? formatPercent(descontoMercadoPercent) : '—'}
-                              tone={descontoMercadoPercent === null ? 'neutral' : (descontoMercadoPercent >= 0 ? 'good' : 'bad')} sub={ehVeiculo ? 'Sobre a FIPE' : 'Sobre o mercado'} />
-                            <Estatistica label="Investimento" value={formatMoney(finalLeilao)} sub="Lance + custos" />
-                          </div>
-                        )}
-
-                        {temVendaEstimada && maxBidForProfit > 0 && (
-                          <div className="mt-5 flex items-center justify-between gap-3 px-4 py-3 rounded-xl border border-border">
-                            <span className="text-sm text-slate-600 dark:text-slate-300">Lance máximo sem prejuízo</span>
-                            <span className="text-sm font-bold tabular-nums text-foreground">{formatMoney(maxBidForProfit)}</span>
-                          </div>
-                        )}
-
-                        {ehVeiculo && safeMarket > 0 && (
-                          <p className="mt-3 text-xs text-muted-foreground">
-                            FIPE {formatMoney(safeMarket)} · {isRegularizacao ? 'compra' : 'arremate'} = {arremateFipePercent.toFixed(1).replace('.', ',')}% da FIPE{safeEval > 0 ? ` · avaliação ${formatMoney(safeEval)}` : ''}
-                          </p>
-                        )}
-
-                        {/* Comparativo com a 2ª praça */}
-                        {segundaPracaResult && (
-                          <div className="mt-5 rounded-xl border border-border px-4 py-3">
-                            <h4 className="text-xs font-semibold text-muted-foreground mb-2">Comparativo com a 2ª praça ({formatMoney(safeSegundaPraca)})</h4>
-                            <ul className="space-y-1.5 text-sm">
-                              <li className="flex justify-between gap-3">
-                                <span className="text-muted-foreground">Custo total</span>
-                                <span className="font-semibold text-foreground tabular-nums">{formatMoney(segundaPracaResult.total)}</span>
-                              </li>
-                              <li className="flex justify-between gap-3">
-                                <span className="text-muted-foreground">{economiaSegundaPraca >= 0 ? 'Economia em relação à 1ª praça' : 'Custo a mais que a 1ª praça'}</span>
-                                <span className={`font-semibold tabular-nums ${economiaSegundaPraca >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatMoney(Math.abs(economiaSegundaPraca))}</span>
-                              </li>
-                              {discountedSaleValue > 0 && (
-                                <li className="flex justify-between gap-3">
-                                  <span className="text-muted-foreground">Lucro estimado</span>
-                                  <span className={`font-semibold tabular-nums ${segundaPracaResult.lucro >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatMoney(segundaPracaResult.lucro)}</span>
-                                </li>
-                              )}
-                            </ul>
-                          </div>
-                        )}
-
-                        {/* Detalhamento: consulta, não decisão — fica recolhido */}
-                        <details className="group mt-5 rounded-xl border border-border">
-                          <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-                            <span className="text-sm font-semibold text-foreground">Detalhamento dos custos</span>
-                            <span className="flex items-center gap-2 text-sm font-bold tabular-nums text-foreground">
-                              {formatMoney(finalLeilao)} <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
-                            </span>
-                          </summary>
-                          <div className="px-4 pb-4">
-                            <ul className="space-y-2 text-sm">
-                              <li className="flex justify-between gap-3 font-semibold text-foreground">
-                                <span>{isRegularizacao ? 'Valor da compra acordada' : 'Valor de aquisição (lance)'}</span>
-                                <span className="tabular-nums">{formatMoney(safeBid)}</span>
-                              </li>
-                              {linhasTaxas.map((l) => (
-                                <li key={l.rotulo} className="flex justify-between gap-3 text-muted-foreground">
-                                  <span>{l.rotulo}</span>
-                                  <span className="tabular-nums">+{formatMoney(l.valor)}</span>
-                                </li>
-                              ))}
-                              {fixedCostsLeilao > 0 && (
-                                <li className="flex justify-between gap-3 text-muted-foreground">
-                                  <span>{isRegularizacao ? 'Multas, documentação e reparos' : 'Dívidas e custos extras'}</span>
-                                  <span className="tabular-nums">+{formatMoney(fixedCostsLeilao)}</span>
-                                </li>
-                              )}
-                              <li className="flex justify-between gap-3 pt-2 mt-1 border-t border-border font-bold text-foreground">
-                                <span>Custo operacional total</span>
-                                <span className="tabular-nums">{formatMoney(finalLeilao)}</span>
-                              </li>
-                            </ul>
-
-                            {/* Comparativo de preço por área (imóveis) */}
-                            {!ehVeiculo && safeSize > 0 && (
-                              <div className="mt-5">
-                                <h4 className="text-xs font-semibold text-muted-foreground mb-2">
-                                  Por área · {assetType === 'rural' ? `${formatCurrencyStr(areaInM2)} m² · ${formatCurrencyStr(areaInHa)} ha · ${formatCurrencyStr(areaInAlq)} ${alqName}` : `${formatCurrencyStr(areaInM2)} m²`}
-                                </h4>
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-left text-xs border-collapse">
-                                    <thead>
-                                      <tr className="border-b border-border text-muted-foreground">
-                                        <th className="py-2 font-semibold">Métrica</th>
-                                        <th className="py-2 text-right font-semibold">Por m²</th>
-                                        {assetType === 'rural' && <th className="py-2 text-right font-semibold">Por ha</th>}
-                                        {assetType === 'rural' && <th className="py-2 text-right font-semibold">Por {alqName}</th>}
-                                      </tr>
-                                    </thead>
-                                    <tbody className="tabular-nums">
-                                      {safeEval > 0 && (
-                                        <tr className="border-b border-slate-100 dark:border-slate-700/40 text-muted-foreground">
-                                          <td className="py-2">Avaliação</td>
-                                          <td className="py-2 text-right">{formatMoney(ratesEval.m2)}</td>
-                                          {assetType === 'rural' && <td className="py-2 text-right">{formatMoney(ratesEval.ha)}</td>}
-                                          {assetType === 'rural' && <td className="py-2 text-right">{formatMoney(ratesEval.alq)}</td>}
-                                        </tr>
-                                      )}
-                                      {safeMarket > 0 && (
-                                        <tr className="border-b border-slate-100 dark:border-slate-700/40 text-muted-foreground">
-                                          <td className="py-2">Mercado</td>
-                                          <td className="py-2 text-right">{formatMoney(ratesMarket.m2)}</td>
-                                          {assetType === 'rural' && <td className="py-2 text-right">{formatMoney(ratesMarket.ha)}</td>}
-                                          {assetType === 'rural' && <td className="py-2 text-right">{formatMoney(ratesMarket.alq)}</td>}
-                                        </tr>
-                                      )}
-                                      <tr className="font-semibold text-foreground">
-                                        <td className="py-2">Arrematação</td>
-                                        <td className="py-2 text-right">{formatMoney(ratesBid.m2)}</td>
-                                        {assetType === 'rural' && <td className="py-2 text-right">{formatMoney(ratesBid.ha)}</td>}
-                                        {assetType === 'rural' && <td className="py-2 text-right">{formatMoney(ratesBid.alq)}</td>}
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </details>
-                      </>
-                    )}
-
-
-                    {safeBid > 0 && (
-                      <AcoesResultado rotuloPrincipal="Gerar relatório PDF" onPrincipal={handlePrint}
-                        onExcel={() => handleGerarPlanilhaLeilao()} onPdfPlanilha={() => handleGerarPlanilhaLeilao('pdf')}
-                        onCopiar={handleCopyResumo} onWhatsapp={handleShareWhatsapp} onLimpar={handleReset} />
-                    )}
-                    </div>{/* fim do bloco de tela (print:hidden) */}
-
-                    {/* ===== DOCUMENTO DE IMPRESSÃO (formal, tabelas, sem chrome de dashboard) ===== */}
-                    <div className="hidden print:block text-black">
+          {/* ===== DOCUMENTOS DE IMPRESSÃO (formais, só aparecem ao imprimir) ===== */}
+          {eLeilao && (
+            <div id="pdf-leilao">
+              <div className="hidden print:block text-black">
                       <div className="flex justify-between items-end border-b-2 border-black pb-3 mb-5">
                         <div>
                           <div className="text-base font-bold uppercase tracking-tight">{advName}</div>
@@ -1776,217 +1593,11 @@
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* --- ABA ESCRITURA E COMPRA --- */}
-            {activeTab === 'escritura' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 items-start">
-                <div className="space-y-4 print-hide">
-                  <Card title="Dados da escritura" numero={1} resumo={safeNegocio > 0 ? `Negócio ${formatMoney(safeNegocio)}` : undefined} step={0} activeStep={escrituraStep} onStepChange={setEscrituraStep} isLast={false}>
-                    <TextInput label="Nome do adquirente" value={clienteNome} onChange={setClienteNome} placeholder="Ex: João Silva" />
-                    <TextInput label="Descrição do imóvel" value={imovelDesc} onChange={setImovelDesc} placeholder="Ex: Chácara São Pedro - Loanda/PR" />
-                    <MoneyInput label="Valor real da negociação" value={negocioValor} onChange={setNegocioValor} />
-                    <MoneyInput label="Valor venal (opcional)" value={valorVenalEsc} onChange={setValorVenalEsc} subText="Se maior que o valor do negócio, o ITBI usa este valor como base" />
-                  </Card>
-
-                  <Card
-                    title="Custas"
-                    numero={2}
-                    step={1}
-                    activeStep={escrituraStep}
-                    onStepChange={setEscrituraStep}
-                    isLast={false}
-                    extraHeader={
-                      <Segmentado rotulo="Cálculo das custas" valor={escrituraMode} onChange={setEscrituraMode}
-                        opcoes={[{ valor: 'pr', rotulo: 'Tabela TJ-PR' }, { valor: 'manual', rotulo: 'Manual' }]} />
-                    }
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <TaxInput label="ITBI" value={itbiEscritura.value} type={itbiEscritura.type} onChangeValue={(val) => setItbiEscritura({ ...itbiEscritura, value: val })} onChangeType={(t) => setItbiEscritura({ ...itbiEscritura, type: t })} description="Imposto de Transmissão" />
-                          <ShowInBudgetToggle checked={showItbiEsc} onChange={setShowItbiEsc} />
-                        </div>
-
-                        {escrituraMode === 'pr' ? (
-                          <>
-                            <div>
-                              <TaxInput label="Escritura de compra" value={Math.round(lavraturaCost * 100) / 100} type="fixed" disabled description={escrituraExtrapolada ? "Acima do teto da tabela (226 mil) — confirme no tabelionato" : "Tabela XI/TJ-PR 2026"} />
-                              <ShowInBudgetToggle checked={showLavraturaEsc} onChange={setShowLavraturaEsc} />
-                            </div>
-                            <div>
-                              <TaxInput label="Funrejus obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Automático (0.2% Teto PR)" />
-                              <ShowInBudgetToggle checked={showFunrejusEsc} onChange={setShowFunrejusEsc} />
-                            </div>
-                            <TaxInput label="Registro de imóveis" value={Math.round(cartorioCostEsc * 100) / 100} type="fixed" disabled description="Tabela III-C/TJ-PR 2026" />
-                          </>
-                        ) : (
-                          <>
-                            <div>
-                              <TaxInput label="Escritura de compra" value={escrituraManual.value} type={escrituraManual.type} onChangeValue={(val) => setEscrituraManual({ ...escrituraManual, value: val })} onChangeType={(t) => setEscrituraManual({ ...escrituraManual, type: t })} description="Tabelionato" />
-                              <ShowInBudgetToggle checked={showLavraturaEsc} onChange={setShowLavraturaEsc} />
-                            </div>
-                            <div>
-                              <TaxInput label="Funrejus obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="Compulsório (0.2% Teto PR)" />
-                              <ShowInBudgetToggle checked={showFunrejusEsc} onChange={setShowFunrejusEsc} />
-                            </div>
-                            <TaxInput label="Registro de imóveis" value={rgiManual.value} type={rgiManual.type} onChangeValue={(val) => setRgiManual({ ...rgiManual, value: val })} onChangeType={(t) => setRgiManual({ ...rgiManual, type: t })} description="Cartório de Registro" />
-                          </>
-                        )}
-                    </div>
-                    {escrituraMode === 'pr' && escrituraExtrapolada && (
-                      <div className="mt-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-[11px] text-amber-800 dark:text-amber-300 font-medium">
-                        A tabela oficial de emolumentos do Tabelionato de Notas (Tabela XI) não define faixas para valores acima de R$226.000,00. O valor exibido usa a última faixa conhecida como estimativa mínima — confirme o valor exato diretamente com o tabelionato.
-                      </div>
-                    )}
-
-                    <div className="pt-4 border-t border-slate-100 dark:border-slate-700/60">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <input type="checkbox" checked={incluirRgi} onChange={(e) => setIncluirRgi(e.target.checked)} className="w-5 h-5 rounded accent-emerald-600" />
-                          <span className="text-sm font-semibold text-foreground">Incluir o registro de imóveis (RGI) no total</span>
-                        </label>
-                    </div>
-                  </Card>
-
-                  <Card title="Custos acessórios" numero={3} step={2} activeStep={escrituraStep} onStepChange={setEscrituraStep} isLast={true}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <MoneyInput label="Certidões e buscas" value={certidoesEsc} onChange={setCertidoesEsc} />
-                        <ShowInBudgetToggle checked={showCertidoesEsc} onChange={setShowCertidoesEsc} />
-                      </div>
-                      <div>
-                        <MoneyInput label="Diligências / assessoria" value={diligenciasEsc} onChange={setDiligenciasEsc} />
-                        <ShowInBudgetToggle checked={showDiligenciasEsc} onChange={setShowDiligenciasEsc} />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <TextInput label="Outros (especifique)" value={outrosDescEsc} onChange={setOutrosDescEsc} placeholder="Ex: Averbação de óbito, diligência extra..." />
-                      </div>
-                      <div>
-                        <MoneyInput label="Valor de Outros" value={outrosValorEsc} onChange={setOutrosValorEsc} />
-                        <Segmentado rotulo="Como tratar o valor de outros" valor={outrosNoTotal ? 'total' : 'parte'} onChange={(v) => setOutrosNoTotal(v === 'total')} className="mt-2"
-                          opcoes={[{ valor: 'total', rotulo: 'Somar ao total' }, { valor: 'parte', rotulo: 'Valor à parte' }]} />
-                        {outrosNoTotal ? (
-                          <ShowInBudgetToggle checked={showOutrosEsc} onChange={setShowOutrosEsc} />
-                        ) : (
-                          <div className="text-xs text-muted-foreground mt-1.5">Exibido à parte, fora do total do orçamento</div>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-
-                {/* VISUALIZAÇÃO DO PDF / RESULTADO (ESCRITURA) */}
-                <div className="lg:sticky lg:top-6 print:static">
-                  <div id="pdf-escritura" className="bg-card rounded-xl border border-border shadow-sm p-5 sm:p-6 shadow-sm lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto print:max-h-none print:overflow-visible print:shadow-none print:border-none print:p-0">
-                    <div className="print:hidden">
-                    {/* Header Limpo Sem Dados de Controle ou Configuração */}
-                    <div className="mb-5">
-                      <h2 className="text-base font-semibold text-foreground">Memorial de custas de escrituração</h2>
-                      {(clienteNome || imovelDesc) && (
-                        <p className="mt-0.5 text-xs text-muted-foreground truncate">{[clienteNome, imovelDesc].filter(Boolean).join(' · ')}</p>
-                      )}
-                    </div>
-
-                    {/* Destaque: total estimado */}
-                    <div className="rounded-xl p-4 sm:p-5 bg-muted/50 mb-5">
-                      <div className="text-xs font-semibold text-slate-600 dark:text-slate-300">Total estimado{incluirRgi ? ' com registro (RGI)' : ''}</div>
-                      <div key={totalEscrituraComRegistro} className="value-update mt-1 text-3xl sm:text-4xl font-bold tracking-tight tabular-nums text-foreground">{formatMoney(incluirRgi ? totalEscrituraComRegistro : custoInicialEsc)}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">Sobre um negócio de {formatMoney(safeNegocio)}</div>
-                    </div>
-
-                    <h4 className="font-semibold text-muted-foreground mb-3 text-xs">Detalhamento</h4>
-
-                    {/* Bloco 1: Inicial */}
-                    <div className="p-4 rounded-xl border border-border mb-4">
-                      <h5 className="text-xs font-semibold text-muted-foreground mb-3">Passo 1 · Lavratura, impostos e acessórios</h5>
-                      <ul className="space-y-3 text-sm">
-                        <li className="flex justify-between pb-2 border-b border-dashed border-slate-200 dark:border-slate-700">
-                          <span>Base da transação</span>
-                          <span className="font-bold text-foreground">{formatMoney(safeNegocio)}</span>
-                        </li>
-                        {showItbiEsc && (
-                          <li className="flex justify-between text-muted-foreground">
-                            <span>Imposto de Transmissão (ITBI){safeNumber(valorVenalEsc) > safeNegocio ? ' (s/ valor venal)' : ''}</span>
-                            <span className="font-medium">+{formatMoney(itbiCostEsc)}</span>
-                          </li>
-                        )}
-                        {showLavraturaEsc && (
-                          <li className="flex justify-between text-muted-foreground">
-                            <span>Ato de Escrituração Imobiliária</span>
-                            <span className="font-medium">+{formatMoney(lavraturaCostExibido)}</span>
-                          </li>
-                        )}
-                        {showFunrejusEsc && (
-                          <li className="flex justify-between text-muted-foreground">
-                            <span>Funrejus Compulsório (0.2% - TJPR)</span>
-                            <span className="font-medium">+{formatMoney(funrejusCost)}</span>
-                          </li>
-                        )}
-
-                        {showCertidoesEsc && safeNumber(certidoesEsc) > 0 && (
-                          <li className="flex justify-between text-muted-foreground">
-                            <span>Certidões e Buscas</span>
-                            <span className="font-medium">+{formatMoney(safeNumber(certidoesEsc))}</span>
-                          </li>
-                        )}
-                        {showDiligenciasEsc && safeNumber(diligenciasEsc) > 0 && (
-                          <li className="flex justify-between text-muted-foreground">
-                            <span>Diligências / Assessoria</span>
-                            <span className="font-medium">+{formatMoney(safeNumber(diligenciasEsc))}</span>
-                          </li>
-                        )}
-                        {outrosNoTotal && showOutrosEsc && safeOutrosEsc > 0 && (
-                          <li className="flex justify-between text-muted-foreground">
-                            <span>{outrosDescEsc || 'Outros'}</span>
-                            <span className="font-medium">+{formatMoney(safeOutrosEsc)}</span>
-                          </li>
-                        )}
-
-                        <li className="flex justify-between font-bold pt-3 mt-2 border-t border-slate-200 dark:border-slate-700">
-                          <span className="text-foreground">Subtotal sem registro</span>
-                          <span className="text-foreground">{formatMoney(custoInicialEsc)}</span>
-                        </li>
-                      </ul>
-                    </div>
-
-                    {/* Valor à parte: não entra no total do orçamento */}
-                    {!outrosNoTotal && safeOutrosEsc > 0 && (
-                      <div className="p-4 rounded-lg border border-amber-100 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-950/10 mb-4">
-                        <h5 className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-2">Valor à parte (não incluído no total)</h5>
-                        <ul className="space-y-2 text-sm">
-                          <li className="flex justify-between font-medium">
-                            <span className="text-amber-900 dark:text-amber-300">{outrosDescEsc || 'Outros'}</span>
-                            <span className="text-amber-700 dark:text-amber-400">{formatMoney(safeOutrosEsc)}</span>
-                          </li>
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Bloco 2: Registro */}
-                    {incluirRgi && (
-                      <div className="p-4 rounded-xl border border-border mb-4">
-                        <h5 className="text-xs font-semibold text-muted-foreground mb-2">Passo 2 · Registro de imóveis (RGI)</h5>
-                        <ul className="space-y-2 text-sm">
-                          <li className="flex justify-between font-medium">
-                            <span className="text-foreground">Emolumento de Registro</span>
-                            <span className="text-foreground">+{formatMoney(cartorioCostEsc)}</span>
-                          </li>
-                        </ul>
-                      </div>
-                    )}
-
-
-                    {safeNegocio > 0 && (
-                      <AcoesResultado rotuloPrincipal="Gerar PDF do orçamento" onPrincipal={handlePrint}
-                        onExcel={() => handleGerarPlanilhaEscritura()} onPdfPlanilha={() => handleGerarPlanilhaEscritura('pdf')}
-                        onCopiar={handleCopyResumo} onWhatsapp={handleShareWhatsapp} onLimpar={handleReset} />
-                    )}
-                    </div>{/* fim do bloco de tela (print:hidden) */}
-
-                    {/* ===== DOCUMENTO DE IMPRESSÃO (formal, tabelas, sem chrome de dashboard) ===== */}
-                    <div className="hidden print:block text-black">
+            </div>
+          )}
+          {!eLeilao && (
+            <div id="pdf-escritura">
+              <div className="hidden print:block text-black">
                       <div className="flex justify-between items-end border-b-2 border-black pb-3 mb-5">
                         <div>
                           <div className="text-base font-bold uppercase tracking-tight">{advName}</div>
@@ -2068,13 +1679,15 @@
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
+          )}
 
-          </div>
-        </div>
+          {toast && (
+            <div role="status" aria-live="polite" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-[90vw] px-[18px] py-2.5 rounded-[10px] bg-card text-foreground border border-primary text-[13px] shadow-md print-hide section-open">
+              {toast}
+            </div>
+          )}
+        </Pagina>
       );
     }
 
