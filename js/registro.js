@@ -129,7 +129,6 @@
     linhas.push([T(''), T('SALDO FINAL ATUALIZADO', 'rotulo'), T(''), F(['M' + linhaTotal].concat(refExtras).join('+'), t.saldoFinal, 'destaque')]);
     if ((o.linhasExtras || []).length) { linhas.push([]); (o.linhasExtras || []).forEach((e) => linhas.push([T(''), T(e[0], 'rotulo'), T(''), N(e[1], 'moeda')])); }
     linhas.push([]);
-    linhas.push([T('A correção monetária foi informada manualmente pelo usuário (percentual acumulado ou valor já corrigido) e aplicada uma única vez; não foi calculada por índice oficial nem por consulta automática.', 'nota')]);
     linhas.push([T('Saldo atualizado = principal corrigido + juros + multa + honorários − pagamentos + excedente não imputado. Veja a aba "Memória" para o passo a passo e a aba "Critérios" para os parâmetros.', 'nota')]);
 
     const memoria = [[T('Parcela', 'cabecalho'), T('Passo', 'cabecalho'), T('Descrição do cálculo', 'cabecalho')]];
@@ -200,7 +199,6 @@
     const doc = root.CentralPdf.criar({ orientacao: 'paisagem', titulo: reg.titulo, rodape: `${reg.titulo} — gerado em ${dataHora()}` });
     doc.titulo(reg.titulo);
     if (reg.subtitulo) doc.subtitulo(reg.subtitulo);
-    (reg.alertas || []).forEach((a) => doc.alerta(a.mensagem));
     doc.secao('Identificação');
     const prof = reg.profissional && reg.profissional.nome ? `${reg.profissional.nome}${reg.profissional.registro ? ` — ${reg.profissional.registro}` : ''}` : '';
     [...(reg.identificacao || []), ['Data de referência do cálculo', reg.dataReferencia], ['Gerado em', dataHora()], ['Profissional', prof]]
@@ -223,7 +221,7 @@
     }
     if (reg.observacoes) { doc.secao('Observações'); doc.paragrafo(reg.observacoes); }
     doc.espaco(8);
-    doc.paragrafo(`Fonte dos dados: ${reg.fonte || ''}. Este demonstrativo informa os critérios efetivamente utilizados para permitir a conferência profissional; o valor calculado não substitui a análise do caso concreto, do título executivo, do contrato ou da decisão judicial aplicável.`, { tam: 7.5, cor: '0.392 0.455 0.545' });
+    doc.paragrafo(`Fonte dos dados: ${reg.fonte || ''}.`, { tam: 7.5, cor: '0.392 0.455 0.545' });
     return doc.gerar();
   }
 
@@ -248,8 +246,8 @@
       if (!l.length) return;
       if (a && a.s === 'titulo') { doc.titulo(a.v); return; }
       if (b && b.s === 'cabecalho') { fechar(); cabecalho = false; doc.espaco(6); tabela = { titulo: b.v, linhas: [] }; return; }
-      if (b && b.s === 'nota') { fechar(); doc.paragrafo(b.v, { tam: 8, cor: '0.392 0.455 0.545' }); return; }
-      if (a && a.s === 'nota') { fechar(); doc.paragrafo(a.v, { tam: 8, cor: '0.392 0.455 0.545' }); return; }
+      // As notas de aviso ficam só na planilha Excel; o PDF traz apenas os valores
+      if ((b && b.s === 'nota') || (a && a.s === 'nota')) { fechar(); return; }
       if (cabecalho && b && c && c.tipo === 't') { doc.par(b.v.replace(/:$/, ''), c.v); return; }
       if (!tabela || !b || !c) return;
       const total = ['totalMoeda', 'destaque'].includes(c.s);

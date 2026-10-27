@@ -1118,9 +1118,7 @@
           if (discountedSaleValue > 0) m.item('Lucro estimado na 2ª praça', segundaPracaResult.lucro);
           m.item(economiaSegundaPraca >= 0 ? 'Economia na 2ª praça' : 'Custo a mais na 2ª praça', economiaSegundaPraca);
         }
-        m.vazio();
-        m.nota('Documento de caráter estimativo e consultivo. Valores calculados a partir dos dados informados e dos percentuais indicados na coluna Observação.');
-        const criterios = [
+        m.vazio();        const criterios = [
           ['Comissão do leiloeiro', isRegularizacao ? 'Não aplicável' : textoTaxa(leiloeiro)],
           ['ITBI', veiculo ? 'Não aplicável' : textoTaxa(itbi)],
           ['Cartório de registro', veiculo ? 'Não aplicável' : (cartorioModeLeilao === 'pr' ? `Tabela TJ-PR vigente desde ${VIGENCIA_TABELAS_PR}` : textoTaxa(cartorioManualLeilao))],
@@ -1166,7 +1164,6 @@
           m.formula('TOTAL COM REGISTRO (RGI)', `C${rSub}+C${rRgi}`, totalEscrituraComRegistro, 'destaque');
         }
         m.vazio();
-        m.nota(`Tabelas de custas TJ-PR vigentes desde ${VIGENCIA_TABELAS_PR}. Documento de caráter estimativo.`);
         const criterios = [
           ['Modo de cálculo', escrituraMode === 'pr' ? `Automático — tabelas TJ-PR vigentes desde ${VIGENCIA_TABELAS_PR}` : 'Custas informadas manualmente'],
           ['ITBI', textoTaxa(itbiEscritura).replace(' sobre o lance', ' sobre o valor do negócio')],
@@ -1606,9 +1603,6 @@
                       </>
                     )}
 
-                    <p className="mt-5 text-[11px] leading-relaxed text-muted-foreground">
-                      Estimativa para planejamento, sem caráter de garantia. {!ehVeiculo ? `Registro calculado pela Tabela III-C do TJ-PR vigente desde ${VIGENCIA_TABELAS_PR}, sujeita a atualização anual.` : 'Tabela FIPE e débitos são informativos e variam com o mercado.'}
-                    </p>
 
                     {safeBid > 0 && (
                       <AcoesResultado rotuloPrincipal="Gerar relatório PDF" onPrincipal={handlePrint}
@@ -1770,9 +1764,6 @@
                         </table>
                       )}
 
-                      <p className="text-[8px] text-gray-600 text-justify leading-relaxed mb-10">
-                        <strong>Nota Legal:</strong> Documento de caráter puramente estimativo e consultivo visando planejamento financeiro. {assetType !== 'veiculo' ? `Custas notariais calculadas pela Tabela III-C do TJ-PR, vigente desde ${VIGENCIA_TABELAS_PR}, sujeita a atualização anual.` : 'Tabela FIPE e débitos são informativos e sujeitos a variação de mercado.'}
-                      </p>
 
                       <div className="flex justify-between text-[9px] avoid-break">
                         <div className="text-center w-56">
@@ -1986,9 +1977,6 @@
                       </div>
                     )}
 
-                    <p className="mt-5 text-[11px] leading-relaxed text-muted-foreground">
-                      Estimativa para planejamento, sem caráter de garantia. Custas pelas tabelas do TJ-PR vigentes desde {VIGENCIA_TABELAS_PR}; podem variar conforme o cartório ou o reajuste anual.
-                    </p>
 
                     {safeNegocio > 0 && (
                       <AcoesResultado rotuloPrincipal="Gerar PDF do orçamento" onPrincipal={handlePrint}
@@ -2065,10 +2053,9 @@
                         </tbody>
                       </table>
 
-                      <p className="text-[8px] text-gray-600 text-justify leading-relaxed mb-10">
-                        <strong>Nota Legal:</strong> Este relatório é de natureza estimativa e consultiva para fins de planejamento financeiro. As custas notariais e de registro seguem as tabelas de emolumentos do TJ-PR vigentes desde {VIGENCIA_TABELAS_PR} e podem variar conforme o cartório competente ou reajuste anual.
-                        {escrituraExtrapolada ? ' * A tabela oficial do Tabelionato de Notas não define faixas acima de R$226.000,00; o valor exibido é uma estimativa mínima baseada na última faixa conhecida — confirme com o tabelionato.' : ''}
-                      </p>
+                      {escrituraExtrapolada && (
+                        <p className="text-[8px] text-gray-600 text-justify leading-relaxed mb-10">* A tabela oficial do Tabelionato de Notas não define faixas acima de R$226.000,00; o valor exibido é uma estimativa mínima baseada na última faixa conhecida — confirme com o tabelionato.</p>
+                      )}
 
                       <div className="flex justify-between text-[9px] avoid-break">
                         <div className="text-center w-56">
