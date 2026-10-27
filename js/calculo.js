@@ -102,6 +102,42 @@
     return { fator, meses, faltantes };
   }
 
+  // ---------- Salário mínimo nacional (R$) ----------
+  // Tabela embutida (valor vigente a partir do mês indicado) para funcionar sem dados/indices.json;
+  // a série 1619 do Banco Central, gravada pelo robô na tabela, tem prioridade.
+  const SALARIO_MINIMO_BASE = {
+    '2005-05': 300, '2006-04': 350, '2007-04': 380, '2008-03': 415, '2009-02': 465, '2010-01': 510,
+    '2011-01': 540, '2011-03': 545, '2012-01': 622, '2013-01': 678, '2014-01': 724, '2015-01': 788,
+    '2016-01': 880, '2017-01': 937, '2018-01': 954, '2019-01': 998, '2020-01': 1039, '2020-02': 1045,
+    '2021-01': 1100, '2022-01': 1212, '2023-01': 1302, '2023-05': 1320, '2024-01': 1412, '2025-01': 1518,
+    '2026-01': 1621,
+  };
+
+  // Aceita 'MM/AAAA', 'DD/MM/AAAA' ou 'AAAA-MM'; devolve 'AAAA-MM' ou null.
+  function chaveCompetencia(texto) {
+    const s = String(texto || '').trim();
+    let x = /^(\d{4})-(\d{2})$/.exec(s);
+    if (x) return s;
+    x = /^(?:\d{2}\/)?(\d{2})\/(\d{4})$/.exec(s);
+    return x && Number(x[1]) >= 1 && Number(x[1]) <= 12 ? `${x[2]}-${x[1]}` : null;
+  }
+
+  // Salário mínimo vigente na competência (o último valor conhecido até ela) ou null.
+  function salarioMinimo(competencia) {
+    const k = chaveCompetencia(competencia);
+    if (!k) return null;
+    const serie = tabelaIndices && tabelaIndices.series && tabelaIndices.series.SALARIO_MINIMO;
+    const valores = { ...SALARIO_MINIMO_BASE, ...(serie && serie.valores ? serie.valores : {}) };
+    if (typeof valores[k] === 'number') return valores[k];
+    const anteriores = Object.keys(valores).filter((m) => m <= k).sort();
+    return anteriores.length ? valores[anteriores[anteriores.length - 1]] : null;
+  }
+
+  function competenciaAtual() {
+    const h = new Date();
+    return `${String(h.getMonth() + 1).padStart(2, '0')}/${h.getFullYear()}`;
+  }
+
   // Devolve o principal corrigido. A correção é aplicada AQUI, uma única vez; as demais etapas
   // recebem apenas "principalCorrigido" e nunca reaplicam a correção.
   // contexto = { inicio, fim } é usado pela correção por índice.
@@ -453,7 +489,7 @@
   }
 
   return {
-    MODOS_CORRECAO, INDICES, correcaoPadrao, criteriosPadrao, definirIndices, indicesCarregados, ultimoMesIndice, fatorIndice, nomeMes,
+    MODOS_CORRECAO, INDICES, correcaoPadrao, criteriosPadrao, definirIndices, indicesCarregados, ultimoMesIndice, fatorIndice, nomeMes, salarioMinimo, competenciaAtual, chaveCompetencia,
     aplicarCorrecao, periodoEntre, acumuladoJuros, apurarJuros,
     validarCorrecao, validarCriterios, validarParcela, validarCalculo, criteriosDaParcela, honorariosFixos,
     estaAVencer, separarVincendas, calcularParcela, consolidar, outrosEncargosTotal, particionarRitos,

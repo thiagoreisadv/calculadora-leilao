@@ -39,7 +39,7 @@
 
   const inicial = () => ({
     descricao: '', credor: '', devedor: '', observacoes: '', parcelas: [], encargos: [],
-    criterios: K.criteriosPadrao(), gerador: { quantidade: '12', primeiro: '', valor: '' }, aplicarPercentual: '',
+    criterios: K.criteriosPadrao(), gerador: { quantidade: '12', primeiro: '', valor: '' }, lote: B.loteInicial(),
   });
 
 
@@ -100,27 +100,28 @@
       if (!R.dataEhValida(g.primeiro)) erros.push('Informe o primeiro vencimento (DD/MM/AAAA).');
       if (!(R.lerValor(g.valor) > 0)) erros.push('Informe o valor de cada parcela.');
       if (qtd + f.parcelas.length > R.LIMITE_PARCELAS) erros.push(`O limite é de ${R.LIMITE_PARCELAS} parcelas.`);
+      const lote = f.lote || B.loteInicial();
+      if (lote.opcao === 'percentual' && !(R.lerValor(lote.percentual) >= 0)) erros.push('Informe o percentual de correção.');
       if (erros.length) { UI.avisar(erros[0], 'erro'); return; }
       const novas = Array.from({ length: qtd }, (_, i) => {
         const venc = R.adicionarMeses(g.primeiro, i);
-        return novaParcela({ descricao: `${p.parcela} ${i + 1}/${qtd}`, competencia: venc.slice(3), vencimento: venc, valor: g.valor });
+        return novaParcela({ descricao: `${p.parcela} ${i + 1}/${qtd}`, competencia: venc.slice(3), vencimento: venc, valor: g.valor, correcao: B.correcaoDoLote(lote) });
       });
       alterar({ parcelas: [...f.parcelas, ...novas] });
       UI.avisar(`${qtd} parcelas adicionadas.`);
     }
 
-    function aplicarMesmoPercentual() {
-      if (!(R.lerValor(f.aplicarPercentual) >= 0)) { UI.avisar('Informe o percentual de correção para aplicar às parcelas.', 'erro'); return; }
-      if (!f.parcelas.length) { UI.avisar('Inclua parcelas antes de aplicar a correção.', 'erro'); return; }
-      alterar({ parcelas: f.parcelas.map((x) => ({ ...x, correcao: { modo: 'percentual', percentual: f.aplicarPercentual, valorCorrigido: '' } })) });
-      UI.avisar('Percentual aplicado a todas as parcelas. Você ainda pode ajustar cada uma.');
+    // Nova parcela: um mês depois da última, com o mesmo valor e a mesma correção.
+    function adicionarParcela() {
+      const ultima = f.parcelas[f.parcelas.length - 1];
+      if (!ultima) { alterar({ parcelas: [novaParcela({ correcao: B.correcaoDoLote(f.lote) })] }); return; }
+      const venc = R.dataEhValida(ultima.vencimento) ? R.adicionarMeses(ultima.vencimento, 1) : '';
+      alterar({ parcelas: [...f.parcelas, novaParcela({ vencimento: venc, competencia: venc ? venc.slice(3) : '', valor: ultima.valor, correcao: { ...ultima.correcao } })] });
     }
 
-    function aplicarMesmoIndice() {
-      if (!f.parcelas.length) { UI.avisar('Inclua parcelas antes de aplicar a correção.', 'erro'); return; }
-      const indice = f.aplicarIndice || 'IPCA';
-      alterar({ parcelas: f.parcelas.map((x) => ({ ...x, correcao: { ...K.correcaoPadrao(), modo: 'indice', indice } })) });
-      UI.avisar(`${K.INDICES[indice].nome} aplicado a todas as parcelas.`);
+    function aplicarATodas() {
+      const parcelas = B.aplicarLote(f.parcelas, f.lote);
+      if (parcelas) alterar({ parcelas });
     }
 
     function validar() {
@@ -190,27 +191,17 @@
             <div>
               <h3 className="text-[13px] font-medium text-foreground">Parcelas</h3>
             </div>
-            <details className="rounded-[10px] border border-dashed border-border p-4 group">
-              <summary className="cursor-pointer text-[13px] text-foreground list-none flex items-center justify-between">
-                Gerar parcelas mensais <UI.Icone nome="chevron" className="w-4 h-4 transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+            <div className="rounded-[10px] border border-dashed border-border p-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-[6rem_1fr_1fr] gap-3 items-end">
                 <CampoTexto rotulo="Quantidade" valor={f.gerador.quantidade} onChange={(v) => alterar({ gerador: { ...f.gerador, quantidade: v.replace(/\D/g, '') } })} inputMode="numeric" maxLength={3} />
                 <CampoData rotulo="Primeiro vencimento" valor={f.gerador.primeiro} onChange={(v) => alterar({ gerador: { ...f.gerador, primeiro: v } })} />
                 <CampoMoeda rotulo="Valor de cada parcela" valor={f.gerador.valor} onChange={(v) => alterar({ gerador: { ...f.gerador, valor: v } })} />
-                <Botao variante="solido" icone="mais" onClick={gerar}>Gerar</Botao>
               </div>
-            </details>
-
-            {f.parcelas.length > 1 && (
-              <div className="rounded-[10px] border border-border p-4 grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr_auto] gap-3 items-end">
-                <Selecao rotulo="Mesmo índice em todas" valor={f.aplicarIndice || 'IPCA'} onChange={(v) => definirF({ ...f, aplicarIndice: v })}
-                  opcoes={Object.entries(K.INDICES).map(([valor, x]) => ({ valor, rotulo: x.nome }))} />
-                <Botao onClick={aplicarMesmoIndice}>Aplicar</Botao>
-                <CampoPercentual rotulo="Mesmo percentual em todas" valor={f.aplicarPercentual} onChange={(v) => definirF({ ...f, aplicarPercentual: v })} />
-                <Botao onClick={aplicarMesmoPercentual}>Aplicar</Botao>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <B.CorrecaoLote valor={f.lote} onChange={(v) => definirF({ ...f, lote: v })} quantidade={f.parcelas.length} onAplicar={aplicarATodas} />
+                <Botao variante="solido" icone="mais" onClick={gerar}>Gerar parcelas</Botao>
               </div>
-            )}
+            </div>
 
             {f.parcelas.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhuma parcela incluída ainda.</p>}
             {f.parcelas.map((x, i) => (
@@ -218,7 +209,7 @@
                 onChange={(parte) => alterarParcela(x.id, parte)} onRemover={() => alterar({ parcelas: f.parcelas.filter((y) => y.id !== x.id) })} />
             ))}
             {errosForm.some((e) => e.campo === 'parcelas') && <p role="alert" className="text-[11.5px] text-destructive">{errosForm.find((e) => e.campo === 'parcelas').mensagem}</p>}
-            <Botao icone="mais" onClick={() => alterar({ parcelas: [...f.parcelas, novaParcela()] })}>Adicionar parcela</Botao>
+            <Botao icone="mais" onClick={adicionarParcela}>Adicionar parcela</Botao>
           </div>
         </div>
       ) },

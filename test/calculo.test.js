@@ -374,3 +374,17 @@ test('índice: parcela a vencer não é corrigida', () => {
   assert.equal(r.correcao.valorCorrecao, 0);
   assert.equal(r.principalCorrigido, 1000);
 });
+
+test('salário mínimo: valor vigente na competência, com a série do Banco Central tendo prioridade', () => {
+  C.definirIndices(null);
+  assert.equal(C.salarioMinimo('04/2023'), 1302);
+  assert.equal(C.salarioMinimo('05/2023'), 1320); // reajuste de maio/2023
+  assert.equal(C.salarioMinimo('15/02/2020'), 1045);
+  assert.equal(C.salarioMinimo('2025-07'), 1518);
+  assert.equal(C.salarioMinimo('01/1990'), null);
+  assert.equal(C.salarioMinimo('13/2025'), null);
+  C.definirIndices({ series: { SALARIO_MINIMO: { valores: { '2025-07': 1500 } } } });
+  assert.equal(C.salarioMinimo('07/2025'), 1500);
+  assert.equal(C.salarioMinimo('08/2025'), 1500); // último valor conhecido até a competência
+  C.definirIndices(null);
+});

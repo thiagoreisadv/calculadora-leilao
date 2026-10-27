@@ -134,6 +134,42 @@
   }
 
   // ---------- Critérios de cálculo (juros, multa, honorários, pagamentos) ----------
+  // ---------- Correção em lote: usada pelos geradores de parcelas e por "Aplicar a todas" ----------
+  const OPCOES_LOTE = [
+    ...Object.entries(K.INDICES).map(([valor, x]) => ({ valor, rotulo: x.nome })),
+    { valor: 'percentual', rotulo: 'Percentual' },
+    { valor: 'nenhuma', rotulo: 'Sem correção' },
+  ];
+  const loteInicial = () => ({ opcao: 'IPCA', percentual: '' });
+
+  function correcaoDoLote(lote) {
+    const l = lote || loteInicial();
+    if (K.INDICES[l.opcao]) return { ...K.correcaoPadrao(), modo: 'indice', indice: l.opcao };
+    if (l.opcao === 'percentual') return { ...K.correcaoPadrao(), modo: 'percentual', percentual: l.percentual };
+    return K.correcaoPadrao();
+  }
+
+  // Aplica a correção do lote a todos os itens; devolve null (e avisa) quando falta dado.
+  function aplicarLote(itens, lote) {
+    const l = lote || loteInicial();
+    if (!itens.length) { UI.avisar('Inclua as parcelas antes.', 'erro'); return null; }
+    if (l.opcao === 'percentual' && !(R.lerValor(l.percentual) >= 0)) { UI.avisar('Informe o percentual.', 'erro'); return null; }
+    const correcao = correcaoDoLote(l);
+    UI.avisar(`${rotuloCorrecao(correcao)} em ${itens.length} item(ns).`);
+    return itens.map((x) => ({ ...x, correcao: { ...correcao } }));
+  }
+
+  function CorrecaoLote({ valor, onChange, quantidade = 0, onAplicar, rotulo = 'Correção' }) {
+    const l = valor || loteInicial();
+    return (
+      <div className="flex flex-wrap items-end gap-3">
+        <Selecao className="w-40" rotulo={rotulo} valor={l.opcao} onChange={(v) => onChange({ ...l, opcao: v })} opcoes={OPCOES_LOTE} />
+        {l.opcao === 'percentual' && <CampoPercentual className="w-32" rotulo="Acumulado" valor={l.percentual} onChange={(v) => onChange({ ...l, percentual: v })} />}
+        {onAplicar && quantidade > 0 && <Botao onClick={onAplicar}>Aplicar a todas ({quantidade})</Botao>}
+      </div>
+    );
+  }
+
   function CriteriosCalculo({ valor, onChange, erros = [], textoMulta = 'Multa (%)', notaMulta, rotuloData = 'Atualizar até' }) {
     const c = valor;
     const alterar = (parte) => onChange({ ...c, ...parte });
@@ -312,7 +348,7 @@
   }
 
   window.CentralBlocos = {
-    descreverCriterios, useIndices, correcaoInicial, rotuloCorrecao, CorrecaoManual, CriteriosCalculo, PainelTotais, ResumoConsolidado, ListaAlertas,
+    descreverCriterios, useIndices, correcaoInicial, rotuloCorrecao, CorrecaoManual, CorrecaoLote, loteInicial, correcaoDoLote, aplicarLote, CriteriosCalculo, PainelTotais, ResumoConsolidado, ListaAlertas,
     textoCorrecao, VisualizadorDocumento, guardarMemoria, gerarPlanilhaCalculo, gerarPdfCalculo, gerarPdfRegistro,
   };
 })();

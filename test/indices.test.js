@@ -16,12 +16,15 @@ test('validarValores: recusa séries curtas ou com valores absurdos', () => {
   assert.doesNotThrow(() => S.validarValores('IPCA', ok));
   assert.throws(() => S.validarValores('IPCA', { '2024-01': 0.4 }));
   assert.throws(() => S.validarValores('IPCA', { ...ok, '2024-06': 250 }));
+  const sm = {}; for (let i = 1; i <= 12; i += 1) sm[`2024-${String(i).padStart(2, '0')}`] = 1412;
+  assert.doesNotThrow(() => S.validarValores('SALARIO_MINIMO', sm, 'valor'));
+  assert.throws(() => S.validarValores('SALARIO_MINIMO', { ...sm, '2024-06': 14.12 }, 'valor'));
 });
 
-test('séries configuradas: IPCA 433, INPC 188, IGP-M 189, IPCA-E 10764 (iguais às do motor)', () => {
+test('séries configuradas: IPCA 433, INPC 188, IGP-M 189, IPCA-E 10764 (iguais às do motor) e salário mínimo 1619', () => {
   const C = require('../js/calculo.js');
-  assert.deepEqual(Object.fromEntries(Object.entries(S.SERIES).map(([k, s]) => [k, s.codigo])), { IPCA: 433, INPC: 188, IGPM: 189, IPCAE: 10764 });
-  Object.keys(S.SERIES).forEach((k) => assert.equal(C.INDICES[k].codigo, S.SERIES[k].codigo));
+  assert.deepEqual(Object.fromEntries(Object.entries(S.SERIES).map(([k, s]) => [k, s.codigo])), { IPCA: 433, INPC: 188, IGPM: 189, IPCAE: 10764, SALARIO_MINIMO: 1619 });
+  Object.keys(S.SERIES).filter((k) => S.SERIES[k].tipo !== 'valor').forEach((k) => assert.equal(C.INDICES[k].codigo, S.SERIES[k].codigo));
 });
 
 test('dados/indices.json existe e tem o formato esperado', () => {

@@ -1,5 +1,5 @@
 /*
- * Atualiza dados/indices.json com as variações mensais (%) dos índices de correção, a partir das séries
+ * Atualiza dados/indices.json com as variações mensais (%) dos índices de correção e o salário mínimo, a partir das séries
  * do Banco Central (SGS). Executado diariamente pelo GitHub Actions (.github/workflows/indices.yml);
  * também pode ser rodado à mão: node scripts/atualizar-indices.js
  *
@@ -14,6 +14,8 @@ const SERIES = {
   INPC: { codigo: 188, nome: 'INPC' },
   IGPM: { codigo: 189, nome: 'IGP-M' },
   IPCAE: { codigo: 10764, nome: 'IPCA-E' },
+  // Valor em R$ (não é variação): base da pensão fixada em percentual do salário mínimo.
+  SALARIO_MINIMO: { codigo: 1619, nome: 'Salário mínimo', tipo: 'valor' },
 };
 const ARQUIVO = path.join(__dirname, '..', 'dados', 'indices.json');
 const INICIO = '01/07/1994'; // Plano Real
@@ -32,10 +34,11 @@ function converterSerie(lista) {
 }
 
 // Conferência mínima para não gravar dados corrompidos.
-function validarValores(chave, valores) {
+function validarValores(chave, valores, tipo) {
   const meses = Object.keys(valores);
   if (meses.length < 12) throw new Error(`${chave}: poucos meses (${meses.length})`);
-  const fora = meses.filter((k) => valores[k] < -30 || valores[k] > 100);
+  const [min, max] = tipo === 'valor' ? [50, 100000] : [-30, 100];
+  const fora = meses.filter((k) => valores[k] < min || valores[k] > max);
   if (fora.length) throw new Error(`${chave}: valores fora do esperado em ${fora.join(', ')}`);
 }
 
@@ -67,8 +70,8 @@ async function main() {
   for (const [chave, s] of Object.entries(SERIES)) {
     try {
       const valores = converterSerie(await baixar(s.codigo));
-      validarValores(chave, valores);
-      series[chave] = { codigo: s.codigo, nome: s.nome, valores };
+      validarValores(chave, valores, s.tipo);
+      series[chave] = { codigo: s.codigo, nome: s.nome, ...(s.tipo ? { tipo: s.tipo } : {}), valores };
       const meses = Object.keys(valores).sort();
       console.log(`${chave}: ${meses.length} meses, até ${meses[meses.length - 1]}`);
     } catch (e) {
