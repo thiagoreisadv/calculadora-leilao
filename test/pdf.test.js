@@ -104,7 +104,15 @@ test('PDF das calculadoras simples (leilão/escritura) a partir das linhas da pl
   const { bytes, nome } = Reg.baixarPdfSimples(m.linhas, [['Modo', 'Teste']], 'Análise Teste', 'Análise Teste');
   assert.equal(nome, 'Analise-Teste-calculo.pdf');
   const t = validarEstrutura(bytes);
-  [P.hex('Maria'), P.hex('Lance'), P.hex('5% sobre o lance'), P.hex('TOTAL'), P.hex('Nota final.')].forEach((h) => assert.ok(t.includes(h), h));
+  [P.hex('Maria'), P.hex('Lance'), P.hex('5% sobre o lance'), P.hex('TOTAL')].forEach((h) => assert.ok(t.includes(h), h));
+  // Notas de aviso ficam só na planilha Excel; o PDF traz apenas os valores
+  assert.ok(!t.includes(P.hex('Nota final.')));
   assert.ok(t.includes(P.hex(globalThis.CentralRegras.formatarMoeda(1050))));
   assert.ok(t.includes(P.hex('16,45%')));
+});
+
+test('PDF do demonstrativo não traz o aviso de que o valor não substitui a análise do caso', () => {
+  const t = validarEstrutura(Reg.baixarPdf(entrada(), 'Débito').bytes);
+  assert.ok(!t.includes(P.hex('não substitui')));
+  assert.ok(t.includes(P.hex('Fonte dos dados')));
 });

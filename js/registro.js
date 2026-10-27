@@ -223,7 +223,7 @@
     }
     if (reg.observacoes) { doc.secao('Observações'); doc.paragrafo(reg.observacoes); }
     doc.espaco(8);
-    doc.paragrafo(`Fonte dos dados: ${reg.fonte || ''}. Este demonstrativo informa os critérios efetivamente utilizados para permitir a conferência profissional; o valor calculado não substitui a análise do caso concreto, do título executivo, do contrato ou da decisão judicial aplicável.`, { tam: 7.5, cor: '0.392 0.455 0.545' });
+    doc.paragrafo(`Fonte dos dados: ${reg.fonte || ''}.`, { tam: 7.5, cor: '0.392 0.455 0.545' });
     return doc.gerar();
   }
 
@@ -248,8 +248,8 @@
       if (!l.length) return;
       if (a && a.s === 'titulo') { doc.titulo(a.v); return; }
       if (b && b.s === 'cabecalho') { fechar(); cabecalho = false; doc.espaco(6); tabela = { titulo: b.v, linhas: [] }; return; }
-      if (b && b.s === 'nota') { fechar(); doc.paragrafo(b.v, { tam: 8, cor: '0.392 0.455 0.545' }); return; }
-      if (a && a.s === 'nota') { fechar(); doc.paragrafo(a.v, { tam: 8, cor: '0.392 0.455 0.545' }); return; }
+      // As notas de aviso ficam só na planilha Excel; o PDF traz apenas os valores
+      if ((b && b.s === 'nota') || (a && a.s === 'nota')) { fechar(); return; }
       if (cabecalho && b && c && c.tipo === 't') { doc.par(b.v.replace(/:$/, ''), c.v); return; }
       if (!tabela || !b || !c) return;
       const total = ['totalMoeda', 'destaque'].includes(c.s);
