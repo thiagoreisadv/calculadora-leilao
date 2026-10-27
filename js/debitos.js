@@ -1,6 +1,7 @@
 /*
  * Módulo: Atualização de Débitos (dívida única com pagamentos parciais).
- * A correção monetária é informada manualmente (percentual acumulado ou valor já corrigido);
+ * A correção monetária vem do índice oficial (tabela do Banco Central) ou é informada pelo usuário
+ * (percentual acumulado ou valor já corrigido);
  * juros, multa, honorários, pagamentos e saldo são calculados localmente por CentralCalculo.
  */
 (() => {
@@ -16,14 +17,14 @@
 
   const inicial = () => ({
     descricao: '', credor: '', devedor: '', principal: '', vencimento: '', dataInicial: '', observacoes: '',
-    correcao: K.correcaoPadrao(), pagamentos: [], encargos: [], criterios: K.criteriosPadrao(),
+    correcao: B.correcaoInicial(), pagamentos: [], encargos: [], criterios: K.criteriosPadrao(),
   });
 
   function ListaPagamentos({ itens, onChange, erro }) {
     const alterar = (id, parte) => onChange(itens.map((p) => (p.id === id ? { ...p, ...parte } : p)));
     return (
       <div className="space-y-3">
-        {itens.length === 0 && <p className="text-sm text-muted-foreground">Nenhum pagamento informado. Inclua pagamentos parciais para abatê-los do saldo.</p>}
+        {itens.length === 0 && <p className="text-sm text-muted-foreground">Nenhum pagamento.</p>}
         {itens.map((p, i) => (
           <div key={p.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end p-3 rounded-[10px] border border-border section-open">
             <CampoData rotulo={`Data do pagamento ${i + 1}`} valor={p.data} onChange={(v) => alterar(p.id, { data: v })} />
@@ -41,7 +42,7 @@
     const alterar = (id, parte) => onChange(itens.map((p) => (p.id === id ? { ...p, ...parte } : p)));
     return (
       <div className="space-y-3">
-        {itens.length === 0 && <p className="text-sm text-muted-foreground">Nenhum encargo adicional. Use este campo para custas ou despesas cujo valor já seja conhecido; eles são somados sem atualização monetária.</p>}
+        {itens.length === 0 && <p className="text-sm text-muted-foreground">Nenhum encargo.</p>}
         {itens.map((p, i) => (
           <div key={p.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end p-3 rounded-[10px] border border-border section-open">
             <CampoTexto rotulo={`Descrição do encargo ${i + 1}`} valor={p.desc} onChange={(v) => alterar(p.id, { desc: v })} maxLength={80} />
@@ -71,7 +72,8 @@
 
     function montarParcela() {
       return {
-        descricao: f.descricao || 'Dívida', vencimento: f.dataInicial || f.vencimento, valor: f.principal, correcao: f.correcao,
+        // Juros e correção contam do início da atualização (se informado); multa e mora, do vencimento real.
+        descricao: f.descricao || 'Dívida', vencimento: f.dataInicial || f.vencimento, vencimentoMora: f.vencimento, valor: f.principal, correcao: f.correcao,
         pagamentos: f.pagamentos.map((p) => ({ data: p.data, valor: p.valor })),
       };
     }
@@ -87,6 +89,10 @@
         const di = R.lerData(f.dataInicial); const dv = R.lerData(f.vencimento);
         if (!di) erros.push({ campo: 'dataInicial', mensagem: 'Data inicial de atualização inválida (DD/MM/AAAA).' });
         else if (dv && di.ts < dv.ts) erros.push({ campo: 'dataInicial', mensagem: 'A data inicial de atualização não pode ser anterior ao vencimento.' });
+        else if (R.lerData(f.criterios.dataFinal) && di.ts > R.lerData(f.criterios.dataFinal).ts) erros.push({ campo: 'dataInicial', mensagem: 'A data inicial de atualização não pode ser posterior à data final do cálculo.' });
+      }
+      if (f.criterios.vincendas === 'excluir' && R.dataEhValida(f.vencimento) && K.estaAVencer({ vencimento: f.vencimento }, f.criterios.dataFinal)) {
+        erros.push({ campo: 'vencimentoOriginal', mensagem: 'A dívida vence depois da data final e o critério manda deixar parcelas a vencer fora do cálculo. Mude a data final ou escolha "Vencimento antecipado" nos critérios.' });
       }
       f.encargos.forEach((e, i) => { if (e.valor && Number.isNaN(R.lerValor(e.valor))) erros.push({ campo: 'encargos', mensagem: `Encargo ${i + 1}: valor inválido.` }); });
       return erros;
@@ -99,7 +105,7 @@
       const parcela = montarParcela();
       const r = K.calcularParcela(parcela, f.criterios);
       const totais = K.consolidar([r], { honorariosFixos: K.honorariosFixos(f.criterios), encargosNominais: K.outrosEncargosTotal(f.encargos) });
-      definirResultado({ r, totais, parcela, criteriosDescritos: B.descreverCriterios(f.criterios) });
+      definirResultado({ r, totais, parcela, criteriosDescritos: B.descreverCriterios(f.criterios, [parcela]) });
       // Em telas estreitas o resultado fica abaixo do formulário: leva o usuário até ele
       if (window.innerWidth < 1024) setTimeout(() => topoResultado.current && topoResultado.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
     }
@@ -140,12 +146,10 @@
           <Col span={3}><CampoTexto rotulo="Devedor" valor={f.devedor} onChange={(v) => alterar({ devedor: v })} /></Col>
           <Col span={2}><CampoMoeda rotulo="Valor principal original" obrigatorio valor={f.principal} onChange={(v) => alterar({ principal: v })} erro={erroCampo('valor')} /></Col>
           <Col span={2}><CampoData rotulo="Data de vencimento" obrigatorio valor={f.vencimento} onChange={(v) => alterar({ vencimento: v })} erro={erroCampo('vencimentoOriginal')} /></Col>
-          <Col span={2}><CampoData rotulo="Início da atualização" valor={f.dataInicial} onChange={(v) => alterar({ dataInicial: v })} erro={erroCampo('dataInicial')}
-            ajuda="Opcional. Se vazia, os juros contam do vencimento." /></Col>
+          <Col span={2}><CampoData rotulo="Início da atualização" valor={f.dataInicial} onChange={(v) => alterar({ dataInicial: v })} erro={erroCampo('dataInicial')} /></Col>
           <Col span={6}>
             <div className="border-t border-border pt-4">
-              <p className="text-[12px] text-muted-foreground mb-3">A correção não é calculada pelo sistema: informe o percentual acumulado do período ou o valor já corrigido, apurados por você em outra ferramenta.</p>
-              <B.CorrecaoManual valor={f.correcao} onChange={(c) => alterar({ correcao: c })} valorOriginal={f.principal} erro={erroCampo('correcao')} />
+              <B.CorrecaoManual valor={f.correcao} onChange={(c) => alterar({ correcao: c })} valorOriginal={f.principal} vencimento={f.dataInicial || f.vencimento} dataFinal={f.criterios.dataFinal} erro={erroCampo('correcao')} />
             </div>
           </Col>
         </Grade>
@@ -172,7 +176,7 @@
     ];
 
     const painel = (
-      <B.PainelTotais totais={x && x.totais} mostrarHonorarios={f.criterios.honorarios.ativo} vazio="Preencha a dívida e clique em Atualizar débito."
+      <B.PainelTotais totais={x && x.totais} mostrarHonorarios={f.criterios.honorarios.ativo}
         topo={errosForm.length > 0 && (
           <Alerta tipo="erro" titulo="Revise os dados informados">
             <ul className="list-disc pl-5 space-y-0.5">{errosForm.map((e, i) => <li key={i}>{e.mensagem}</li>)}</ul>
@@ -189,12 +193,13 @@
 
     const detalhes = x && (
       <div ref={topoResultado}>
-        <Cartao titulo="Detalhes do cálculo" descricao={`Calculado até ${f.criterios.dataFinal} com a correção monetária informada por você.`} className="section-open print-hide">
+        <Cartao titulo="Detalhes do cálculo" descricao={`Calculado até ${f.criterios.dataFinal}.`} className="section-open print-hide">
           <div className="space-y-5">
             <div className="rounded-[10px] border border-border p-4 text-[13px]">
               <div className="font-medium text-foreground mb-1">Correção monetária utilizada</div>
               {x.r.correcao.modo === 'percentual' && <p className="text-foreground">Percentual informado: <b>{R.formatarPercentual(x.r.correcao.percentual)}</b> · Valor da correção: <b>{R.formatarMoeda(x.r.correcao.valorCorrecao)}</b> · Principal corrigido: <b>{R.formatarMoeda(x.r.principalCorrigido)}</b></p>}
               {x.r.correcao.modo === 'valorCorrigido' && <p className="text-foreground">Principal corrigido <b>informado manualmente</b>: <b>{R.formatarMoeda(x.r.principalCorrigido)}</b> (diferença para o valor original: {R.formatarMoeda(x.r.correcao.valorCorrecao)}). Nenhuma correção adicional foi aplicada.</p>}
+              {x.r.correcao.modo === 'indice' && <p className="text-foreground">{x.r.correcao.nomeIndice}: fator acumulado <b>{x.r.correcao.fator.toLocaleString('pt-BR', { minimumFractionDigits: 6, maximumFractionDigits: 6 })}</b> ({R.formatarPercentual(x.r.correcao.percentual)}) em {x.r.correcao.meses.length} mês(es) · Valor da correção: <b>{R.formatarMoeda(x.r.correcao.valorCorrecao)}</b> · Principal corrigido: <b>{R.formatarMoeda(x.r.principalCorrigido)}</b>{x.r.correcao.faltantes.length ? ` · sem índice divulgado para ${x.r.correcao.faltantes.map(K.nomeMes).join(', ')}` : ''}</p>}
               {x.r.correcao.modo === 'nenhuma' && <p className="text-foreground">Sem correção monetária: o valor original foi usado como principal.</p>}
             </div>
             <div>
@@ -213,8 +218,8 @@
     );
 
     return (
-      <Pagina titulo="Atualização de débitos" descricao="Dívida única com correção informada, juros, multa e pagamentos." nota="Correção monetária informada por você · cálculo local no navegador">
-        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} textoRodape="o resultado aparece ao clicar em Atualizar débito" />
+      <Pagina titulo="Atualização de débitos">
+        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} />
       </Pagina>
     );
   }

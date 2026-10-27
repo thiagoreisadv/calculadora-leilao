@@ -1,6 +1,6 @@
 /*
  * Módulo: Aluguéis, contratos, acordos e parcelas vencidas.
- * Várias parcelas, cada uma com vencimento, valor, correção monetária informada manualmente e
+ * Várias parcelas, cada uma com vencimento, valor, correção monetária (índice oficial ou informada) e
  * pagamentos próprios. Juros, multa e honorários seguem os critérios comuns; tudo é calculado
  * localmente por CentralCalculo.
  */
@@ -11,7 +11,7 @@
   const R = window.CentralRegras;
   const K = window.CentralCalculo;
   const M = window.CentralModulos;
-  const { Pagina, Cartao, Botao, Alerta, CampoTexto, CampoMoeda, CampoData, CampoPercentual, AreaTexto, Grade, Col, Calculador, AcoesPainel, Tabela } = UI;
+  const { Pagina, Cartao, Botao, Alerta, CampoTexto, CampoMoeda, CampoData, CampoPercentual, Selecao, AreaTexto, Grade, Col, Calculador, AcoesPainel, Tabela } = UI;
 
   const PRESETS = {
     aluguel: {
@@ -35,25 +35,26 @@
   let sequencia = 0;
   const novoId = () => { sequencia += 1; return `p${Date.now().toString(36)}${sequencia}`; };
 
-  const novaParcela = (extra) => ({ id: novoId(), descricao: '', competencia: '', vencimento: '', valor: '', correcao: K.correcaoPadrao(), pagamentos: [], ...(extra || {}) });
+  const novaParcela = (extra) => ({ id: novoId(), descricao: '', competencia: '', vencimento: '', valor: '', correcao: B.correcaoInicial(), pagamentos: [], ...(extra || {}) });
 
   const inicial = () => ({
     descricao: '', credor: '', devedor: '', observacoes: '', parcelas: [], encargos: [],
     criterios: K.criteriosPadrao(), gerador: { quantidade: '12', primeiro: '', valor: '' }, aplicarPercentual: '',
   });
 
-  const rotuloModo = (c) => ({ percentual: `Correção: ${c.percentual || '—'}%`, valorCorrigido: 'Valor corrigido informado', nenhuma: 'Sem correção' }[c.modo] || 'Sem correção');
 
-  function LinhaParcela({ parcela, indice, onChange, onRemover, erros, rotuloBase }) {
+  function LinhaParcela({ parcela, indice, onChange, onRemover, erros, rotuloBase, criterios }) {
     const [pagamentos, definirPagamentos] = useState(parcela.pagamentos.length > 0);
-    const [correcao, definirCorrecao] = useState(parcela.correcao.modo !== 'nenhuma');
+    // Abre a correção quando ela depende de dado digitado (percentual ou valor corrigido)
+    const [correcao, definirCorrecao] = useState(['percentual', 'valorCorrigido'].includes(parcela.correcao.modo));
+    const aVencer = R.dataEhValida(parcela.vencimento) && K.estaAVencer(parcela, criterios.dataFinal);
     const erro = (campo) => (erros.find((e) => e.linha === indice && e.campo === campo) || {}).mensagem;
     return (
       <div className="rounded-[10px] border border-border p-3 sm:p-4 section-open">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[12.5px] text-muted-foreground">{rotuloBase} {indice + 1}</span>
           <div className="flex flex-wrap gap-1 justify-end">
-            <Botao tamanho="sm" variante="fantasma" onClick={() => definirCorrecao(!correcao)} aria-expanded={correcao}>{rotuloModo(parcela.correcao)}</Botao>
+            <Botao tamanho="sm" variante="fantasma" onClick={() => definirCorrecao(!correcao)} aria-expanded={correcao}>{B.rotuloCorrecao(parcela.correcao)}</Botao>
             <Botao tamanho="sm" variante="fantasma" onClick={() => definirPagamentos(!pagamentos)} aria-expanded={pagamentos}>
               Pagamentos{parcela.pagamentos.length ? ` (${parcela.pagamentos.length})` : ''}
             </Botao>
@@ -65,9 +66,10 @@
           <CampoData rotulo="Vencimento" obrigatorio valor={parcela.vencimento} onChange={(v) => onChange({ vencimento: v, competencia: v.length === 10 ? v.slice(3) : '' })} erro={erro('vencimento')} />
           <CampoMoeda rotulo="Valor original" obrigatorio valor={parcela.valor} onChange={(v) => onChange({ valor: v })} erro={erro('valor')} />
         </div>
+        {aVencer && <p className="mt-2 text-[11.5px] text-warning">Vence depois da data final: {criterios.vincendas === 'excluir' ? 'fica fora do cálculo.' : 'entra com vencimento antecipado (sem juros; com multa, se houver).'}</p>}
         {correcao && (
           <div className="mt-4 pt-4 border-t border-border section-open">
-            <B.CorrecaoManual compacto valor={parcela.correcao} onChange={(c) => onChange({ correcao: c })} valorOriginal={parcela.valor} erro={erro('correcao')} titulo={`Correção monetária desta ${rotuloBase.toLowerCase()}`} />
+            <B.CorrecaoManual compacto valor={parcela.correcao} onChange={(c) => onChange({ correcao: c })} valorOriginal={parcela.valor} vencimento={parcela.vencimento} dataFinal={criterios.dataFinal} erro={erro('correcao')} titulo={`Correção monetária desta ${rotuloBase.toLowerCase()}`} />
           </div>
         )}
         {pagamentos && (
@@ -114,6 +116,13 @@
       UI.avisar('Percentual aplicado a todas as parcelas. Você ainda pode ajustar cada uma.');
     }
 
+    function aplicarMesmoIndice() {
+      if (!f.parcelas.length) { UI.avisar('Inclua parcelas antes de aplicar a correção.', 'erro'); return; }
+      const indice = f.aplicarIndice || 'IPCA';
+      alterar({ parcelas: f.parcelas.map((x) => ({ ...x, correcao: { ...K.correcaoPadrao(), modo: 'indice', indice } })) });
+      UI.avisar(`${K.INDICES[indice].nome} aplicado a todas as parcelas.`);
+    }
+
     function validar() {
       const erros = K.validarCalculo(f.criterios, f.parcelas, p.parcela);
       f.encargos.forEach((e, i) => { if (e.valor && Number.isNaN(R.lerValor(e.valor))) erros.push({ campo: 'encargos', mensagem: `Encargo ${i + 1}: valor inválido.` }); });
@@ -124,9 +133,12 @@
       const erros = validar();
       definirErros(erros);
       if (erros.length) { UI.avisar('Corrija os campos destacados antes de calcular.', 'erro'); return; }
-      const resultados = f.parcelas.map((x) => K.calcularParcela(x, f.criterios));
+      const { calcular: lista, aVencer } = K.separarVincendas(f.parcelas, f.criterios);
+      if (!lista.length) { definirErros([{ campo: 'parcelas', mensagem: 'Todas as parcelas vencem depois da data final e o critério as deixa fora do cálculo. Mude a data final ou escolha "Vencimento antecipado".' }]); return; }
+      const calculadas = lista.map((x) => x.parcela);
+      const resultados = calculadas.map((x) => K.calcularParcela(x, f.criterios));
       const totais = K.consolidar(resultados, { honorariosFixos: K.honorariosFixos(f.criterios), encargosNominais: K.outrosEncargosTotal(f.encargos) });
-      definirResultado({ resultados, totais, parcelas: f.parcelas.map((x) => ({ ...x })), criteriosDescritos: B.descreverCriterios(f.criterios) });
+      definirResultado({ resultados, totais, parcelas: calculadas.map((x) => ({ ...x })), aVencer: aVencer.map((x) => ({ ...x.parcela })), criteriosDescritos: B.descreverCriterios(f.criterios, calculadas) });
       if (window.innerWidth < 1024) setTimeout(() => topo.current && topo.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
     }
 
@@ -136,10 +148,11 @@
         tipo: p.tipoMemoria,
         titulo: `Memória de cálculo — ${p.titulo}`,
         subtitulo: f.descricao || p.titulo,
-        identificacao: [['Descrição', f.descricao], [p.credor, f.credor], [p.devedor, f.devedor], ['Quantidade de parcelas', String(f.parcelas.length)]],
+        identificacao: [['Descrição', f.descricao], [p.credor, f.credor], [p.devedor, f.devedor], ['Quantidade de parcelas', String(r.parcelas.length)]],
         criterios: r.criteriosDescritos,
         parcelas: r.parcelas.map((x, i) => ({ descricao: x.descricao || `${p.parcela} ${i + 1}`, competencia: x.competencia, vencimento: x.vencimento })),
-        resultados: r.resultados, totais: r.totais, dataFinal: f.criterios.dataFinal, observacoes: f.observacoes,
+        resultados: r.resultados, totais: r.totais, dataFinal: f.criterios.dataFinal,
+        observacoes: [f.observacoes, r.aVencer.length ? `Parcelas com vencimento posterior à data final, fora do cálculo: ${r.aVencer.map((x) => `${x.descricao || p.parcela} (${x.vencimento})`).join(', ')}.` : ''].filter(Boolean).join('\n'),
       };
     }
 
@@ -158,7 +171,7 @@
     function exportarCsv() {
       const r = resultado;
       const linhas = r.resultados.map((x, i) => [i + 1, r.parcelas[i].descricao, r.parcelas[i].competencia, r.parcelas[i].vencimento, R.numeroCSV(x.original), R.numeroCSV(x.correcao.valorCorrecao), R.numeroCSV(x.principalCorrigido), R.numeroCSV(x.juros), R.numeroCSV(x.multa), R.numeroCSV(x.honorarios), R.numeroCSV(-x.pagamentos), R.numeroCSV(x.saldo)]);
-      const csv = R.gerarCSV(['Nº', 'Descrição', 'Competência', 'Vencimento', 'Valor original', 'Correção monetária (informada)', 'Principal corrigido', 'Juros', 'Multa', 'Honorários', 'Pagamentos', 'Saldo atualizado'], linhas);
+      const csv = R.gerarCSV(['Nº', 'Descrição', 'Competência', 'Vencimento', 'Valor original', 'Correção monetária', 'Principal corrigido', 'Juros', 'Multa', 'Honorários', 'Pagamentos', 'Saldo atualizado'], linhas);
       UI.baixarArquivo(UI.nomeArquivo(f.descricao || p.titulo, 'csv'), csv, 'text/csv;charset=utf-8');
     }
 
@@ -176,7 +189,6 @@
           <div className="border-t border-border pt-5 space-y-4">
             <div>
               <h3 className="text-[13px] font-medium text-foreground">Parcelas</h3>
-              <p className="mt-1 text-[12px] text-muted-foreground">Inclua cada parcela vencida e informe, em cada uma, a correção monetária (percentual acumulado ou valor já corrigido).</p>
             </div>
             <details className="rounded-[10px] border border-dashed border-border p-4 group">
               <summary className="cursor-pointer text-[13px] text-foreground list-none flex items-center justify-between">
@@ -191,15 +203,18 @@
             </details>
 
             {f.parcelas.length > 1 && (
-              <div className="rounded-[10px] border border-border p-4 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
-                <CampoPercentual rotulo="Aplicar o mesmo percentual de correção a todas as parcelas" valor={f.aplicarPercentual} onChange={(v) => definirF({ ...f, aplicarPercentual: v })} ajuda="Atalho: substitui a correção de cada parcela; depois você pode ajustar uma a uma." />
-                <Botao onClick={aplicarMesmoPercentual} className="!h-[38px]">Aplicar a todas</Botao>
+              <div className="rounded-[10px] border border-border p-4 grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr_auto] gap-3 items-end">
+                <Selecao rotulo="Mesmo índice em todas" valor={f.aplicarIndice || 'IPCA'} onChange={(v) => definirF({ ...f, aplicarIndice: v })}
+                  opcoes={Object.entries(K.INDICES).map(([valor, x]) => ({ valor, rotulo: x.nome }))} />
+                <Botao onClick={aplicarMesmoIndice}>Aplicar</Botao>
+                <CampoPercentual rotulo="Mesmo percentual em todas" valor={f.aplicarPercentual} onChange={(v) => definirF({ ...f, aplicarPercentual: v })} />
+                <Botao onClick={aplicarMesmoPercentual}>Aplicar</Botao>
               </div>
             )}
 
             {f.parcelas.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhuma parcela incluída ainda.</p>}
             {f.parcelas.map((x, i) => (
-              <LinhaParcela key={x.id} parcela={x} indice={i} erros={errosForm} rotuloBase={p.parcela}
+              <LinhaParcela key={x.id} parcela={x} indice={i} erros={errosForm} rotuloBase={p.parcela} criterios={f.criterios}
                 onChange={(parte) => alterarParcela(x.id, parte)} onRemover={() => alterar({ parcelas: f.parcelas.filter((y) => y.id !== x.id) })} />
             ))}
             {errosForm.some((e) => e.campo === 'parcelas') && <p role="alert" className="text-[11.5px] text-destructive">{errosForm.find((e) => e.campo === 'parcelas').mensagem}</p>}
@@ -211,12 +226,10 @@
         <div className="space-y-6">
           <div>
             {subtitulo('Critérios de cálculo')}
-            <p className="-mt-1 mb-3 text-[12px] text-muted-foreground">Valem para todas as parcelas desta atualização. Os pagamentos de cada parcela são informados na aba Obrigação.</p>
             <B.CriteriosCalculo valor={f.criterios} onChange={(c) => alterar({ criterios: c })} erros={errosForm} textoMulta={p.textoMulta} notaMulta={p.notaMulta} />
           </div>
           <div className="border-t border-border pt-5">
             {subtitulo('Encargos adicionais')}
-            <p className="-mt-1 mb-3 text-[12px] text-muted-foreground">Somados ao final, sem atualização monetária; use só se houver previsão contratual ou fundamento jurídico.</p>
             <M.ListaEncargos itens={f.encargos} onChange={(v) => alterar({ encargos: v })} />
           </div>
           <div className="border-t border-border pt-5">
@@ -228,7 +241,7 @@
 
     const rotuloCalcular = `Atualizar ${f.parcelas.length || ''} parcela${f.parcelas.length === 1 ? '' : 's'}`.replace('  ', ' ');
     const painel = (
-      <B.PainelTotais totais={r && r.totais} mostrarHonorarios={f.criterios.honorarios.ativo} vazio="Inclua as parcelas e clique em Atualizar."
+      <B.PainelTotais totais={r && r.totais} mostrarHonorarios={f.criterios.honorarios.ativo}
         kpis={r ? [{ l: 'Parcelas', v: String(r.resultados.length) }, { l: 'Principal corrigido', v: R.formatarMoeda(r.totais.principalCorrigido) }, { l: 'Pagamentos', v: r.totais.pagamentos ? `-${R.formatarMoeda(r.totais.pagamentos)}` : R.formatarMoeda(0) }] : undefined}
         topo={errosForm.length > 0 && (
           <Alerta tipo="erro" titulo="Revise os dados informados">
@@ -246,9 +259,10 @@
 
     const detalhes = r && (
       <div ref={topo}>
-        <Cartao titulo="Detalhes do cálculo" descricao={`Calculado até ${f.criterios.dataFinal} com a correção monetária informada por parcela.`} acoes={<Botao tamanho="sm" icone="csv" onClick={exportarCsv}>Exportar CSV</Botao>} className="section-open print-hide">
+        <Cartao titulo="Detalhes do cálculo" descricao={`Calculado até ${f.criterios.dataFinal}, com a correção monetária escolhida em cada parcela.`} acoes={<Botao tamanho="sm" icone="csv" onClick={exportarCsv}>Exportar CSV</Botao>} className="section-open print-hide">
           <div className="space-y-5">
-            <Tabela legenda="Resultado por parcela" colunas={['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Correção informada', 'Principal corrigido', 'Juros', 'Multa', 'Pagamentos', 'Saldo']} numericas={[3, 4, 5, 6, 7, 8, 9]}
+            {r.aVencer.length > 0 && <Alerta tipo="aviso">Fora do cálculo por vencerem depois da data final ({f.criterios.dataFinal}): {r.aVencer.map((x) => `${x.descricao || p.parcela} (${x.vencimento})`).join(', ')}.</Alerta>}
+            <Tabela legenda="Resultado por parcela" colunas={['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Correção monetária', 'Principal corrigido', 'Juros', 'Multa', 'Pagamentos', 'Saldo']} numericas={[3, 4, 5, 6, 7, 8, 9]}
               linhas={r.resultados.map((x, i) => [i + 1, r.parcelas[i].descricao || `${p.parcela} ${i + 1}`, r.parcelas[i].vencimento, R.formatarMoeda(x.original), B.textoCorrecao(x.correcao), R.formatarMoeda(x.principalCorrigido), R.formatarMoeda(x.juros), R.formatarMoeda(x.multa), x.pagamentos ? `-${R.formatarMoeda(x.pagamentos)}` : '—', R.formatarMoeda(x.saldo)])} />
             <details className="rounded-[10px] border border-border p-4 group">
               <summary className="cursor-pointer text-[13px] text-foreground list-none flex items-center justify-between">
@@ -269,8 +283,8 @@
     );
 
     return (
-      <Pagina titulo={p.titulo} descricao={p.subtitulo} nota="Correção monetária informada por você · cálculo local no navegador">
-        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} textoRodape="o resultado aparece ao clicar em Atualizar" />
+      <Pagina titulo={p.titulo}>
+        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} />
       </Pagina>
     );
   }

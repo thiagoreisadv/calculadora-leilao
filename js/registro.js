@@ -16,6 +16,7 @@
 
   function textoCorrecao(c) {
     if (c.modo === 'percentual') return `${R.formatarPercentual(c.percentual)} → ${m(c.valorCorrecao)}`;
+    if (c.modo === 'indice') return `${c.nomeIndice} ${R.formatarPercentual(c.percentual)} → ${m(c.valorCorrecao)}`;
     if (c.modo === 'valorCorrigido') return `Valor informado (${m(c.valorCorrecao)})`;
     return 'Sem correção';
   }
@@ -24,12 +25,22 @@
    * o = { tipo, titulo, subtitulo, identificacao, criterios, parcelas:[{descricao, competencia, vencimento}],
    *       resultados:[saída de calcularParcela], totais, dataFinal, alertas, observacoes, notasResumo }
    */
+  // Como a correção foi obtida nas parcelas deste cálculo (para rótulos e fonte do demonstrativo).
+  function origemCorrecao(resultados) {
+    const modos = new Set((resultados || []).map((r) => r.correcao && r.correcao.modo));
+    const indice = (resultados || []).find((r) => r.correcao && r.correcao.modo === 'indice');
+    const manual = modos.has('percentual') || modos.has('valorCorrigido');
+    return { comIndice: Boolean(indice), manual, atualizadoEm: indice ? indice.correcao.atualizadoEm : null };
+  }
+
   function montarCalculo(o) {
     const t = o.totais;
+    const origem = origemCorrecao(o.resultados);
+    const rotuloCorrecao = origem.comIndice ? (origem.manual ? 'Correção monetária (índice oficial e valores informados)' : 'Correção monetária (índice oficial)') : 'Correção monetária (informada manualmente pelo usuário)';
     const comHonorarios = t.honorarios !== 0;
     const resumo = [
       ['Valor original', m(t.original)],
-      ['Correção monetária (informada manualmente pelo usuário)', m(t.correcao)],
+      [rotuloCorrecao, m(t.correcao)],
       ['Principal corrigido', m(t.principalCorrigido)],
       ['Juros', m(t.juros)],
       ['Multa', m(t.multa)],
@@ -39,7 +50,7 @@
     resumo.push(['Pagamentos', t.pagamentos ? `-${m(t.pagamentos)}` : m(0)]);
     if (t.creditoNaoImputado !== 0) resumo.push(['Excedente de pagamentos (não imputado)', m(t.creditoNaoImputado)]);
 
-    const colunas = ['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Correção monetária (informada)', 'Principal corrigido', 'Juros', 'Multa'];
+    const colunas = ['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Correção monetária', 'Principal corrigido', 'Juros', 'Multa'];
     if (comHonorarios) colunas.push('Honorários');
     colunas.push('Pagamentos', 'Saldo atualizado');
     const linhas = o.resultados.map((r, i) => {
@@ -74,7 +85,9 @@
       memorias: o.resultados.map((r, i) => ({ rotulo: `${o.parcelas[i].descricao}${o.parcelas[i].competencia ? ` (${o.parcelas[i].competencia})` : ''} — vencimento ${o.parcelas[i].vencimento}`, texto: r.memoria.join('\n') })),
       alertas: o.alertas || [],
       observacoes: [o.observacoes, notaTotal.length ? `O saldo final inclui, além do total das parcelas: ${notaTotal.join(' e ')}.` : ''].filter(Boolean).join('\n'),
-      fonte: 'Cálculo realizado localmente neste navegador, com a correção monetária e os critérios informados pelo usuário (nenhum índice ou API foi consultado)',
+      fonte: origem.comIndice
+        ? `Cálculo realizado localmente neste navegador. Correção monetária pelos índices oficiais da tabela do Banco Central do Brasil (SGS)${origem.atualizadoEm ? `, atualizada em ${origem.atualizadoEm}` : ''}${origem.manual ? ', e por valores informados pelo usuário' : ''}; demais critérios informados pelo usuário`
+        : 'Cálculo realizado localmente neste navegador, com a correção monetária e os critérios informados pelo usuário (nenhum índice ou API foi consultado)',
       totais: t,
       planilha: o,
     };
@@ -99,7 +112,7 @@
     if (prof.nome) linhas.push([T('Profissional:', 'rotulo'), T(`${prof.nome}${prof.registro ? ` — ${prof.registro}` : ''}`)]);
     (o.identificacao || []).filter((p) => p[1] && String(p[1]).trim()).forEach((p) => linhas.push([T(`${p[0]}:`, 'rotulo'), T(p[1])]));
     linhas.push([]);
-    const cab = ['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Correção informada (%)', 'Correção monetária (R$)', 'Principal corrigido', 'Juros', 'Multa', 'Honorários', 'Pagamentos', 'Excedente de pagamentos (não imputado)', 'Saldo atualizado'];
+    const cab = ['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Correção (%)', 'Correção monetária (R$)', 'Principal corrigido', 'Juros', 'Multa', 'Honorários', 'Pagamentos', 'Excedente de pagamentos (não imputado)', 'Saldo atualizado'];
     linhas.push(cab.map((c) => T(c, 'cabecalho')));
     const primeira = linhas.length + 1;
     o.resultados.forEach((r, i) => {
@@ -111,8 +124,8 @@
         T(p.competencia ? `${p.descricao} (${p.competencia})` : p.descricao),
         T(p.vencimento),
         N(r.original, 'moeda'),
-        c.modo === 'percentual' ? N(c.percentual / 100, 'percentual') : T(c.modo === 'valorCorrigido' ? 'valor informado' : '—'),
-        c.modo === 'percentual' ? F(`ROUND(D${n}*E${n},2)`, c.valorCorrecao, 'moeda') : N(c.valorCorrecao, 'moeda'),
+        (c.modo === 'percentual' || c.modo === 'indice') ? N(c.percentual / 100, 'percentual') : T(c.modo === 'valorCorrigido' ? 'valor informado' : '—'),
+        (c.modo === 'percentual' || c.modo === 'indice') ? F(`ROUND(D${n}*E${n},2)`, c.valorCorrecao, 'moeda') : N(c.valorCorrecao, 'moeda'),
         F(`D${n}+F${n}`, r.principalCorrigido, 'moeda'),
         N(r.juros, 'moeda'), N(r.multa, 'moeda'), N(r.honorarios, 'moeda'), N(r.pagamentos, 'moeda'), N(r.creditoNaoImputado, 'moeda'),
         F(`G${n}+H${n}+I${n}+J${n}-K${n}+L${n}`, r.saldo, 'moeda'),

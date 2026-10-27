@@ -27,48 +27,39 @@ Cada calculador oferece também **Gerar planilha de cálculo (PDF)**: um PDF rea
 
 As memórias guardadas em **Memórias de cálculo** também podem ter a planilha baixada de novo. O arquivo é gerado no navegador, sem bibliotecas (`js/xlsx.js`).
 
-## Correção monetária (sempre informada pelo usuário)
+## Correção monetária
 
-O sistema **não** consulta índices nem calcula correção automática. Em cada parcela o usuário escolhe uma das opções:
+Em cada parcela o usuário escolhe uma das opções:
 
-1. **Informar percentual de correção** — o percentual acumulado do período. O sistema calcula a correção e a soma ao valor original **uma única vez**. Ex.: R$ 5.000,00 com 8% → correção de R$ 400,00 → principal corrigido de R$ 5.400,00.
-2. **Informar valor já corrigido** — o principal corrigido apurado pelo usuário em outra ferramenta. É usado como base, **sem nova correção**.
-3. **Sem correção monetária** — usa diretamente o valor original.
+1. **Índice oficial** (padrão para parcelas novas): IPCA, INPC, IGP-M ou IPCA-E. O sistema acumula as variações mensais do mês do vencimento até o mês anterior ao da data final e mostra a correção enquanto você digita. Mês ainda não divulgado fica de fora e é apontado na memória de cálculo.
+2. **Percentual** acumulado apurado pelo usuário, aplicado uma única vez.
+3. **Valor já corrigido**, usado como base sem nova correção.
+4. **Sem correção**.
 
-A partir do principal corrigido o sistema calcula os demais componentes:
+### Tabela de índices
+
+O site é estático, então os índices ficam em `dados/indices.json`. O robô `.github/workflows/indices.yml` roda todo dia, busca as séries no Banco Central (SGS: IPCA 433, INPC 188, IGP-M 189, IPCA-E 10764) com `scripts/atualizar-indices.js`, grava o arquivo só quando algum valor muda e pede a publicação do GitHub Pages. Para atualizar na hora: GitHub > Actions > "Atualizar índices de correção" > Run workflow. Se a tabela não estiver disponível, o site avisa e pede o percentual manual.
+
+## Regras de cálculo
 
 - **Juros**: taxa informada, ao mês ou ao ano, simples ou compostos, do vencimento até a data final, sobre o principal corrigido. Período = meses completos + dias restantes ÷ 30.
-- **Multa**: percentual sobre o principal corrigido, aplicada uma única vez.
+- **Multa**: só sobre o valor que estava em atraso no vencimento (principal corrigido − pagamentos feitos até o vencimento). Pagamento em dia afasta a multa.
+- **Parcelas que vencem depois da data final** (escolha nos critérios):
+  - *Vencimento antecipado* (padrão): entram na data final, sem juros (não há atraso) e com multa, se aplicada. Útil para acordo descumprido.
+  - *Fora do cálculo*: são listadas à parte. É o padrão na pensão alimentícia, porque prestações ainda não vencidas não são exigíveis.
 - **Honorários**: percentual sobre (principal corrigido + juros + multa − pagamentos) ou valor fixo, somado uma única vez.
-- **Pagamentos**: abatidos do saldo final, ou imputados em ordem cronológica primeiro nos juros e depois no principal (art. 354 do Código Civil), com juros recalculados sobre o principal restante — conforme a escolha do usuário.
-
-A memória de cálculo mostra cada passo e declara que a correção foi **informada manualmente**.
-
-## Digitação de valores em R$
-
-Todos os campos de valor usam a mesma máscara (`EntradaMoeda` em `js/componentes.js`, lógica em `js/regras.js`):
-
-- formata enquanto se digita: `350000` vira `350.000` (R$ 350 mil, nunca R$ 3.500,00); a vírgula é opcional, com até 2 casas;
-- o cursor fica onde estava ao inserir ou apagar no meio do número, e apagar um ponto de milhar apaga o dígito vizinho;
-- o `.` do teclado numérico vira vírgula; colar `R$ 1.500,00` funciona;
-- ao sair do campo, completa as casas decimais (`1.500` → `1.500,00`).
-
-## Visual e navegação
-
-- **Menu lateral recolhível** (64 px só com ícones ou 240 px com rótulos; a escolha fica guardada no navegador). No celular, menu em gaveta.
-- **Calculadores em uma tela**: formulário em abas (ex.: Leilões = Bem / Valores / Custos; Escritura = Negócio / Custos / Outros) ao lado do painel de resultado, sempre visível, com valor principal, status, barra de composição, indicadores e ações. Detalhes longos (tabelas por parcela, memória de cálculo) ficam abaixo.
-- Nos módulos jurídicos o resultado continua aparecendo ao clicar em **Calcular**, com a mesma validação de antes.
-- **Tokens de cor** no padrão shadcn/ui (`--background`, `--card`, `--sidebar`, `--field`, `--primary`, `--primary-text`, `--border`, `--ring`, `--success`, `--warning`, `--destructive`) em `:root` (claro) e `html.dark` (escuro, tema "Nocturne"), mapeados no `tailwind.config` do `index.html`. Para mudar a paleta, altere só os tokens.
-- **Ícones Phosphor** embutidos em `js/icones.js` (SVG, sem depender de CDN).
-
-O repositório inclui `.mcp.json` com o servidor [shadcn-ui-mcp-server](https://github.com/Jpisnice/shadcn-ui-mcp-server), para consultar o código oficial dos componentes ao evoluir a interface (precisa de acesso a `raw.githubusercontent.com`; um token do GitHub em `GITHUB_PERSONAL_ACCESS_TOKEN` evita o limite de 60 consultas por hora).
+- **Pagamentos**: abatidos do saldo final ou imputados em ordem cronológica primeiro nos juros e depois no principal (art. 354 do Código Civil). Pagamento antecipado é aceito. O que exceder principal e juros quita a multa; o resto aparece como excedente não imputado.
+- **Atualização de débitos com "início da atualização"**: juros e correção contam dessa data; a multa considera o vencimento real.
 
 ## Arquitetura
 
 ```
 index.html            Calculadora de leilões (React) + carregamento dos módulos
 js/regras.js          Utilitários: valores, datas, arredondamento, CSV
-js/calculo.js         Motor de cálculo local (correção informada, juros, multa, honorários, pagamentos, ritos)
+js/calculo.js         Motor de cálculo local (correção por índice ou informada, juros, multa, honorários, pagamentos, ritos)
+js/indices.js         Carrega dados/indices.json (tabela de índices) para o motor
+js/icones.js          Ícones Phosphor embutidos (SVG)
+scripts/atualizar-indices.js  Atualiza a tabela de índices a partir do Banco Central (usado pelo GitHub Actions)
 js/historico.js       Histórico local (localStorage) com exportação/importação JSON
 js/registro.js        Monta o registro da memória de cálculo e a planilha de cálculo
 js/xlsx.js            Gerador de planilhas .xlsx sem dependências
@@ -93,7 +84,7 @@ O GitHub Pages é hospedagem estática, sem banco de dados. Por isso:
 ## Testes
 
 ```bash
-node --test test/regras.test.js test/calculo.test.js test/xlsx.test.js test/pdf.test.js
+node --test test/*.test.js
 ```
 
 Cobrem as três modalidades de correção, a ausência de aplicação dupla, juros simples e compostos (ao mês e ao ano), multa, honorários, pagamentos nos dois modos de abatimento, validações, ritos do art. 528 e a garantia de que os arquivos de cálculo não fazem chamadas de rede.

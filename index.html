@@ -171,6 +171,7 @@
   <!-- Módulos da plataforma (camadas separadas: utilitários, motor de cálculo local, interface) -->
   <script src="js/regras.js"></script>
   <script src="js/calculo.js"></script>
+  <script src="js/indices.js"></script>
   <script src="js/historico.js"></script>
   <script src="js/demonstrativo.js"></script>
   <script src="js/xlsx.js"></script>
@@ -424,6 +425,9 @@
       return calc > teto ? teto : calc;
     };
 
+    // Siglas curtas das unidades de área
+    const SIGLAS_AREA = { m2: 'm²', ha: 'ha', alq_paulista: 'alq. paulista', alq_mineiro: 'alq. mineiro', alq_baiano: 'alq. baiano', alqueirao: 'alqueirão', alq_norte: 'alq. do norte' };
+
     // Constantes de Alqueire
     const ALQUEIRES = {
       alq_paulista: { m2: 24200, ha: 2.42, name: "Alqueire Paulista (2.42 ha)" },
@@ -480,6 +484,7 @@
       const [bidUnitValue, setBidUnitValue] = useState(initialState?.bidUnitValue || '');
 
       const [maxBudget, setMaxBudget] = useState(initialState?.maxBudget || '');
+      const [roiAlvo, setRoiAlvo] = useState(initialState?.roiAlvo || '');
 
       const [assetSize, setAssetSize] = useState(initialState?.assetSize || '');
       const [ruralUnit, setRuralUnit] = useState(initialState?.ruralUnit || 'ha');
@@ -537,13 +542,13 @@
       useEffect(() => {
           const stateToSave = {
               advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao,
-              valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
+              valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, roiAlvo,
               assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, segundaPracaValue, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
               clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc,
               showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal
           };
           try { localStorage.setItem('central_calc_imob_v14', JSON.stringify(stateToSave)); } catch (e) {}
-      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, segundaPracaValue, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc, showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal]);
+      }, [advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao, valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, roiAlvo, assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, segundaPracaValue, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation, clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc, showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal]);
 
       // Efeito Tema
       useEffect(() => {
@@ -566,7 +571,7 @@
 
       const buildCurrentState = () => ({
         advName, advOab, darkMode, activeTab, assetType, veiculoMode, clienteNomeLeilao, imovelDescLeilao,
-        valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget,
+        valMode, evalValue, marketValue, bidValue, evalUnitValue, marketUnitValue, bidUnitValue, maxBudget, roiAlvo,
         assetSize, ruralUnit, fipeDiscount, leiloeiro, itbi, valorVenalLeilao, segundaPracaValue, legal, cartorioModeLeilao, cartorioManualLeilao, debts, renovation,
         clienteNome, imovelDesc, negocioValor, valorVenalEsc, incluirRgi, escrituraMode, itbiEscritura, escrituraManual, rgiManual, certidoesEsc, diligenciasEsc,
         showItbiEsc, showLavraturaEsc, showFunrejusEsc, showCertidoesEsc, showDiligenciasEsc, outrosDescEsc, outrosValorEsc, showOutrosEsc, outrosNoTotal
@@ -580,7 +585,7 @@
         setValMode(s.valMode || 'total');
         setEvalValue(s.evalValue ?? ''); setMarketValue(s.marketValue ?? ''); setBidValue(s.bidValue ?? '');
         setEvalUnitValue(s.evalUnitValue ?? ''); setMarketUnitValue(s.marketUnitValue ?? ''); setBidUnitValue(s.bidUnitValue ?? '');
-        setMaxBudget(s.maxBudget ?? '');
+        setMaxBudget(s.maxBudget ?? ''); setRoiAlvo(s.roiAlvo ?? '');
         setAssetSize(s.assetSize ?? ''); setRuralUnit(s.ruralUnit || 'ha');
         setFipeDiscount(s.fipeDiscount ?? '30');
         setLeiloeiro(s.leiloeiro || { value: '5', type: 'percent' });
@@ -653,7 +658,7 @@
                 setClienteNomeLeilao(''); setImovelDescLeilao('');
                 setEvalValue(''); setMarketValue(''); setBidValue('');
                 setEvalUnitValue(''); setMarketUnitValue(''); setBidUnitValue('');
-                setMaxBudget(''); setDebts(''); setRenovation(''); setValorVenalLeilao(''); setSegundaPracaValue('');
+                setMaxBudget(''); setRoiAlvo(''); setDebts(''); setRenovation(''); setValorVenalLeilao(''); setSegundaPracaValue('');
                 setAssetSize(''); setAssetType('urbano'); setVeiculoMode('leilao'); setRuralUnit('ha'); setValMode('total'); setFipeDiscount('30');
             } else {
                 setClienteNome(''); setImovelDesc(''); setNegocioValor(''); setValorVenalEsc('');
@@ -674,6 +679,44 @@
            if (ALQUEIRES[ruralUnit]) return ALQUEIRES[ruralUnit].name.split(' (')[0];
         }
         return '';
+      };
+
+      // --- Conversão de área ao trocar a unidade (mantém a área real e os totais) ---
+      const m2DaUnidade = (tipo, unidade) => {
+        if (tipo !== 'rural') return 1;
+        if (unidade === 'ha') return 10000;
+        if (ALQUEIRES[unidade]) return ALQUEIRES[unidade].m2;
+        return 1;
+      };
+      const formatarArea = (n) => n.toLocaleString('pt-BR', { maximumFractionDigits: 4, useGrouping: false });
+      // Guarda a área exata em m² da última conversão, para ir e voltar entre unidades sem perder precisão.
+      const areaExata = React.useRef({ texto: null, m2: 0 });
+      const converterArea = (de, para) => {
+        if (de === para) return;
+        const tamanho = safeNumber(assetSize);
+        if (tamanho > 0) {
+          const m2 = areaExata.current.texto === assetSize ? areaExata.current.m2 : tamanho * de;
+          const texto = formatarArea(m2 / para);
+          areaExata.current = { texto, m2 };
+          setAssetSize(texto);
+        }
+        // Valores por unidade acompanham a nova unidade (o total não muda)
+        if (valMode === 'unit') {
+          const fator = para / de;
+          const escalar = (v) => (safeNumber(v) > 0 ? safeNumber(v) * fator : v);
+          setBidUnitValue(escalar(bidUnitValue)); setEvalUnitValue(escalar(evalUnitValue)); setMarketUnitValue(escalar(marketUnitValue));
+        }
+      };
+      const areaEmM2 = areaExata.current.texto === assetSize ? areaExata.current.m2 : safeNumber(assetSize) * m2DaUnidade(assetType, ruralUnit);
+      const trocarUnidade = (nova) => {
+        converterArea(m2DaUnidade('rural', ruralUnit), m2DaUnidade('rural', nova));
+        setRuralUnit(nova);
+      };
+      const trocarTipo = (novo) => {
+        if ((assetType === 'urbano' || assetType === 'rural') && (novo === 'urbano' || novo === 'rural')) {
+          converterArea(m2DaUnidade(assetType, ruralUnit), m2DaUnidade(novo, ruralUnit));
+        }
+        setAssetType(novo);
       };
 
       const handleValModeChange = (newMode) => {
@@ -697,9 +740,9 @@
         const num = safeNumber(value);
         if (isNaN(num) || num === 0) return '';
         if (isTotal) {
-          return `Equivale a ${formatMoney(num / size)} / ${getUnitLabel()}`;
+          return `${formatMoney(num / size)} / ${getUnitLabel()}`;
         } else {
-          return `Total: ${formatMoney(num * size)}`;
+          return `Total ${formatMoney(num * size)}`;
         }
       };
 
@@ -785,6 +828,20 @@
           maxBidForProfit = Math.floor(best);
       }
 
+      // Maior lance cujo ROI (lucro ÷ custo total) ainda alcança o ROI desejado.
+      const roiDesejado = safeNumber(roiAlvo);
+      let lanceParaRoi = 0;
+      if (roiDesejado > 0 && discountedSaleValue > 0) {
+        const custoMaximo = discountedSaleValue / (1 + roiDesejado / 100);
+        let low = 0, high = discountedSaleValue, best = 0;
+        for (let i = 0; i < 50; i++) {
+          const mid = (low + high) / 2;
+          if (computeLeilaoTotal(mid).total > custoMaximo) high = mid;
+          else { best = mid; low = mid; }
+        }
+        lanceParaRoi = Math.floor(best);
+      }
+
       const handleSuggestBid = () => {
         const budget = safeNumber(maxBudget);
         let low = 0, high = budget, bestBid = 0;
@@ -807,6 +864,10 @@
         }
 
         const finalBest = Math.floor(bestBid);
+        if (finalBest <= 0) {
+          setToast('O orçamento não cobre os custos fixos (dívidas, reformas e taxas): o lance não foi alterado.');
+          return;
+        }
         if (valMode === 'total') {
             setBidValue(finalBest);
         } else {
@@ -984,6 +1045,7 @@
         }
         if (descontoMercadoPercent !== null && rMercado) m.formula('Desconto sobre o valor de mercado', `1-C${rLance}/C${rMercado}`, descontoMercadoPercent / 100, 'percentual');
         if (maxBidForProfit > 0) m.item('Teto de lance para lucro zero', maxBidForProfit);
+        if (lanceParaRoi > 0) m.item(`Lance máximo para ROI de ${formatCurrencyStr(roiDesejado)}%`, lanceParaRoi);
         if (segundaPracaResult) {
           m.vazio();
           m.secao('Comparativo com a 2ª praça');
@@ -1101,13 +1163,18 @@
             />
           }
         >
-          {safeBid <= 0 && <p className="mt-4 text-[12.5px] text-muted-foreground">Informe o valor do lance e o de {rotuloMercado} para ver o lucro, o ROI e o custo total.</p>}
-          {safeBid > 0 && !temVendaEstimada && <p className="mt-4 text-[12.5px] text-warning">Informe o valor de {rotuloMercado} para calcular lucro, ROI e desconto.</p>}
-          {descontoMercadoPercent !== null && descontoMercadoPercent < 0 && <p className="mt-4 text-[12.5px] text-warning">Atenção: o lance está acima do valor de {rotuloMercado} informado.</p>}
+          {safeBid > 0 && !temVendaEstimada && <p className="mt-4 text-[12.5px] text-warning">Falta o valor de {rotuloMercado}.</p>}
+          {descontoMercadoPercent !== null && descontoMercadoPercent < 0 && <p className="mt-4 text-[12.5px] text-warning">Lance acima do valor de {rotuloMercado}.</p>}
           {temVendaEstimada && maxBidForProfit > 0 && (
             <div className="mt-4 flex items-center justify-between gap-3 text-[13px]">
               <span className="text-muted-foreground">Lance máximo sem prejuízo</span>
               <span className="tabular-nums text-foreground">{formatMoney(maxBidForProfit)}</span>
+            </div>
+          )}
+          {lanceParaRoi > 0 && (
+            <div className="mt-2 flex items-center justify-between gap-3 text-[13px]">
+              <span className="text-muted-foreground">Lance máximo para ROI de {formatCurrencyStr(roiDesejado)}%</span>
+              <span className={`tabular-nums ${safeBid > lanceParaRoi ? 'text-destructive' : 'text-success'}`}>{formatMoney(lanceParaRoi)}</span>
             </div>
           )}
           {ehVeiculo && safeMarket > 0 && (
@@ -1148,7 +1215,7 @@
         { id: 'bem', rotulo: 'Bem', icone: 'casa', conteudo: (
           <Grade>
             <Col span={6}>
-              <Segmentado rotulo="Tipo de bem" valor={assetType} onChange={setAssetType} cheio
+              <Segmentado rotulo="Tipo de bem" valor={assetType} onChange={trocarTipo} cheio
                 opcoes={[{ valor: 'urbano', rotulo: 'Urbano', icone: 'casa' }, { valor: 'rural', rotulo: 'Rural', icone: 'arvore' }, { valor: 'veiculo', rotulo: 'Veículo', icone: 'carro' }]} />
             </Col>
             {ehVeiculo && (
@@ -1159,18 +1226,34 @@
             )}
             {!ehVeiculo && (
               <Col span={3}>
-                <DecimalInput label={assetType === 'urbano' ? 'Área total' : 'Tamanho total'} value={assetSize} onChange={setAssetSize} placeholder="Ex.: 250,50"
-                  sufixo={assetType === 'urbano' ? 'm²' : undefined} subText={assetType === 'urbano' ? 'Opcional. Permite informar valores por m².' : undefined} />
+                <DecimalInput label="Área" value={assetSize} onChange={setAssetSize} placeholder="Ex.: 250,50"
+                  sufixo={assetType === 'urbano' ? 'm²' : SIGLAS_AREA[ruralUnit]} />
               </Col>
             )}
             {assetType === 'rural' && (
               <Col span={3}>
                 <label htmlFor="unidade-rural" className={ROTULO}>Unidade</label>
-                <select id="unidade-rural" value={ruralUnit} onChange={(e) => setRuralUnit(e.target.value)} className={ENTRADA}>
+                <select id="unidade-rural" value={ruralUnit} onChange={(e) => trocarUnidade(e.target.value)} className={ENTRADA}>
                   <option value="m2">Metro quadrado (m²)</option>
                   <option value="ha">Hectare (ha)</option>
                   {Object.entries(ALQUEIRES).map(([key, val]) => <option key={key} value={key}>{val.name}</option>)}
                 </select>
+              </Col>
+            )}
+            {!ehVeiculo && safeSize > 0 && (
+              <Col span={6}>
+                <div className="flex flex-wrap gap-1.5" aria-label="Conversão da área">
+                  {(assetType === 'urbano' ? ['m2', 'ha'] : ['m2', 'ha', ...Object.keys(ALQUEIRES)]).map((k) => {
+                    const ativo = (assetType === 'urbano' ? 'm2' : ruralUnit) === k;
+                    const texto = `${(areaEmM2 / m2DaUnidade('rural', k)).toLocaleString('pt-BR', { maximumFractionDigits: 4 })} ${SIGLAS_AREA[k]}`;
+                    return assetType === 'rural' ? (
+                      <button key={k} type="button" onClick={() => trocarUnidade(k)} aria-pressed={ativo} title={ativo ? 'Unidade atual' : 'Usar esta unidade'}
+                        className={`h-7 px-2.5 rounded-md border text-xs tabular-nums transition-colors ${ativo ? 'border-primary bg-primary/10 text-primary-text' : 'border-border text-muted-foreground hover:bg-primary/10 hover:text-foreground'}`}>{texto}</button>
+                    ) : (
+                      <span key={k} className={`h-7 px-2.5 inline-flex items-center rounded-md border text-xs tabular-nums ${ativo ? 'border-primary bg-primary/10 text-primary-text' : 'border-border text-muted-foreground'}`}>{texto}</span>
+                    );
+                  })}
+                </div>
               </Col>
             )}
             <Col span={3}><TextInput label={isRegularizacao ? 'Comprador / cliente' : 'Cliente / arrematante'} value={clienteNomeLeilao} onChange={setClienteNomeLeilao} placeholder="Ex.: João Silva" /></Col>
@@ -1209,13 +1292,14 @@
                   extraElement={<p className="text-[11.5px] text-muted-foreground">Venda estimada: <span className="tabular-nums text-foreground">{formatMoney(discountedSaleValue)}</span></p>} />
               </Col>
             ) : (
-              <Col span={2}><MoneyInput label="Valor venal" value={valorVenalLeilao} onChange={setValorVenalLeilao} subText="Se maior que o lance, o ITBI usa esta base." /></Col>
+              <Col span={2}><MoneyInput label="Valor venal" value={valorVenalLeilao} onChange={setValorVenalLeilao} /></Col>
             )}
-            <Col span={2}><MoneyInput label="Lance na 2ª praça" value={segundaPracaValue} onChange={setSegundaPracaValue} subText="Compara custo e lucro com a 1ª praça." /></Col>
+            <Col span={2}><MoneyInput label="Lance na 2ª praça" value={segundaPracaValue} onChange={setSegundaPracaValue} /></Col>
             <Col span={2}>
-              <MoneyInput label="Orçamento máximo" value={maxBudget} onChange={setMaxBudget} subText="Teto pessoal de investimento." />
+              <MoneyInput label="Orçamento máximo" value={maxBudget} onChange={setMaxBudget} />
               <Botao onClick={handleSuggestBid} disabled={!(safeNumber(maxBudget) > 0)} className="w-full mt-2" tamanho="sm">Calcular lance ideal</Botao>
             </Col>
+            <Col span={2}><PercentInput label="ROI desejado" value={roiAlvo} onChange={setRoiAlvo} placeholder="Ex.: 20" /></Col>
           </Grade>
         ) },
         { id: 'custos', rotulo: 'Custos', icone: 'debito', conteudo: (
@@ -1229,16 +1313,16 @@
                 </div>
               </Col>
             )}
-            {!isRegularizacao && <Col span={2}><TaxInput label="Leiloeiro" value={leiloeiro.value} type={leiloeiro.type} onChangeValue={(val) => setLeiloeiro({ ...leiloeiro, value: val })} onChangeType={(t) => setLeiloeiro({ ...leiloeiro, type: t })} description="Padrão: 5%" /></Col>}
-            {!ehVeiculo && <Col span={2}><TaxInput label="ITBI" value={itbi.value} type={itbi.type} onChangeValue={(val) => setItbi({ ...itbi, value: val })} onChangeType={(t) => setItbi({ ...itbi, type: t })} description="Padrão: 2%" /></Col>}
+            {!isRegularizacao && <Col span={2}><TaxInput label="Leiloeiro" value={leiloeiro.value} type={leiloeiro.type} onChangeValue={(val) => setLeiloeiro({ ...leiloeiro, value: val })} onChangeType={(t) => setLeiloeiro({ ...leiloeiro, type: t })} /></Col>}
+            {!ehVeiculo && <Col span={2}><TaxInput label="ITBI" value={itbi.value} type={itbi.type} onChangeValue={(val) => setItbi({ ...itbi, value: val })} onChangeType={(t) => setItbi({ ...itbi, type: t })} /></Col>}
             {!ehVeiculo && (
               <Col span={2}>
                 {cartorioModeLeilao === 'pr'
-                  ? <TaxInput label="Registro de imóveis" value={cartorioCostLeilao} type="fixed" disabled description={`Tabela TJ-PR vigente desde ${VIGENCIA_TABELAS_PR}`} />
-                  : <TaxInput label="Registro de imóveis" value={cartorioManualLeilao.value} type={cartorioManualLeilao.type} onChangeValue={(val) => setCartorioManualLeilao({ ...cartorioManualLeilao, value: val })} onChangeType={(t) => setCartorioManualLeilao({ ...cartorioManualLeilao, type: t })} description="Custas informadas manualmente" />}
+                  ? <TaxInput label="Registro de imóveis" value={cartorioCostLeilao} type="fixed" disabled />
+                  : <TaxInput label="Registro de imóveis" value={cartorioManualLeilao.value} type={cartorioManualLeilao.type} onChangeValue={(val) => setCartorioManualLeilao({ ...cartorioManualLeilao, value: val })} onChangeType={(t) => setCartorioManualLeilao({ ...cartorioManualLeilao, type: t })} />}
               </Col>
             )}
-            <Col span={2}><TaxInput label={isRegularizacao ? 'Honorários judiciais' : 'Assessoria jurídica'} value={legal.value} type={legal.type} onChangeValue={(val) => setLegal({ ...legal, value: val })} onChangeType={(t) => setLegal({ ...legal, type: t })} description={isRegularizacao ? 'Regularização' : 'Honorários'} /></Col>
+            <Col span={2}><TaxInput label={isRegularizacao ? 'Honorários judiciais' : 'Assessoria jurídica'} value={legal.value} type={legal.type} onChangeValue={(val) => setLegal({ ...legal, value: val })} onChangeType={(t) => setLegal({ ...legal, type: t })} /></Col>
             <Col span={2}><MoneyInput label={ehVeiculo ? 'Multas / IPVA / débitos' : 'Dívidas do imóvel'} value={debts} onChange={setDebts} /></Col>
             <Col span={2}><MoneyInput label={ehVeiculo ? 'Mecânica / reparos' : 'Reformas / outros'} value={renovation} onChange={setRenovation} /></Col>
           </Grade>
@@ -1286,7 +1370,6 @@
             />
           }
         >
-          {safeNegocio <= 0 && <p className="mt-4 text-[12.5px] text-muted-foreground">Informe o valor real da negociação para ver o orçamento de custas.</p>}
           {safeNegocio > 0 && (
             <div className="mt-4 flex items-center justify-between gap-3 text-[13px]">
               <span className="text-muted-foreground">Subtotal sem registro</span>
@@ -1302,7 +1385,7 @@
             <Col span={3}><TextInput label="Nome do adquirente" value={clienteNome} onChange={setClienteNome} placeholder="Ex.: João Silva" /></Col>
             <Col span={3}><TextInput label="Descrição do imóvel" value={imovelDesc} onChange={setImovelDesc} placeholder="Ex.: Chácara São Pedro – Loanda/PR" /></Col>
             <Col span={2}><MoneyInput label="Valor real da negociação" value={negocioValor} onChange={setNegocioValor} /></Col>
-            <Col span={2}><MoneyInput label="Valor venal (opcional)" value={valorVenalEsc} onChange={setValorVenalEsc} subText="Se maior que o negócio, o ITBI usa esta base." /></Col>
+            <Col span={2}><MoneyInput label="Valor venal (opcional)" value={valorVenalEsc} onChange={setValorVenalEsc} /></Col>
             <Col span={2}>
               <span className={ROTULO}>Registro de imóveis (RGI)</span>
               <Segmentado rotulo="Registro de imóveis (RGI) no total" valor={incluirRgi ? 'sim' : 'nao'} onChange={(v) => setIncluirRgi(v === 'sim')} cheio
@@ -1320,23 +1403,23 @@
               </div>
             </Col>
             <Col span={2}>
-              <TaxInput label="ITBI" value={itbiEscritura.value} type={itbiEscritura.type} onChangeValue={(val) => setItbiEscritura({ ...itbiEscritura, value: val })} onChangeType={(t) => setItbiEscritura({ ...itbiEscritura, type: t })} description="Imposto de transmissão" />
+              <TaxInput label="ITBI" value={itbiEscritura.value} type={itbiEscritura.type} onChangeValue={(val) => setItbiEscritura({ ...itbiEscritura, value: val })} onChangeType={(t) => setItbiEscritura({ ...itbiEscritura, type: t })} />
               <ShowInBudgetToggle checked={showItbiEsc} onChange={setShowItbiEsc} />
             </Col>
             <Col span={2}>
               {escrituraMode === 'pr'
-                ? <TaxInput label="Escritura de compra" value={Math.round(lavraturaCost * 100) / 100} type="fixed" disabled description={escrituraExtrapolada ? 'Acima do teto da tabela (226 mil)' : 'Tabela XI/TJ-PR 2026'} />
-                : <TaxInput label="Escritura de compra" value={escrituraManual.value} type={escrituraManual.type} onChangeValue={(val) => setEscrituraManual({ ...escrituraManual, value: val })} onChangeType={(t) => setEscrituraManual({ ...escrituraManual, type: t })} description="Tabelionato" />}
+                ? <TaxInput label="Escritura de compra" value={Math.round(lavraturaCost * 100) / 100} type="fixed" disabled />
+                : <TaxInput label="Escritura de compra" value={escrituraManual.value} type={escrituraManual.type} onChangeValue={(val) => setEscrituraManual({ ...escrituraManual, value: val })} onChangeType={(t) => setEscrituraManual({ ...escrituraManual, type: t })} />}
               <ShowInBudgetToggle checked={showLavraturaEsc} onChange={setShowLavraturaEsc} />
             </Col>
             <Col span={2}>
-              <TaxInput label="Funrejus obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled description="0,2% (teto de R$ 7.408,87)" />
+              <TaxInput label="Funrejus obrigatório" value={Math.round(funrejusCost * 100) / 100} type="fixed" disabled />
               <ShowInBudgetToggle checked={showFunrejusEsc} onChange={setShowFunrejusEsc} />
             </Col>
             <Col span={2}>
               {escrituraMode === 'pr'
-                ? <TaxInput label="Registro de imóveis" value={Math.round(cartorioCostEsc * 100) / 100} type="fixed" disabled description="Tabela III-C/TJ-PR 2026" />
-                : <TaxInput label="Registro de imóveis" value={rgiManual.value} type={rgiManual.type} onChangeValue={(val) => setRgiManual({ ...rgiManual, value: val })} onChangeType={(t) => setRgiManual({ ...rgiManual, type: t })} description="Cartório de registro" />}
+                ? <TaxInput label="Registro de imóveis" value={Math.round(cartorioCostEsc * 100) / 100} type="fixed" disabled />
+                : <TaxInput label="Registro de imóveis" value={rgiManual.value} type={rgiManual.type} onChangeValue={(val) => setRgiManual({ ...rgiManual, value: val })} onChangeType={(t) => setRgiManual({ ...rgiManual, type: t })} />}
             </Col>
             <Col span={2}>
               <MoneyInput label="Certidões e buscas" value={certidoesEsc} onChange={setCertidoesEsc} />
@@ -1348,7 +1431,7 @@
             </Col>
             {escrituraMode === 'pr' && escrituraExtrapolada && (
               <Col span={6}>
-                <Alerta tipo="aviso">A tabela oficial de emolumentos do Tabelionato de Notas (Tabela XI) não define faixas acima de R$ 226.000,00. O valor exibido usa a última faixa conhecida como estimativa mínima: confirme o valor exato com o tabelionato.</Alerta>
+                <p className="text-[11.5px] text-warning">Acima de R$ 226 mil a Tabela XI não tem faixa: escritura estimada pela última faixa.</p>
               </Col>
             )}
           </Grade>
@@ -1365,7 +1448,7 @@
             <Col span={3}>
               {outrosNoTotal
                 ? <div className="sm:pt-[25px]"><ShowInBudgetToggle checked={showOutrosEsc} onChange={setShowOutrosEsc} /></div>
-                : <p className="sm:pt-[25px] text-[11.5px] text-muted-foreground">Exibido à parte, fora do total do orçamento.</p>}
+                : null}
             </Col>
           </Grade>
         ) },
@@ -1382,8 +1465,7 @@
       return (
         <Pagina
           titulo={eLeilao ? 'Calculadora de leilões' : 'Orçamento de escritura'}
-          descricao={eLeilao ? 'Custo de arrematação, lucro e ROI.' : 'ITBI, escritura, Funrejus e registro (tabelas TJ-PR 2026).'}
-          nota="Cálculo local no navegador" acoes={acoesCabecalho}>
+          acoes={acoesCabecalho}>
           {isSettingsOpen && (
             <section className="bg-card border border-border rounded-[14px] px-4 sm:px-6 py-5 print-hide section-open">
               <h2 className="text-[15px] font-medium text-foreground mb-4">Identificação do profissional</h2>
@@ -1391,7 +1473,6 @@
                 <TextInput label="Nome do profissional ou escritório" value={advName} onChange={setAdvName} />
                 <TextInput label="Registro profissional (ex.: OAB/PR)" value={advOab} onChange={setAdvOab} />
               </div>
-              <p className="text-xs text-muted-foreground mt-3">Aparece no relatório em PDF. Tabelas de custas TJ-PR vigentes desde {VIGENCIA_TABELAS_PR}; verifique as atualizações anuais antes de confiar em valores altos.</p>
             </section>
           )}
 
@@ -1402,7 +1483,7 @@
                 <Botao tamanho="sm" variante="primario" onClick={handleSaveCase}>Salvar caso atual</Botao>
               </div>
               {savedCases.length === 0 ? (
-                <p className="text-[13px] text-muted-foreground">Nenhum caso salvo ainda. Preencha os dados e clique em "Salvar caso atual" para voltar a este cálculo depois.</p>
+                <p className="text-[13px] text-muted-foreground">Nenhum caso salvo.</p>
               ) : (
                 <ul className="divide-y divide-border max-h-64 overflow-y-auto">
                   {savedCases.map((c) => (
