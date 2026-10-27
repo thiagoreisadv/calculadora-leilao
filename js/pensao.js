@@ -229,7 +229,7 @@
                 {f.fixacao.tipo === 'percentual' && (
                   <>
                     <Col span={3}><CampoPercentual rotulo="Percentual fixado" obrigatorio valor={f.fixacao.percentual} onChange={(v) => alterarFixacao({ percentual: v })} erro={erroCampo('percentual')} /></Col>
-                    <Col span={6}><CampoTexto rotulo="Base do percentual" valor={f.fixacao.baseDescricao} onChange={(v) => alterarFixacao({ baseDescricao: v })} maxLength={60} ajuda="Ex.: Salário mínimo, rendimento líquido. Você informará o valor da base em cada mês." /></Col>
+                    <Col span={6}><CampoTexto rotulo="Base do percentual" valor={f.fixacao.baseDescricao} onChange={(v) => alterarFixacao({ baseDescricao: v })} maxLength={60} /></Col>
                   </>
                 )}
               </Grade>
@@ -242,7 +242,6 @@
           <div className="space-y-4">
             <div>
               <h3 className="text-[13px] font-medium text-foreground">Competências devidas</h3>
-              <p className="mt-1 text-[12px] text-muted-foreground">Informe os meses devidos e o dia de vencimento. Cada mês é calculado individualmente, com sua própria correção monetária.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_8rem_auto] gap-3 items-end">
               <CampoCompetencia rotulo="Do mês" valor={f.gerador.de} onChange={(v) => alterar({ gerador: { ...f.gerador, de: v } })} />
@@ -264,7 +263,6 @@
           <div className="border-t border-border pt-5 space-y-3">
             <div>
               <h3 className="text-[13px] font-medium text-foreground">Pagamentos realizados</h3>
-              <p className="mt-1 text-[12px] text-muted-foreground">Cada pagamento abate a competência que você indicar. Nenhuma imputação automática é feita entre competências.</p>
             </div>
             {f.pagamentos.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhum pagamento informado.</p>}
             {f.pagamentos.map((p, i) => (
@@ -285,13 +283,12 @@
         <div className="space-y-6">
           <div>
             {subtitulo('Critérios de cálculo')}
-            <p className="-mt-1 mb-3 text-[12px] text-muted-foreground">Juros, multa e abatimento seguem o que você escolher. Nada é aplicado automaticamente.</p>
             <B.CriteriosCalculo valor={f.criterios} onChange={(c) => alterar({ criterios: c })} erros={errosForm} rotuloData="Atualizar até (data-base)" />
           </div>
           <div className="border-t border-border pt-5">
             <Grade>
-              <Col span={3}><CampoData rotulo="Ajuizamento da execução" valor={f.ajuizamento} onChange={(v) => alterar({ ajuizamento: v })} erro={erroCampo('ajuizamento')} ajuda="Opcional. Define o corte entre o rito da prisão e o da expropriação (art. 528 do CPC)." /></Col>
-              <Col span={3}><CampoData rotulo="Data de corte da prescrição" valor={f.corte} onChange={(v) => alterar({ corte: v })} erro={erroCampo('corte')} ajuda="Opcional. Competências anteriores ficam fora do cálculo. Para filho menor sob poder familiar, a prescrição não corre: deixe em branco." /></Col>
+              <Col span={3}><CampoData rotulo="Ajuizamento da execução" valor={f.ajuizamento} onChange={(v) => alterar({ ajuizamento: v })} erro={erroCampo('ajuizamento')} /></Col>
+              <Col span={3}><CampoData rotulo="Data de corte da prescrição" valor={f.corte} onChange={(v) => alterar({ corte: v })} erro={erroCampo('corte')} /></Col>
             </Grade>
           </div>
           <div className="border-t border-border pt-5">
@@ -302,7 +299,7 @@
     ];
 
     const painel = (
-      <B.PainelTotais totais={x && x.totais} mostrarHonorarios={f.criterios.honorarios.ativo} vazio="Informe a pensão e as competências e clique em Calcular pensão."
+      <B.PainelTotais totais={x && x.totais} mostrarHonorarios={f.criterios.honorarios.ativo}
         kpis={x ? [{ l: 'Competências', v: String(x.resultados.length) }, { l: 'Principal corrigido', v: m(x.totais.principalCorrigido) }, { l: 'Pagamentos', v: x.totais.pagamentos ? `-${m(x.totais.pagamentos)}` : m(0) }] : undefined}
         topo={errosForm.length > 0 && (
           <Alerta tipo="erro" titulo="Revise os dados informados">
@@ -358,8 +355,8 @@
     );
 
     return (
-      <Pagina titulo="Pensão alimentícia" descricao="Débito competência por competência, ritos do art. 528 do CPC." nota="Cálculo local no navegador">
-        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} textoRodape="o resultado aparece ao clicar em Calcular pensão" />
+      <Pagina titulo="Pensão alimentícia">
+        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} />
       </Pagina>
     );
   }

@@ -394,7 +394,7 @@
               {atual.conteudo}
             </div>
             <div className="flex-none flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-t border-border">
-              <span className="text-[12.5px] text-muted-foreground min-w-0 truncate">Etapa {i + 1} de {abas.length} · {textoRodape}</span>
+              <span className="text-[12.5px] text-muted-foreground min-w-0 truncate">Etapa {i + 1} de {abas.length}</span>
               <Botao onClick={proxima} className="flex-none !h-9 !text-[13px]" variante="primario">
                 {ultima ? 'Ver resultado' : `Próxima: ${abas[i + 1].rotulo}`} <Icone nome="seta" className="w-4 h-4" />
               </Botao>

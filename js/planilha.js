@@ -43,7 +43,7 @@
           <CampoCompetencia rotulo="Competência" valor={linha.competencia} onChange={(v) => onChange({ competencia: v })} erro={erro('competencia')} />
           <CampoData rotulo="Vencimento" obrigatorio valor={linha.vencimento} onChange={(v) => onChange({ vencimento: v })} erro={erro('vencimento')} />
           <CampoMoeda rotulo="Valor original" obrigatorio valor={linha.valor} onChange={(v) => onChange({ valor: v })} erro={erro('valor')} />
-          <CampoMoeda rotulo="Outros encargos (nominais)" valor={linha.outros} onChange={(v) => onChange({ outros: v })} className="lg:col-span-2" ajuda="Somados sem atualização, se houver fundamento." erro={erro('outros')} />
+          <CampoMoeda rotulo="Outros encargos (nominais)" valor={linha.outros} onChange={(v) => onChange({ outros: v })} className="lg:col-span-2" erro={erro('outros')} />
         </div>
         {aVencer && <p className="mt-2 text-[11.5px] text-warning">Vence depois da data final: {criterios.vincendas === 'excluir' ? 'fica fora do cálculo.' : 'entra com vencimento antecipado (sem juros; com multa, se houver).'}</p>}
         {correcao && (
@@ -53,8 +53,8 @@
         )}
         {proprios && (
           <div className="mt-4 pt-4 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-3 section-open">
-            <CampoPercentual rotulo="Taxa de juros desta linha" valor={linha.jurosPct} onChange={(v) => onChange({ jurosPct: v })} placeholder="padrão" ajuda="Vazio usa o padrão da planilha; 0 desliga os juros. Periodicidade e modalidade seguem o padrão." erro={erro('jurosPct')} />
-            <CampoPercentual rotulo="Multa desta linha" valor={linha.multaPct} onChange={(v) => onChange({ multaPct: v })} placeholder="padrão" ajuda="Vazio usa o padrão; 0 desliga a multa." erro={erro('multaPct')} />
+            <CampoPercentual rotulo="Taxa de juros desta linha" valor={linha.jurosPct} onChange={(v) => onChange({ jurosPct: v })} placeholder="padrão" erro={erro('jurosPct')} />
+            <CampoPercentual rotulo="Multa desta linha" valor={linha.multaPct} onChange={(v) => onChange({ multaPct: v })} placeholder="padrão" erro={erro('multaPct')} />
           </div>
         )}
         {pagamentos && (
@@ -154,11 +154,10 @@
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-[13px] font-medium text-foreground">Obrigações</h3>
-                <p className="mt-1 text-[12px] text-muted-foreground">{f.linhas.length} linha(s), máximo de {R.LIMITE_PARCELAS}. A correção monetária (índice ou valor informado) é escolhida em cada linha.</p>
               </div>
               <Botao tamanho="sm" variante="primario" icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha()] })}>Adicionar obrigação</Botao>
             </div>
-            {f.linhas.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhuma linha. Clique em "Adicionar obrigação" para começar.</p>}
+            {f.linhas.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhuma obrigação.</p>}
             {f.linhas.map((l, i) => (
               <LinhaEditavel key={l.id} linha={l} indice={i} erros={errosForm} criterios={f.criterios}
                 onChange={(parte) => alterarLinha(l.id, parte)} onRemover={() => alterar({ linhas: f.linhas.filter((x) => x.id !== l.id) })} />
@@ -171,7 +170,6 @@
         <div className="space-y-6">
           <div>
             <h3 className="text-[13px] font-medium text-foreground mb-1">Critérios padrão</h3>
-            <p className="mb-3 text-[12px] text-muted-foreground">Aplicados a todas as linhas, exceto onde a linha tiver taxa de juros ou multa próprias.</p>
             <B.CriteriosCalculo valor={f.criterios} onChange={(c) => alterar({ criterios: c })} erros={errosForm.filter((e) => e.linha === undefined)} />
           </div>
           <div className="border-t border-border pt-5">
@@ -182,7 +180,7 @@
     ];
 
     const painel = (
-      <B.PainelTotais totais={res && res.totais} mostrarHonorarios={f.criterios.honorarios.ativo} rotulo="Total consolidado" vazio="Inclua as obrigações e clique em Calcular planilha."
+      <B.PainelTotais totais={res && res.totais} mostrarHonorarios={f.criterios.honorarios.ativo} rotulo="Total consolidado"
         kpis={res ? [{ l: 'Obrigações', v: String(res.linhas.length) }, { l: 'Principal somado', v: m(res.totais.original) }, { l: 'Pagamentos', v: res.totais.pagamentos ? `-${m(res.totais.pagamentos)}` : m(0) }] : undefined}
         topo={errosForm.length > 0 && (
           <Alerta tipo="erro" titulo="Revise os dados informados">
@@ -216,8 +214,8 @@
     );
 
     return (
-      <Pagina titulo="Planilha consolidada" descricao="Várias obrigações com total consolidado." nota="Cálculo local no navegador">
-        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} textoRodape="o resultado aparece ao clicar em Calcular planilha" />
+      <Pagina titulo="Planilha consolidada">
+        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} />
       </Pagina>
     );
   }

@@ -81,20 +81,20 @@
     let previa = null;
     let avisoIndice = null;
     if (c.modo === 'indice') {
-      if (indices.status === 'carregando') avisoIndice = 'Carregando a tabela de índices…';
-      else if (indices.status !== 'ok') avisoIndice = 'A tabela de índices ainda não está disponível. Use "Percentual" ou "Valor já corrigido" por enquanto.';
+      if (indices.status === 'carregando') avisoIndice = 'Carregando índices…';
+      else if (indices.status !== 'ok') avisoIndice = 'Tabela de índices indisponível: use Percentual.';
       else {
         const chave = K.INDICES[c.indice] ? c.indice : 'IPCA';
         const ultimo = K.ultimoMesIndice(chave);
-        avisoIndice = `Tabela do Banco Central atualizada em ${indices.atualizadoEm || '—'}${ultimo ? ` · último ${K.INDICES[chave].nome} divulgado: ${K.nomeMes(ultimo)}` : ''}.`;
+        avisoIndice = `Atualizado em ${indices.atualizadoEm || '—'}${ultimo ? ` · último: ${K.nomeMes(ultimo)}` : ''}`;
         if (original > 0 && R.dataEhValida(vencimento) && R.dataEhValida(dataFinal)) {
           const r = K.aplicarCorrecao(original, { ...c, indice: chave }, { inicio: vencimento, fim: dataFinal });
-          if (!r.meses.length && !r.faltantes.length) previa = 'Nenhum mês decorrido até a data final: sem correção.';
+          if (!r.meses.length && !r.faltantes.length) previa = 'Sem meses a corrigir.';
           else {
             const periodo = r.meses.length ? `${K.nomeMes(r.meses[0].mes)} a ${K.nomeMes(r.meses[r.meses.length - 1].mes)}` : '—';
             previa = `${r.nomeIndice} acumulado ${R.formatarPercentual(r.percentual)} (${periodo}) · Correção: ${R.formatarMoeda(r.valorCorrecao)} · Principal corrigido: ${R.formatarMoeda(r.principalCorrigido)}${r.faltantes.length ? ` · sem índice divulgado para ${r.faltantes.map(K.nomeMes).join(', ')}` : ''}`;
           }
-        } else if (original > 0) previa = 'Informe o vencimento e a data final para ver a correção.';
+        }
       }
     } else if (original > 0) {
       if (c.modo === 'percentual' && R.lerValor(c.percentual) >= 0) {
@@ -102,9 +102,9 @@
         previa = `Correção: ${R.formatarMoeda(r.valorCorrecao)} · Principal corrigido: ${R.formatarMoeda(r.principalCorrigido)}`;
       } else if (c.modo === 'valorCorrigido' && R.lerValor(c.valorCorrigido) > 0) {
         const r = K.aplicarCorrecao(original, c);
-        previa = `Valor informado manualmente · Diferença para o valor original: ${R.formatarMoeda(r.valorCorrecao)}`;
+        previa = `Diferença: ${R.formatarMoeda(r.valorCorrecao)}`;
       } else if (c.modo === 'nenhuma') {
-        previa = `O valor original (${R.formatarMoeda(original)}) será usado diretamente.`;
+        previa = null;
       }
     }
     return (
@@ -114,21 +114,18 @@
           opcoes={OPCOES_CORRECAO.map(([valor, rotulo]) => ({ valor, rotulo }))} />
         {c.modo === 'indice' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
-            <Selecao rotulo="Índice" valor={K.INDICES[c.indice] ? c.indice : 'IPCA'} onChange={(v) => alterar({ indice: v })} opcoes={OPCOES_INDICE} erro={erro}
-              ajuda="Variações mensais do mês do vencimento até o mês anterior ao da data final." />
+            <Selecao rotulo="Índice" valor={K.INDICES[c.indice] ? c.indice : 'IPCA'} onChange={(v) => alterar({ indice: v })} opcoes={OPCOES_INDICE} erro={erro} />
             {avisoIndice && <p className={`text-[11.5px] sm:pt-[26px] ${indices.status === 'ok' || indices.status === 'carregando' ? 'text-muted-foreground' : 'text-warning'}`}>{avisoIndice}</p>}
           </div>
         )}
         {c.modo === 'percentual' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
-            <CampoPercentual rotulo="Correção monetária acumulada do período" obrigatorio valor={c.percentual} onChange={(v) => alterar({ percentual: v })} erro={erro}
-              ajuda="Percentual total que você apurou em outra ferramenta. O sistema soma a correção ao valor original uma única vez." />
+            <CampoPercentual rotulo="Correção monetária acumulada do período" obrigatorio valor={c.percentual} onChange={(v) => alterar({ percentual: v })} erro={erro} />
           </div>
         )}
         {c.modo === 'valorCorrigido' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
-            <CampoMoeda rotulo="Valor principal já corrigido" obrigatorio valor={c.valorCorrigido} onChange={(v) => alterar({ valorCorrigido: v })} erro={erro}
-              ajuda="Usado como base dos juros e da multa, sem aplicar nova correção." />
+            <CampoMoeda rotulo="Valor principal já corrigido" obrigatorio valor={c.valorCorrigido} onChange={(v) => alterar({ valorCorrigido: v })} erro={erro} />
           </div>
         )}
         {previa && <p className="text-xs text-muted-foreground" aria-live="polite">{previa}</p>}
@@ -146,41 +143,38 @@
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <CampoData rotulo={rotuloData} obrigatorio valor={c.dataFinal} onChange={(v) => alterar({ dataFinal: v })} erro={erro('dataFinal')} comHoje />
           <Selecao rotulo="Abatimento dos pagamentos" valor={c.imputacao} onChange={(v) => alterar({ imputacao: v })} erro={erro('imputacao')}
-            opcoes={[{ valor: 'final', rotulo: 'Abater do saldo final' }, { valor: 'art354', rotulo: 'Imputar em juros e depois principal (art. 354 CC)' }]}
-            ajuda="Só faz diferença quando há pagamentos informados." />
+            opcoes={[{ valor: 'final', rotulo: 'Abater do saldo final' }, { valor: 'art354', rotulo: 'Imputar em juros e depois principal (art. 354 CC)' }]} />
           <Selecao rotulo="Parcelas que vencem depois da data final" valor={c.vincendas || 'antecipar'} onChange={(v) => alterar({ vincendas: v })} erro={erro('vincendas')} className="sm:col-span-2"
-            opcoes={[{ valor: 'antecipar', rotulo: 'Vencimento antecipado: entram na data final, sem juros e com multa' }, { valor: 'excluir', rotulo: 'Ficam fora do cálculo (listadas à parte)' }]}
-            ajuda="Ex.: acordo descumprido com parcelas ainda a vencer. Não há juros sem atraso; a multa segue o critério acima." />
+            opcoes={[{ valor: 'antecipar', rotulo: 'Vencimento antecipado (sem juros, com multa)' }, { valor: 'excluir', rotulo: 'Fora do cálculo' }]} />
         </div>
         <div className="rounded-[10px] border border-border divide-y divide-border">
           <div className="p-4 space-y-3">
-            <Chave rotulo="Juros moratórios" descricao="Aplique somente se houver previsão contratual, legal ou na decisão." marcado={c.juros.ativo} onChange={(v) => alterar({ juros: { ...c.juros, ativo: v } })} />
+            <Chave rotulo="Juros moratórios" marcado={c.juros.ativo} onChange={(v) => alterar({ juros: { ...c.juros, ativo: v } })} />
             {c.juros.ativo && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 section-open">
                 <CampoPercentual rotulo="Taxa de juros" valor={c.juros.percentual} onChange={(v) => alterar({ juros: { ...c.juros, percentual: v } })} erro={erro('jurosPercentual')} />
                 <Selecao rotulo="Taxa" valor={c.juros.periodicidade} onChange={(v) => alterar({ juros: { ...c.juros, periodicidade: v } })} opcoes={[{ valor: 'mensal', rotulo: 'Ao mês' }, { valor: 'anual', rotulo: 'Ao ano' }]} erro={erro('jurosPeriodicidade')} />
                 <Selecao rotulo="Modalidade" valor={c.juros.modalidade} onChange={(v) => alterar({ juros: { ...c.juros, modalidade: v } })} opcoes={[{ valor: 'simples', rotulo: 'Juros simples' }, { valor: 'compostos', rotulo: 'Juros compostos' }]} erro={erro('jurosModalidade')} />
-                <p className="sm:col-span-3 text-xs text-muted-foreground">Os juros contam do vencimento até a data final, sobre o principal corrigido. Período = meses completos + dias restantes ÷ 30. Não escolha juros compostos sem previsão que o autorize.</p>
               </div>
             )}
           </div>
           <div className="p-4 space-y-3">
-            <Chave rotulo="Multa" descricao={notaMulta || 'Aplique somente se prevista no contrato, na lei ou na decisão.'} marcado={c.multa.ativo} onChange={(v) => alterar({ multa: { ...c.multa, ativo: v } })} />
+            <Chave rotulo="Multa" marcado={c.multa.ativo} onChange={(v) => alterar({ multa: { ...c.multa, ativo: v } })} />
             {c.multa.ativo && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
-                <CampoPercentual rotulo={textoMulta} valor={c.multa.percentual} onChange={(v) => alterar({ multa: { ...c.multa, percentual: v } })} erro={erro('multaPercentual')} ajuda="Incide uma única vez sobre o principal corrigido." />
+                <CampoPercentual rotulo={textoMulta} valor={c.multa.percentual} onChange={(v) => alterar({ multa: { ...c.multa, percentual: v } })} erro={erro('multaPercentual')} />
               </div>
             )}
           </div>
           <div className="p-4 space-y-3">
-            <Chave rotulo="Honorários" descricao="Percentual ou valor fixo, conforme fixado." marcado={c.honorarios.ativo} onChange={(v) => alterar({ honorarios: { ...c.honorarios, ativo: v } })} />
+            <Chave rotulo="Honorários" marcado={c.honorarios.ativo} onChange={(v) => alterar({ honorarios: { ...c.honorarios, ativo: v } })} />
             {c.honorarios.ativo && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
                 <Selecao rotulo="Forma" valor={c.honorarios.modo} onChange={(v) => alterar({ honorarios: { ...c.honorarios, modo: v, valor: '' } })}
                   opcoes={[{ valor: 'p', rotulo: 'Percentual' }, { valor: 'v', rotulo: 'Valor fixo (R$)' }]} />
                 {c.honorarios.modo === 'p'
-                  ? <CampoPercentual rotulo="Percentual" valor={c.honorarios.valor} onChange={(v) => alterar({ honorarios: { ...c.honorarios, valor: v } })} erro={erro('honorarios')} ajuda="Sobre principal corrigido + juros + multa − pagamentos." />
-                  : <CampoMoeda rotulo="Valor dos honorários" valor={c.honorarios.valor} onChange={(v) => alterar({ honorarios: { ...c.honorarios, valor: v } })} erro={erro('honorarios')} ajuda="Somado uma única vez ao total." />}
+                  ? <CampoPercentual rotulo="Percentual" valor={c.honorarios.valor} onChange={(v) => alterar({ honorarios: { ...c.honorarios, valor: v } })} erro={erro('honorarios')} />
+                  : <CampoMoeda rotulo="Valor dos honorários" valor={c.honorarios.valor} onChange={(v) => alterar({ honorarios: { ...c.honorarios, valor: v } })} erro={erro('honorarios')} />}
               </div>
             )}
           </div>
@@ -208,8 +202,6 @@
     return (
       <PainelResultado rotulo={rotulo} valor={t ? m(t.saldoFinal) : '—'} topo={topo} acoes={acoes} linhas={linhas}
         kpis={t ? (kpis || [{ l: 'Principal corrigido', v: m(t.principalCorrigido) }, { l: 'Encargos', v: encargos }, { l: 'Pagamentos', v: t.pagamentos ? `-${m(t.pagamentos)}` : m(0) }]) : []}>
-        {!t && <p className="mt-4 text-[12.5px] text-muted-foreground">{vazio || 'Preencha os dados e use "Calcular". O resultado aparece aqui.'}</p>}
-        {t && <p className="mt-4 text-[11.5px] text-muted-foreground">Principal corrigido + juros + multa + honorários + outros encargos − pagamentos. Alterar qualquer dado limpa o resultado: calcule novamente.</p>}
         {children}
       </PainelResultado>
     );

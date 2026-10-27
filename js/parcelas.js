@@ -11,7 +11,7 @@
   const R = window.CentralRegras;
   const K = window.CentralCalculo;
   const M = window.CentralModulos;
-  const { Pagina, Cartao, Botao, Alerta, CampoTexto, CampoMoeda, CampoData, CampoPercentual, AreaTexto, Grade, Col, Calculador, AcoesPainel, Tabela } = UI;
+  const { Pagina, Cartao, Botao, Alerta, CampoTexto, CampoMoeda, CampoData, CampoPercentual, Selecao, AreaTexto, Grade, Col, Calculador, AcoesPainel, Tabela } = UI;
 
   const PRESETS = {
     aluguel: {
@@ -116,6 +116,13 @@
       UI.avisar('Percentual aplicado a todas as parcelas. Você ainda pode ajustar cada uma.');
     }
 
+    function aplicarMesmoIndice() {
+      if (!f.parcelas.length) { UI.avisar('Inclua parcelas antes de aplicar a correção.', 'erro'); return; }
+      const indice = f.aplicarIndice || 'IPCA';
+      alterar({ parcelas: f.parcelas.map((x) => ({ ...x, correcao: { ...K.correcaoPadrao(), modo: 'indice', indice } })) });
+      UI.avisar(`${K.INDICES[indice].nome} aplicado a todas as parcelas.`);
+    }
+
     function validar() {
       const erros = K.validarCalculo(f.criterios, f.parcelas, p.parcela);
       f.encargos.forEach((e, i) => { if (e.valor && Number.isNaN(R.lerValor(e.valor))) erros.push({ campo: 'encargos', mensagem: `Encargo ${i + 1}: valor inválido.` }); });
@@ -182,7 +189,6 @@
           <div className="border-t border-border pt-5 space-y-4">
             <div>
               <h3 className="text-[13px] font-medium text-foreground">Parcelas</h3>
-              <p className="mt-1 text-[12px] text-muted-foreground">Inclua cada parcela. A correção monetária usa o índice oficial (IPCA, por padrão); em cada parcela você pode trocar o índice ou informar o percentual ou o valor corrigido.</p>
             </div>
             <details className="rounded-[10px] border border-dashed border-border p-4 group">
               <summary className="cursor-pointer text-[13px] text-foreground list-none flex items-center justify-between">
@@ -197,9 +203,12 @@
             </details>
 
             {f.parcelas.length > 1 && (
-              <div className="rounded-[10px] border border-border p-4 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
-                <CampoPercentual rotulo="Aplicar o mesmo percentual de correção a todas as parcelas" valor={f.aplicarPercentual} onChange={(v) => definirF({ ...f, aplicarPercentual: v })} ajuda="Atalho: substitui a correção de cada parcela; depois você pode ajustar uma a uma." />
-                <Botao onClick={aplicarMesmoPercentual} className="!h-[38px]">Aplicar a todas</Botao>
+              <div className="rounded-[10px] border border-border p-4 grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr_auto] gap-3 items-end">
+                <Selecao rotulo="Mesmo índice em todas" valor={f.aplicarIndice || 'IPCA'} onChange={(v) => definirF({ ...f, aplicarIndice: v })}
+                  opcoes={Object.entries(K.INDICES).map(([valor, x]) => ({ valor, rotulo: x.nome }))} />
+                <Botao onClick={aplicarMesmoIndice}>Aplicar</Botao>
+                <CampoPercentual rotulo="Mesmo percentual em todas" valor={f.aplicarPercentual} onChange={(v) => definirF({ ...f, aplicarPercentual: v })} />
+                <Botao onClick={aplicarMesmoPercentual}>Aplicar</Botao>
               </div>
             )}
 
@@ -217,12 +226,10 @@
         <div className="space-y-6">
           <div>
             {subtitulo('Critérios de cálculo')}
-            <p className="-mt-1 mb-3 text-[12px] text-muted-foreground">Valem para todas as parcelas desta atualização. Os pagamentos de cada parcela são informados na aba Obrigação.</p>
             <B.CriteriosCalculo valor={f.criterios} onChange={(c) => alterar({ criterios: c })} erros={errosForm} textoMulta={p.textoMulta} notaMulta={p.notaMulta} />
           </div>
           <div className="border-t border-border pt-5">
             {subtitulo('Encargos adicionais')}
-            <p className="-mt-1 mb-3 text-[12px] text-muted-foreground">Somados ao final, sem atualização monetária; use só se houver previsão contratual ou fundamento jurídico.</p>
             <M.ListaEncargos itens={f.encargos} onChange={(v) => alterar({ encargos: v })} />
           </div>
           <div className="border-t border-border pt-5">
@@ -234,7 +241,7 @@
 
     const rotuloCalcular = `Atualizar ${f.parcelas.length || ''} parcela${f.parcelas.length === 1 ? '' : 's'}`.replace('  ', ' ');
     const painel = (
-      <B.PainelTotais totais={r && r.totais} mostrarHonorarios={f.criterios.honorarios.ativo} vazio="Inclua as parcelas e clique em Atualizar."
+      <B.PainelTotais totais={r && r.totais} mostrarHonorarios={f.criterios.honorarios.ativo}
         kpis={r ? [{ l: 'Parcelas', v: String(r.resultados.length) }, { l: 'Principal corrigido', v: R.formatarMoeda(r.totais.principalCorrigido) }, { l: 'Pagamentos', v: r.totais.pagamentos ? `-${R.formatarMoeda(r.totais.pagamentos)}` : R.formatarMoeda(0) }] : undefined}
         topo={errosForm.length > 0 && (
           <Alerta tipo="erro" titulo="Revise os dados informados">
@@ -276,8 +283,8 @@
     );
 
     return (
-      <Pagina titulo={p.titulo} descricao={p.subtitulo} nota="Cálculo local no navegador">
-        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} textoRodape="o resultado aparece ao clicar em Atualizar" />
+      <Pagina titulo={p.titulo}>
+        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} />
       </Pagina>
     );
   }

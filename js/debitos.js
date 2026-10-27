@@ -24,7 +24,7 @@
     const alterar = (id, parte) => onChange(itens.map((p) => (p.id === id ? { ...p, ...parte } : p)));
     return (
       <div className="space-y-3">
-        {itens.length === 0 && <p className="text-sm text-muted-foreground">Nenhum pagamento informado. Inclua pagamentos parciais para abatê-los do saldo.</p>}
+        {itens.length === 0 && <p className="text-sm text-muted-foreground">Nenhum pagamento.</p>}
         {itens.map((p, i) => (
           <div key={p.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end p-3 rounded-[10px] border border-border section-open">
             <CampoData rotulo={`Data do pagamento ${i + 1}`} valor={p.data} onChange={(v) => alterar(p.id, { data: v })} />
@@ -42,7 +42,7 @@
     const alterar = (id, parte) => onChange(itens.map((p) => (p.id === id ? { ...p, ...parte } : p)));
     return (
       <div className="space-y-3">
-        {itens.length === 0 && <p className="text-sm text-muted-foreground">Nenhum encargo adicional. Use este campo para custas ou despesas cujo valor já seja conhecido; eles são somados sem atualização monetária.</p>}
+        {itens.length === 0 && <p className="text-sm text-muted-foreground">Nenhum encargo.</p>}
         {itens.map((p, i) => (
           <div key={p.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end p-3 rounded-[10px] border border-border section-open">
             <CampoTexto rotulo={`Descrição do encargo ${i + 1}`} valor={p.desc} onChange={(v) => alterar(p.id, { desc: v })} maxLength={80} />
@@ -146,11 +146,9 @@
           <Col span={3}><CampoTexto rotulo="Devedor" valor={f.devedor} onChange={(v) => alterar({ devedor: v })} /></Col>
           <Col span={2}><CampoMoeda rotulo="Valor principal original" obrigatorio valor={f.principal} onChange={(v) => alterar({ principal: v })} erro={erroCampo('valor')} /></Col>
           <Col span={2}><CampoData rotulo="Data de vencimento" obrigatorio valor={f.vencimento} onChange={(v) => alterar({ vencimento: v })} erro={erroCampo('vencimentoOriginal')} /></Col>
-          <Col span={2}><CampoData rotulo="Início da atualização" valor={f.dataInicial} onChange={(v) => alterar({ dataInicial: v })} erro={erroCampo('dataInicial')}
-            ajuda="Opcional. Se vazia, os juros contam do vencimento." /></Col>
+          <Col span={2}><CampoData rotulo="Início da atualização" valor={f.dataInicial} onChange={(v) => alterar({ dataInicial: v })} erro={erroCampo('dataInicial')} /></Col>
           <Col span={6}>
             <div className="border-t border-border pt-4">
-              <p className="text-[12px] text-muted-foreground mb-3">Escolha o índice oficial (calculado pela tabela do Banco Central) ou informe o percentual acumulado ou o valor já corrigido, apurados por você.</p>
               <B.CorrecaoManual valor={f.correcao} onChange={(c) => alterar({ correcao: c })} valorOriginal={f.principal} vencimento={f.dataInicial || f.vencimento} dataFinal={f.criterios.dataFinal} erro={erroCampo('correcao')} />
             </div>
           </Col>
@@ -178,7 +176,7 @@
     ];
 
     const painel = (
-      <B.PainelTotais totais={x && x.totais} mostrarHonorarios={f.criterios.honorarios.ativo} vazio="Preencha a dívida e clique em Atualizar débito."
+      <B.PainelTotais totais={x && x.totais} mostrarHonorarios={f.criterios.honorarios.ativo}
         topo={errosForm.length > 0 && (
           <Alerta tipo="erro" titulo="Revise os dados informados">
             <ul className="list-disc pl-5 space-y-0.5">{errosForm.map((e, i) => <li key={i}>{e.mensagem}</li>)}</ul>
@@ -220,8 +218,8 @@
     );
 
     return (
-      <Pagina titulo="Atualização de débitos" descricao="Dívida única com correção monetária, juros, multa e pagamentos." nota="Cálculo local no navegador">
-        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} textoRodape="o resultado aparece ao clicar em Atualizar débito" />
+      <Pagina titulo="Atualização de débitos">
+        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} />
       </Pagina>
     );
   }
