@@ -258,7 +258,7 @@
       if (f.fixacao.tipo === 'valor_fixo') lista.push(['Valor fixo mensal', R.formatarMoeda(R.lerValor(f.fixacao.valorFixo))]);
       if (f.fixacao.tipo === 'salario_minimo') lista.push(['Percentual fixado', `${R.formatarPercentual(R.lerValor(f.fixacao.percentual))} do salário mínimo nacional vigente em cada competência`]);
       if (f.fixacao.tipo === 'percentual') lista.push(['Percentual fixado', `${R.formatarPercentual(R.lerValor(f.fixacao.percentual))} sobre: ${f.fixacao.baseDescricao || 'base informada em cada mês'}`]);
-      lista.push(['Prescrição', f.corte ? `Competências com vencimento anterior a ${f.corte} (data de corte informada pelo usuário) foram excluídas` : 'Nenhuma competência excluída por prescrição']);
+      lista.push(['Prescrição', f.corte ? `Competências com vencimento anterior a ${f.corte} foram excluídas` : 'Nenhuma competência excluída por prescrição']);
       lista.push(['Ajuizamento da execução', f.ajuizamento || 'Não informado']);
       return lista.concat(B.descreverCriterios(f.criterios, f.competencias));
     }

@@ -189,13 +189,13 @@ test('pagamento maior que a dívida gera excedente não imputado (saldo não fic
 
 // ---------- Memória de cálculo ----------
 
-test('memória discrimina a correção como informada manualmente e nunca como índice oficial', () => {
+test('memória discrimina a correção percentual ou valor corrigido, sem avisos de preenchimento manual', () => {
   const a = C.calcularParcela(parcela({ correcao: { modo: 'percentual', percentual: '8' } }), criterios()).memoria.join(' ');
-  assert.match(a, /informada manualmente pelo usuário: 8,00% acumulado sobre R\$\s5\.000,00 = R\$\s400,00/);
-  assert.match(a, /Não foi calculada por índice oficial/);
+  assert.match(a, /Correção monetária: 8,00% acumulado sobre R\$\s5\.000,00 = R\$\s400,00/);
+  assert.doesNotMatch(a, /manualmente|pelo usuário/);
   const b = C.calcularParcela(parcela({ correcao: { modo: 'valorCorrigido', valorCorrigido: '5400' } }), criterios()).memoria.join(' ');
-  assert.match(b, /Principal corrigido informado manualmente pelo usuário/);
-  assert.match(b, /sem nova aplicação de correção/);
+  assert.match(b, /Principal corrigido: R\$\s5\.400,00/);
+  assert.doesNotMatch(b, /manualmente|pelo usuário/);
   const c = C.calcularParcela(parcela(), criterios()).memoria.join(' ');
   assert.match(c, /Correção monetária: não aplicada/);
   [a, b, c].forEach((t) => assert.ok(!/IPCA|INPC|IGP-M|Selic|Debit/i.test(t)));

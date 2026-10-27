@@ -102,7 +102,7 @@
     const m = R.formatarMoeda;
     function celulas(i) {
       const x = res.resultados[i]; const l = res.linhas[i]; const o = res.outros[i];
-      return [i + 1, l.descricao || '—', l.competencia || '—', l.vencimento, m(x.original), `${m(x.correcao.valorCorrecao)}${x.correcao.modo === 'percentual' ? ` (${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'indice' ? ` (${x.correcao.nomeIndice} ${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'valorCorrigido' ? ' (informado)' : ''}`, m(x.juros), m(x.multa), o ? m(o) : '—', x.pagamentos ? `-${m(x.pagamentos)}` : '—', m(x.saldo + o)];
+      return [i + 1, l.descricao || '—', l.competencia || '—', l.vencimento, m(x.original), `${m(x.correcao.valorCorrecao)}${x.correcao.modo === 'percentual' ? ` (${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'indice' ? ` (${x.correcao.nomeIndice} ${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'valorCorrigido' ? ' (valor corrigido)' : ''}`, m(x.juros), m(x.multa), o ? m(o) : '—', x.pagamentos ? `-${m(x.pagamentos)}` : '—', m(x.saldo + o)];
     }
 
     function exportarCsv() {

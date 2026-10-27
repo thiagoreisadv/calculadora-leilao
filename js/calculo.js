@@ -402,9 +402,9 @@
     const memoria = [`Valor original: ${m(correcao.original)} (vencimento em ${vencMora}).`];
     if (aVencer) memoria.push(`Vencimento posterior à data final do cálculo (${fim}): parcela tratada como vencida antecipadamente nessa data.`);
     if (correcao.modo === 'percentual') {
-      memoria.push(`Correção monetária informada manualmente pelo usuário: ${pct(correcao.percentual)} acumulado sobre ${m(correcao.original)} = ${m(correcao.valorCorrecao)}. Não foi calculada por índice oficial nem por consulta automática.`);
+      memoria.push(`Correção monetária: ${pct(correcao.percentual)} acumulado sobre ${m(correcao.original)} = ${m(correcao.valorCorrecao)}.`);
     } else if (correcao.modo === 'valorCorrigido') {
-      memoria.push(`Principal corrigido informado manualmente pelo usuário: ${m(correcao.principalCorrigido)} (diferença de ${m(correcao.valorCorrecao)} em relação ao valor original). Valor utilizado como está, sem nova aplicação de correção.`);
+      memoria.push(`Principal corrigido: ${m(correcao.principalCorrigido)} (diferença de ${m(correcao.valorCorrecao)} em relação ao valor original).`);
     } else if (correcao.modo === 'indice') {
       const fonte = `fonte: Banco Central do Brasil, série SGS ${correcao.codigoSerie}${correcao.atualizadoEm ? `, tabela atualizada em ${correcao.atualizadoEm}` : ''}`;
       if (correcao.meses.length) {
@@ -423,7 +423,7 @@
     else if (!multa) memoria.push(`Multa de ${pct(multaPct)}: não incide, pois o valor foi pago até o vencimento (${vencMora}).`);
     else memoria.push(`Multa de ${pct(multaPct)} sobre ${m(baseMulta)} = ${m(multa)} (aplicada uma única vez${pagosAteVencimento ? `; base = principal corrigido ${m(principal)} − ${m(pagosAteVencimento)} pagos até o vencimento` : ', sobre o principal corrigido'}).`);
     if (pagamentos.length) {
-      memoria.push(`Pagamentos informados: ${pagamentos.map((p) => `${m(p.valor)} em ${p.data}`).join('; ')} (total ${m(somaPagamentos)}). ${c.imputacao === 'art354' && c.juros && c.juros.ativo && !aVencer ? 'Imputados primeiro nos juros e depois no principal, em ordem cronológica.' : 'Abatidos do saldo final de principal e juros, sem recalcular os juros.'}${multaQuitada ? ` O valor pago além do principal e dos juros quitou ${m(multaQuitada)} da multa.` : ''}${credito ? ` Há ${m(credito)} de pagamento excedente, não imputado.` : ''}`);
+      memoria.push(`Pagamentos: ${pagamentos.map((p) => `${m(p.valor)} em ${p.data}`).join('; ')} (total ${m(somaPagamentos)}). ${c.imputacao === 'art354' && c.juros && c.juros.ativo && !aVencer ? 'Imputados primeiro nos juros e depois no principal, em ordem cronológica.' : 'Abatidos do saldo final de principal e juros, sem recalcular os juros.'}${multaQuitada ? ` O valor pago além do principal e dos juros quitou ${m(multaQuitada)} da multa.` : ''}${credito ? ` Há ${m(credito)} de pagamento excedente, não imputado.` : ''}`);
     }
     if (honorarios) memoria.push(`Honorários de ${pct(R.lerValor(c.honorarios.valor))} sobre ${m(R.arredondar(saldoPrincipalJuros + multaDevida))} (principal corrigido + juros + multa − pagamentos) = ${m(honorarios)}.`);
     memoria.push(`Saldo atualizado = ${m(principal)} (principal corrigido) + ${m(juros)} (juros) + ${m(multa)} (multa) + ${m(honorarios)} (honorários) − ${m(somaPagamentos)} (pagamentos)${credito ? ` + ${m(credito)} (excedente não imputado)` : ''} = ${m(saldo)}.`);
