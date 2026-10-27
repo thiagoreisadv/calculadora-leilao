@@ -129,7 +129,6 @@
     linhas.push([T(''), T('SALDO FINAL ATUALIZADO', 'rotulo'), T(''), F(['M' + linhaTotal].concat(refExtras).join('+'), t.saldoFinal, 'destaque')]);
     if ((o.linhasExtras || []).length) { linhas.push([]); (o.linhasExtras || []).forEach((e) => linhas.push([T(''), T(e[0], 'rotulo'), T(''), N(e[1], 'moeda')])); }
     linhas.push([]);
-    linhas.push([T('A correção monetária foi informada manualmente pelo usuário (percentual acumulado ou valor já corrigido) e aplicada uma única vez; não foi calculada por índice oficial nem por consulta automática.', 'nota')]);
     linhas.push([T('Saldo atualizado = principal corrigido + juros + multa + honorários − pagamentos + excedente não imputado. Veja a aba "Memória" para o passo a passo e a aba "Critérios" para os parâmetros.', 'nota')]);
 
     const memoria = [[T('Parcela', 'cabecalho'), T('Passo', 'cabecalho'), T('Descrição do cálculo', 'cabecalho')]];
@@ -200,7 +199,6 @@
     const doc = root.CentralPdf.criar({ orientacao: 'paisagem', titulo: reg.titulo, rodape: `${reg.titulo} — gerado em ${dataHora()}` });
     doc.titulo(reg.titulo);
     if (reg.subtitulo) doc.subtitulo(reg.subtitulo);
-    (reg.alertas || []).forEach((a) => doc.alerta(a.mensagem));
     doc.secao('Identificação');
     const prof = reg.profissional && reg.profissional.nome ? `${reg.profissional.nome}${reg.profissional.registro ? ` — ${reg.profissional.registro}` : ''}` : '';
     [...(reg.identificacao || []), ['Data de referência do cálculo', reg.dataReferencia], ['Gerado em', dataHora()], ['Profissional', prof]]
