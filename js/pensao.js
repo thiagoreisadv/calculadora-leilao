@@ -3,8 +3,8 @@
  * Cada competência (mês) é uma parcela com o seu vencimento, valor devido, correção monetária
  * (índice oficial ou informada) e pagamentos. Juros, multa e saldo são calculados localmente
  * (CentralCalculo), tal como a divisão entre os ritos da prisão e da expropriação (art. 528 do CPC).
- * Nenhum índice ou API é consultado; a prescrição é aplicada apenas a partir da data de corte
- * informada pelo usuário.
+ * Na fixação em percentual do salário mínimo, a base de cada mês é preenchida com o salário mínimo
+ * vigente na competência (editável). A prescrição é aplicada apenas a partir da data de corte informada.
  */
 (() => {
   const { useState, useRef } = React;
@@ -18,30 +18,55 @@
   const novoId = () => { sequencia += 1; return `n${Date.now().toString(36)}${sequencia}`; };
 
   const TIPOS_FIXACAO = [
+    { valor: 'salario_minimo', rotulo: '% do salário mínimo' },
+    { valor: 'percentual', rotulo: '% de outra base (rendimentos)' },
     { valor: 'valor_fixo', rotulo: 'Valor fixo mensal' },
-    { valor: 'percentual', rotulo: 'Percentual sobre uma base informada em cada mês' },
-    { valor: 'manual', rotulo: 'Informar o valor devido de cada competência' },
+    { valor: 'manual', rotulo: 'Valor diferente em cada mês' },
   ];
+  const EM_PERCENTUAL = ['salario_minimo', 'percentual'];
 
   const inicial = () => ({
     descricao: '', alimentante: '', alimentando: '', observacoes: '',
-    fixacao: { tipo: '', valorFixo: '', percentual: '', baseDescricao: 'Salário mínimo' },
-    gerador: { de: '', ate: '', dia: '' }, competencias: [],
+    fixacao: { tipo: 'salario_minimo', valorFixo: '', percentual: '', baseDescricao: 'Rendimentos' },
+    gerador: { de: '', ate: K.competenciaAtual(), dia: '', valor: '' }, competencias: [], lote: B.loteInicial(),
     // Prestações de alimentos ainda não vencidas não são exigíveis: por padrão ficam fora do cálculo.
     criterios: { ...K.criteriosPadrao(), vincendas: 'excluir' }, ajuizamento: '', corte: '', pagamentos: [],
   });
 
   const novaCompetencia = (extra) => ({ id: novoId(), mes_ano: '', vencimento: '', base: '', valor: '', correcao: B.correcaoInicial(), ...(extra || {}) });
 
+  // Salário mínimo da competência no formato do campo de moeda ('1.518,00'), ou '' se desconhecido.
+  const textoSalarioMinimo = (comp) => { const v = K.salarioMinimo(comp); return v ? R.textoCampoMoeda(v) : ''; };
+
+  // Base do percentual no mês: a digitada ou, no salário mínimo, a vigente na competência.
+  function baseDoMes(f, c) {
+    const b = R.lerValor(c.base);
+    if (b > 0) return b;
+    return f.fixacao.tipo === 'salario_minimo' ? (K.salarioMinimo(c.mes_ano) || NaN) : NaN;
+  }
+
   function valorDevido(f, c) {
     if (f.fixacao.tipo === 'valor_fixo') return R.arredondar(R.lerValor(f.fixacao.valorFixo));
-    if (f.fixacao.tipo === 'percentual') return R.arredondar(R.lerValor(f.fixacao.percentual) / 100 * R.lerValor(c.base));
+    if (EM_PERCENTUAL.includes(f.fixacao.tipo)) return R.arredondar(R.lerValor(f.fixacao.percentual) / 100 * baseDoMes(f, c));
     if (f.fixacao.tipo === 'manual') return R.arredondar(R.lerValor(c.valor));
     return NaN;
   }
 
   function competenciasEmOrdem(lista) {
     return lista.slice().sort((a, b) => (a.mes_ano.slice(3) + a.mes_ano.slice(0, 2)).localeCompare(b.mes_ano.slice(3) + b.mes_ano.slice(0, 2)));
+  }
+
+  function SalarioMinimoAtual({ percentual }) {
+    const comp = K.competenciaAtual();
+    const sm = K.salarioMinimo(comp);
+    const pct = R.lerValor(percentual);
+    if (!sm) return null;
+    return (
+      <div className="rounded-lg bg-field border border-border px-3 py-2 text-[13px] flex flex-wrap gap-x-4 gap-y-1">
+        <span className="text-muted-foreground">Salário mínimo atual ({comp}): <span className="text-foreground tabular-nums">{R.formatarMoeda(sm)}</span></span>
+        {pct > 0 && <span className="text-muted-foreground">Pensão: <span className="text-primary-text tabular-nums">{R.formatarMoeda(R.arredondar(pct / 100 * sm))}</span> por mês</span>}
+      </div>
+    );
   }
 
   function LinhaCompetencia({ c, indice, f, onChange, onRemover, erros }) {
@@ -56,6 +81,7 @@
         <div className="grid grid-cols-1 sm:grid-cols-[7rem_9rem_1fr_auto] gap-3 items-end">
           <CampoCompetencia rotulo="Competência" valor={c.mes_ano} onChange={(v) => onChange({ mes_ano: v })} erro={erro('competencia')} />
           <CampoData rotulo="Vencimento" obrigatorio valor={c.vencimento} onChange={(v) => onChange({ vencimento: v })} erro={erro('vencimento')} />
+          {f.fixacao.tipo === 'salario_minimo' && <CampoMoeda rotulo="Salário mínimo" valor={c.base} onChange={(v) => onChange({ base: v })} placeholder={textoSalarioMinimo(c.mes_ano) || '0,00'} erro={erro('base')} />}
           {f.fixacao.tipo === 'percentual' && <CampoMoeda rotulo={`${f.fixacao.baseDescricao || 'Base'} do mês`} valor={c.base} onChange={(v) => onChange({ base: v })} erro={erro('base')} />}
           {f.fixacao.tipo === 'manual' && <CampoMoeda rotulo="Valor devido" valor={c.valor} onChange={(v) => onChange({ valor: v })} erro={erro('valor')} />}
           {f.fixacao.tipo === 'valor_fixo' && <div className="text-[13px] text-foreground pb-2.5">Valor devido: {Number.isNaN(devido) ? '—' : R.formatarMoeda(devido)}</div>}
@@ -64,7 +90,7 @@
             <Botao variante="perigo" tamanho="sm" icone="lixeira" aria-label={`Remover competência ${indice + 1}`} onClick={onRemover} />
           </div>
         </div>
-        {f.fixacao.tipo === 'percentual' && !Number.isNaN(devido) && <p className="mt-1 text-xs text-muted-foreground">Valor devido: {R.formatarMoeda(devido)}</p>}
+        {EM_PERCENTUAL.includes(f.fixacao.tipo) && !Number.isNaN(devido) && <p className="mt-1 text-xs text-muted-foreground">Valor devido: {R.formatarMoeda(devido)}</p>}
         {prescrita && <p className="mt-1 text-xs text-warning">Anterior à data de corte da prescrição: não entra no cálculo.</p>}
         {aVencer && <p className="mt-1 text-xs text-warning">Vence depois da data final: {f.criterios.vincendas === 'excluir' ? 'fica fora do cálculo.' : 'entra com vencimento antecipado (sem juros; com multa, se houver).'}</p>}
         {corrigir && (
@@ -77,15 +103,32 @@
   }
 
   function ModuloPensao() {
-    const [f, definirF, limpar] = UI.useRascunho('pensao2', inicial);
+    const [f, definirF, limpar] = UI.useRascunho('pensao3', inicial);
+    B.useIndices(); // redesenha quando a tabela (com o salário mínimo do Banco Central) carregar
     const [errosForm, definirErros] = useState([]);
     const [resultado, definirResultado] = useState(null);
     const [aba, definirAba] = useState('alimentando');
     const topo = useRef(null);
 
     const alterar = (parte) => { definirF({ ...f, ...parte }); definirResultado(null); };
-    const alterarFixacao = (parte) => alterar({ fixacao: { ...f.fixacao, ...parte } });
-    const alterarComp = (id, parte) => alterar({ competencias: f.competencias.map((x) => (x.id === id ? { ...x, ...parte } : x)) });
+    const alterarFixacao = (parte) => {
+      const fixacao = { ...f.fixacao, ...parte };
+      let { competencias } = f;
+      // Ao escolher "% do salário mínimo", a base de cada mês passa a ser o salário mínimo da competência;
+      // ao sair dele, as bases automáticas são apagadas (as digitadas ficam).
+      if (parte.tipo === 'salario_minimo' && f.fixacao.tipo !== 'salario_minimo') competencias = competencias.map((c) => ({ ...c, base: textoSalarioMinimo(c.mes_ano) }));
+      else if (parte.tipo && parte.tipo !== 'salario_minimo' && f.fixacao.tipo === 'salario_minimo') competencias = competencias.map((c) => (c.base === textoSalarioMinimo(c.mes_ano) ? { ...c, base: '' } : c));
+      alterar({ fixacao, competencias });
+    };
+    const alterarComp = (id, parte) => alterar({
+      competencias: f.competencias.map((x) => {
+        if (x.id !== id) return x;
+        const novo = { ...x, ...parte };
+        // Mudou o mês: a base automática acompanha (se o usuário não tiver digitado outra).
+        if ('mes_ano' in parte && f.fixacao.tipo === 'salario_minimo' && (!x.base || x.base === textoSalarioMinimo(x.mes_ano))) novo.base = textoSalarioMinimo(parte.mes_ano);
+        return novo;
+      }),
+    });
     const erroCampo = (campo) => (errosForm.find((x) => x.campo === campo) || {}).mensagem;
 
     function gerarCompetencias() {
@@ -95,6 +138,9 @@
       const fim = R.competenciaParaData(g.ate);
       if (!(dia >= 1 && dia <= 31)) { UI.avisar('Informe o dia de vencimento de cada mês (1 a 31).', 'erro'); return; }
       if (!ini || !fim || R.lerData(fim).ts < R.lerData(ini).ts) { UI.avisar('Informe o período no formato MM/AAAA, do mês inicial ao final.', 'erro'); return; }
+      const lote = f.lote || B.loteInicial();
+      if (lote.opcao === 'percentual' && !(R.lerValor(lote.percentual) >= 0)) { UI.avisar('Informe o percentual de correção.', 'erro'); return; }
+      const tipo = f.fixacao.tipo;
       const lista = [];
       for (let i = 0; i < 600; i += 1) {
         const d = R.adicionarMeses(ini, i);
@@ -102,7 +148,11 @@
         const comp = d.slice(3);
         // Se o dia não existe no mês (ex.: 31 em fevereiro), usa o último dia do mês.
         const ultimo = new Date(Date.UTC(Number(comp.slice(3)), Number(comp.slice(0, 2)), 0)).getUTCDate();
-        lista.push(novaCompetencia({ mes_ano: comp, vencimento: `${String(Math.min(dia, ultimo)).padStart(2, '0')}/${comp}` }));
+        lista.push(novaCompetencia({
+          mes_ano: comp, vencimento: `${String(Math.min(dia, ultimo)).padStart(2, '0')}/${comp}`, correcao: B.correcaoDoLote(lote),
+          base: tipo === 'salario_minimo' ? textoSalarioMinimo(comp) : tipo === 'percentual' ? g.valor || '' : '',
+          valor: tipo === 'manual' ? g.valor || '' : '',
+        }));
       }
       const existentes = new Set(f.competencias.map((c) => c.mes_ano));
       const novas = lista.filter((c) => !existentes.has(c.mes_ano));
@@ -111,18 +161,49 @@
       UI.avisar(`${novas.length} competência(s) adicionada(s).`);
     }
 
+    // Nova competência: o mês seguinte à última, com o mesmo dia de vencimento, base/valor e correção.
+    function adicionarCompetencia() {
+      const ultima = competenciasEmOrdem(f.competencias.filter((c) => /^\d{2}\/\d{4}$/.test(c.mes_ano))).pop();
+      if (!ultima) { alterar({ competencias: [...f.competencias, novaCompetencia({ correcao: B.correcaoDoLote(f.lote) })] }); return; }
+      const proxima = R.adicionarMeses(`01/${ultima.mes_ano}`, 1).slice(3);
+      const dia = R.dataEhValida(ultima.vencimento) ? Number(ultima.vencimento.slice(0, 2)) : null;
+      const fimMes = new Date(Date.UTC(Number(proxima.slice(3)), Number(proxima.slice(0, 2)), 0)).getUTCDate();
+      const automatica = f.fixacao.tipo === 'salario_minimo' && (!ultima.base || ultima.base === textoSalarioMinimo(ultima.mes_ano));
+      alterar({ competencias: [...f.competencias, novaCompetencia({
+        mes_ano: proxima, vencimento: dia ? `${String(Math.min(dia, fimMes)).padStart(2, '0')}/${proxima}` : '',
+        base: automatica ? textoSalarioMinimo(proxima) : ultima.base, valor: ultima.valor, correcao: { ...ultima.correcao },
+      })] });
+    }
+
+    function aplicarATodas() {
+      const competencias = B.aplicarLote(f.competencias, f.lote);
+      if (competencias) alterar({ competencias });
+    }
+
+    // Pagamento: ao informar a data, sugere a competência do mesmo mês (ou a última anterior).
+    function alterarDataPagamento(pag, data) {
+      const parte = { data };
+      if (!pag.destino && R.dataEhValida(data)) {
+        const alvo = data.slice(3).split('/').reverse().join('');
+        const candidatas = f.competencias.filter((c) => /^\d{2}\/\d{4}$/.test(c.mes_ano) && c.mes_ano.split('/').reverse().join('') <= alvo);
+        const escolhida = competenciasEmOrdem(candidatas).pop();
+        if (escolhida) parte.destino = escolhida.id;
+      }
+      alterarPag(pag.id, parte);
+    }
+
     function validar() {
       const erros = [];
       const e = (campo, mensagem, linha) => erros.push({ campo, mensagem, linha });
       if (!f.fixacao.tipo) e('tipo', 'Selecione como a pensão foi fixada.');
       if (f.fixacao.tipo === 'valor_fixo' && !(R.lerValor(f.fixacao.valorFixo) > 0)) e('valorFixo', 'Informe o valor fixo mensal.');
-      if (f.fixacao.tipo === 'percentual' && !(R.lerValor(f.fixacao.percentual) > 0 && R.lerValor(f.fixacao.percentual) <= 100)) e('percentual', 'Informe o percentual da pensão (entre 0 e 100).');
+      if (EM_PERCENTUAL.includes(f.fixacao.tipo) && !(R.lerValor(f.fixacao.percentual) > 0 && R.lerValor(f.fixacao.percentual) <= 100)) e('percentual', 'Informe o percentual da pensão (entre 0 e 100).');
       if (f.corte && !R.dataEhValida(f.corte)) e('corte', 'Data de corte da prescrição inválida (DD/MM/AAAA).');
       if (f.ajuizamento && !R.dataEhValida(f.ajuizamento)) e('ajuizamento', 'Data de ajuizamento inválida (DD/MM/AAAA).');
       if (!f.competencias.length) e('competencias', 'Inclua ao menos uma competência (mês devido).');
       f.competencias.forEach((c, i) => {
         if (!/^(0[1-9]|1[0-2])\/\d{4}$/.test(c.mes_ano)) e('competencia', `Competência ${i + 1}: use MM/AAAA.`, i);
-        if (f.fixacao.tipo === 'percentual' && !(R.lerValor(c.base) > 0)) e('base', `Competência ${i + 1}: informe a base do percentual.`, i);
+        if (EM_PERCENTUAL.includes(f.fixacao.tipo) && !(baseDoMes(f, c) > 0)) e('base', `Competência ${i + 1}: informe ${f.fixacao.tipo === 'salario_minimo' ? 'o salário mínimo' : 'a base do percentual'}.`, i);
         if (f.fixacao.tipo === 'manual' && !(R.lerValor(c.valor) > 0)) e('valor', `Competência ${i + 1}: informe o valor devido.`, i);
       });
       f.pagamentos.forEach((p, i) => {
@@ -149,7 +230,7 @@
         parcelas.push({
           indiceOriginal: i, id: c.id,
           parcela: {
-            descricao: `Competência ${c.mes_ano}`, competencia: c.mes_ano, vencimento: c.vencimento, valor: String(valorDevido(f, c)), correcao: c.correcao,
+            descricao: EM_PERCENTUAL.includes(f.fixacao.tipo) ? `Competência ${c.mes_ano} — ${R.formatarPercentual(R.lerValor(f.fixacao.percentual))} de ${R.formatarMoeda(baseDoMes(f, c))}` : `Competência ${c.mes_ano}`, competencia: c.mes_ano, vencimento: c.vencimento, valor: String(valorDevido(f, c)), correcao: c.correcao,
             pagamentos: f.pagamentos.filter((p) => p.destino === c.id).map((p) => ({ data: p.data, valor: p.valor })),
           },
         });
@@ -175,8 +256,9 @@
       const t = TIPOS_FIXACAO.find((x) => x.valor === f.fixacao.tipo);
       const lista = [['Fixação da pensão', t ? t.rotulo : f.fixacao.tipo]];
       if (f.fixacao.tipo === 'valor_fixo') lista.push(['Valor fixo mensal', R.formatarMoeda(R.lerValor(f.fixacao.valorFixo))]);
+      if (f.fixacao.tipo === 'salario_minimo') lista.push(['Percentual fixado', `${R.formatarPercentual(R.lerValor(f.fixacao.percentual))} do salário mínimo nacional vigente em cada competência`]);
       if (f.fixacao.tipo === 'percentual') lista.push(['Percentual fixado', `${R.formatarPercentual(R.lerValor(f.fixacao.percentual))} sobre: ${f.fixacao.baseDescricao || 'base informada em cada mês'}`]);
-      lista.push(['Prescrição', f.corte ? `Competências com vencimento anterior a ${f.corte} (data de corte informada pelo usuário) foram excluídas` : 'Nenhuma competência excluída por prescrição']);
+      lista.push(['Prescrição', f.corte ? `Competências com vencimento anterior a ${f.corte} foram excluídas` : 'Nenhuma competência excluída por prescrição']);
       lista.push(['Ajuizamento da execução', f.ajuizamento || 'Não informado']);
       return lista.concat(B.descreverCriterios(f.criterios, f.competencias));
     }
@@ -192,7 +274,7 @@
         subtitulo: f.descricao || 'Débito de pensão alimentícia',
         identificacao: [['Descrição', f.descricao], ['Alimentante', f.alimentante], ['Alimentando', f.alimentando], ['Competências calculadas', String(x.lista.length)]],
         criterios: x.criteriosDescritos,
-        parcelas: x.lista.map((p) => ({ descricao: `Competência ${p.competencia}`, vencimento: p.vencimento })),
+        parcelas: x.lista.map((p) => ({ descricao: p.descricao, vencimento: p.vencimento })),
         resultados: x.resultados, totais: x.totais, dataFinal: f.criterios.dataFinal, observacoes: obs, notasResumo: notas,
         linhasExtras: [['Subtotal — rito da prisão (art. 528, §§ 3º e 7º, CPC)', x.ritos.prisao.total], ['Subtotal — rito da expropriação (art. 528, § 8º, CPC)', x.ritos.expropriacao.total]],
       };
@@ -225,6 +307,12 @@
             <div className="border-t border-border pt-4">
               <Grade>
                 <Col span={3}><Selecao rotulo="Como a pensão foi fixada" obrigatorio valor={f.fixacao.tipo} onChange={(v) => alterarFixacao({ tipo: v })} opcoes={TIPOS_FIXACAO} placeholder="Selecione" erro={erroCampo('tipo')} /></Col>
+                {f.fixacao.tipo === 'salario_minimo' && (
+                  <>
+                    <Col span={3}><CampoPercentual rotulo="Percentual do salário mínimo" obrigatorio valor={f.fixacao.percentual} onChange={(v) => alterarFixacao({ percentual: v })} erro={erroCampo('percentual')} /></Col>
+                    <Col span={6}><SalarioMinimoAtual percentual={f.fixacao.percentual} /></Col>
+                  </>
+                )}
                 {f.fixacao.tipo === 'valor_fixo' && <Col span={3}><CampoMoeda rotulo="Valor fixo mensal" obrigatorio valor={f.fixacao.valorFixo} onChange={(v) => alterarFixacao({ valorFixo: v })} erro={erroCampo('valorFixo')} /></Col>}
                 {f.fixacao.tipo === 'percentual' && (
                   <>
@@ -243,11 +331,18 @@
             <div>
               <h3 className="text-[13px] font-medium text-foreground">Competências devidas</h3>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_8rem_auto] gap-3 items-end">
-              <CampoCompetencia rotulo="Do mês" valor={f.gerador.de} onChange={(v) => alterar({ gerador: { ...f.gerador, de: v } })} />
-              <CampoCompetencia rotulo="Até o mês" valor={f.gerador.ate} onChange={(v) => alterar({ gerador: { ...f.gerador, ate: v } })} />
-              <CampoTexto rotulo="Dia do vencimento" valor={f.gerador.dia} onChange={(v) => alterar({ gerador: { ...f.gerador, dia: v.replace(/\D/g, '').slice(0, 2) } })} inputMode="numeric" maxLength={2} />
-              <Botao variante="solido" icone="mais" onClick={gerarCompetencias}>Gerar meses</Botao>
+            <div className="rounded-[10px] border border-dashed border-border p-4 space-y-3">
+              <div className={`grid grid-cols-1 gap-3 items-end ${['manual', 'percentual'].includes(f.fixacao.tipo) ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
+                <CampoCompetencia rotulo="Do mês" valor={f.gerador.de} onChange={(v) => alterar({ gerador: { ...f.gerador, de: v } })} />
+                <CampoCompetencia rotulo="Até o mês" valor={f.gerador.ate} onChange={(v) => alterar({ gerador: { ...f.gerador, ate: v } })} />
+                <CampoTexto rotulo="Dia do vencimento" valor={f.gerador.dia} onChange={(v) => alterar({ gerador: { ...f.gerador, dia: v.replace(/\D/g, '').slice(0, 2) } })} inputMode="numeric" maxLength={2} />
+                {f.fixacao.tipo === 'manual' && <CampoMoeda rotulo="Valor de cada mês" valor={f.gerador.valor} onChange={(v) => alterar({ gerador: { ...f.gerador, valor: v } })} />}
+                {f.fixacao.tipo === 'percentual' && <CampoMoeda rotulo={`${f.fixacao.baseDescricao || 'Base'} de cada mês`} valor={f.gerador.valor} onChange={(v) => alterar({ gerador: { ...f.gerador, valor: v } })} />}
+              </div>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <B.CorrecaoLote valor={f.lote} onChange={(v) => definirF({ ...f, lote: v })} quantidade={f.competencias.length} onAplicar={aplicarATodas} />
+                <Botao variante="solido" icone="mais" onClick={gerarCompetencias}>Gerar meses</Botao>
+              </div>
             </div>
             {f.competencias.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhuma competência incluída.</p>}
             {f.competencias.length > 0 && (
@@ -258,7 +353,7 @@
               </div>
             )}
             {erroCampo('competencias') && <p role="alert" className="text-[11.5px] text-destructive">{erroCampo('competencias')}</p>}
-            <Botao tamanho="sm" icone="mais" onClick={() => alterar({ competencias: [...f.competencias, novaCompetencia()] })}>Adicionar competência avulsa</Botao>
+            <Botao tamanho="sm" icone="mais" onClick={adicionarCompetencia}>Adicionar competência</Botao>
           </div>
           <div className="border-t border-border pt-5 space-y-3">
             <div>
@@ -267,7 +362,7 @@
             {f.pagamentos.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhum pagamento informado.</p>}
             {f.pagamentos.map((p, i) => (
               <div key={p.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1.4fr_auto] gap-3 items-end p-3 rounded-[10px] border border-border section-open">
-                <CampoData rotulo={`Data do pagamento ${i + 1}`} valor={p.data} onChange={(v) => alterarPag(p.id, { data: v })} />
+                <CampoData rotulo={`Data do pagamento ${i + 1}`} valor={p.data} onChange={(v) => alterarDataPagamento(p, v)} />
                 <CampoMoeda rotulo="Valor pago" valor={p.valor} onChange={(v) => alterarPag(p.id, { valor: v })} />
                 <Selecao rotulo="Competência abatida" valor={p.destino} placeholder="Selecione" onChange={(v) => alterarPag(p.id, { destino: v })}
                   opcoes={f.competencias.map((c) => ({ valor: c.id, rotulo: c.mes_ano || '(sem competência)' }))} />

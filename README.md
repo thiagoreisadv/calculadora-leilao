@@ -10,7 +10,7 @@ não há servidor, banco de dados nem consulta a APIs ou a índices econômicos.
 | --- | --- |
 | Calculadora de leilões | Custo de arrematação, lucro, ROI, escritura e RGI (imóveis, rural, veículos) |
 | Atualização de débitos | Dívida única com correção monetária informada, juros, multa, honorários e pagamentos |
-| Pensão alimentícia | Débito competência por competência, ritos do art. 528 do CPC e corte de prescrição informado |
+| Pensão alimentícia | Débito competência por competência (% do salário mínimo com o valor de cada mês preenchido sozinho, % de outra base, valor fixo ou manual), ritos do art. 528 do CPC e corte de prescrição informado |
 | Aluguéis e contratos / Acordos e parcelas | Várias parcelas, cada uma com a sua correção, vencimento, valor e pagamentos |
 | Planilha consolidada | Várias obrigações com total consolidado e exportação CSV |
 | Memórias de cálculo | Demonstrativos guardados no navegador: ver, imprimir/salvar PDF, HTML, CSV e cópia JSON |
@@ -38,7 +38,13 @@ Em cada parcela o usuário escolhe uma das opções:
 
 ### Tabela de índices
 
-O site é estático, então os índices ficam em `dados/indices.json`. O robô `.github/workflows/indices.yml` roda todo dia, busca as séries no Banco Central (SGS: IPCA 433, INPC 188, IGP-M 189, IPCA-E 10764) com `scripts/atualizar-indices.js`, grava o arquivo só quando algum valor muda e pede a publicação do GitHub Pages. Para atualizar na hora: GitHub > Actions > "Atualizar índices de correção" > Run workflow. Se a tabela não estiver disponível, o site avisa e pede o percentual manual.
+O site é estático, então os índices ficam em `dados/indices.json`. O robô `.github/workflows/indices.yml` roda todo dia, busca as séries no Banco Central (SGS: IPCA 433, INPC 188, IGP-M 189, IPCA-E 10764 e salário mínimo 1619) com `scripts/atualizar-indices.js`, grava o arquivo só quando algum valor muda e pede a publicação do GitHub Pages. Para atualizar na hora: GitHub > Actions > "Atualizar índices de correção" > Run workflow. Se a tabela não estiver disponível, o site avisa e pede o percentual manual.
+
+### Preenchimento em lote
+
+Nos geradores de parcelas (aluguéis, acordos, pensão) a correção escolhida já vai para as parcelas geradas, e **Aplicar a todas** troca a correção de todas de uma vez (também na planilha consolidada). "Adicionar parcela/competência" já traz o mês seguinte, o mesmo dia de vencimento, o mesmo valor e a mesma correção da última.
+
+Na pensão em **% do salário mínimo**, cada competência recebe o salário mínimo vigente naquele mês (editável); o sistema tem uma tabela embutida desde 2005 e usa a série do Banco Central quando disponível. Ao informar a data de um pagamento, a competência abatida é sugerida pelo mês.
 
 ## Regras de cálculo
 

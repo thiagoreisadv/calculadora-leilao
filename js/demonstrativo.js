@@ -84,7 +84,7 @@ ${reg.total ? `<div class="total"><span class="r">${esc(reg.total.rotulo)}</span
 ${(reg.secoes || []).map(tabela).join('')}
 ${memorias ? `<h2>Memória de cálculo</h2>${memorias}` : ''}
 ${reg.observacoes ? `<h2>Observações</h2><div class="memoria">${esc(reg.observacoes)}</div>` : ''}
-<div class="aviso-legal"><b>Fonte dos dados:</b> ${esc(reg.fonte || '')}.</div></body></html>`;
+${reg.fonte ? `<div class="aviso-legal">${esc(reg.fonte)}.</div>` : ''}</body></html>`;
   }
 
   root.CentralDemonstrativo = { gerarHtml };

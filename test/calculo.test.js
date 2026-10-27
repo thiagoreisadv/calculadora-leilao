@@ -189,13 +189,13 @@ test('pagamento maior que a dívida gera excedente não imputado (saldo não fic
 
 // ---------- Memória de cálculo ----------
 
-test('memória discrimina a correção como informada manualmente e nunca como índice oficial', () => {
+test('memória discrimina a correção percentual ou valor corrigido, sem avisos de preenchimento manual', () => {
   const a = C.calcularParcela(parcela({ correcao: { modo: 'percentual', percentual: '8' } }), criterios()).memoria.join(' ');
-  assert.match(a, /informada manualmente pelo usuário: 8,00% acumulado sobre R\$\s5\.000,00 = R\$\s400,00/);
-  assert.match(a, /Não foi calculada por índice oficial/);
+  assert.match(a, /Correção monetária: 8,00% acumulado sobre R\$\s5\.000,00 = R\$\s400,00/);
+  assert.doesNotMatch(a, /manualmente|pelo usuário/);
   const b = C.calcularParcela(parcela({ correcao: { modo: 'valorCorrigido', valorCorrigido: '5400' } }), criterios()).memoria.join(' ');
-  assert.match(b, /Principal corrigido informado manualmente pelo usuário/);
-  assert.match(b, /sem nova aplicação de correção/);
+  assert.match(b, /Principal corrigido: R\$\s5\.400,00/);
+  assert.doesNotMatch(b, /manualmente|pelo usuário/);
   const c = C.calcularParcela(parcela(), criterios()).memoria.join(' ');
   assert.match(c, /Correção monetária: não aplicada/);
   [a, b, c].forEach((t) => assert.ok(!/IPCA|INPC|IGP-M|Selic|Debit/i.test(t)));
@@ -373,4 +373,18 @@ test('índice: parcela a vencer não é corrigida', () => {
   const r = C.calcularParcela(parcela({ valor: '1000', vencimento: '10/09/2025', correcao: { modo: 'indice', indice: 'IPCA' } }), criterios());
   assert.equal(r.correcao.valorCorrecao, 0);
   assert.equal(r.principalCorrigido, 1000);
+});
+
+test('salário mínimo: valor vigente na competência, com a série do Banco Central tendo prioridade', () => {
+  C.definirIndices(null);
+  assert.equal(C.salarioMinimo('04/2023'), 1302);
+  assert.equal(C.salarioMinimo('05/2023'), 1320); // reajuste de maio/2023
+  assert.equal(C.salarioMinimo('15/02/2020'), 1045);
+  assert.equal(C.salarioMinimo('2025-07'), 1518);
+  assert.equal(C.salarioMinimo('01/1990'), null);
+  assert.equal(C.salarioMinimo('13/2025'), null);
+  C.definirIndices({ series: { SALARIO_MINIMO: { valores: { '2025-07': 1500 } } } });
+  assert.equal(C.salarioMinimo('07/2025'), 1500);
+  assert.equal(C.salarioMinimo('08/2025'), 1500); // último valor conhecido até a competência
+  C.definirIndices(null);
 });

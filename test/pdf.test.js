@@ -111,10 +111,9 @@ test('PDF das calculadoras simples (leilão/escritura) a partir das linhas da pl
   assert.ok(t.includes(P.hex('16,45%')));
 });
 
-test('PDF do demonstrativo não traz o aviso de que o valor não substitui a análise do caso', () => {
+test('PDF do demonstrativo não traz avisos (análise do caso, preenchimento manual, fonte sem índice)', () => {
   const t = validarEstrutura(Reg.baixarPdf(entrada(), 'Débito').bytes);
-  assert.ok(!t.includes(P.hex('não substitui')));
-  assert.ok(t.includes(P.hex('Fonte dos dados')));
+  ['não substitui', 'manualmente', 'pelo usuário', 'Fonte dos dados'].forEach((x) => assert.ok(!t.includes(P.hex(x)), x));
 });
 
 test('correção por índice: Excel com percentual e fórmula, PDF com a fonte do Banco Central', () => {
@@ -125,7 +124,7 @@ test('correção por índice: Excel com percentual e fórmula, PDF com a fonte d
   const o = { tipo: 'contrato', titulo: 'Memória — índice', parcelas: [{ descricao: 'Aluguel', vencimento: '10/01/2025' }], resultados, totais: C.consolidar(resultados), dataFinal: crit.dataFinal, criterios: [] };
   const reg = Reg.montarCalculo(o);
   assert.match(reg.fonte, /Banco Central/);
-  assert.ok(reg.resumo.some((l) => /índice oficial/.test(l[0])));
+  assert.ok(reg.resumo.some((l) => /Correção monetária/.test(l[0])));
   const t = validarEstrutura(Reg.pdfDeRegistro(reg));
   assert.ok(t.includes(P.hex('IPCA')));
   const plan = Reg.montarPlanilha(o);

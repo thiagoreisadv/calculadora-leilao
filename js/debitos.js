@@ -197,8 +197,8 @@
           <div className="space-y-5">
             <div className="rounded-[10px] border border-border p-4 text-[13px]">
               <div className="font-medium text-foreground mb-1">Correção monetária utilizada</div>
-              {x.r.correcao.modo === 'percentual' && <p className="text-foreground">Percentual informado: <b>{R.formatarPercentual(x.r.correcao.percentual)}</b> · Valor da correção: <b>{R.formatarMoeda(x.r.correcao.valorCorrecao)}</b> · Principal corrigido: <b>{R.formatarMoeda(x.r.principalCorrigido)}</b></p>}
-              {x.r.correcao.modo === 'valorCorrigido' && <p className="text-foreground">Principal corrigido <b>informado manualmente</b>: <b>{R.formatarMoeda(x.r.principalCorrigido)}</b> (diferença para o valor original: {R.formatarMoeda(x.r.correcao.valorCorrecao)}). Nenhuma correção adicional foi aplicada.</p>}
+              {x.r.correcao.modo === 'percentual' && <p className="text-foreground">Percentual: <b>{R.formatarPercentual(x.r.correcao.percentual)}</b> · Valor da correção: <b>{R.formatarMoeda(x.r.correcao.valorCorrecao)}</b> · Principal corrigido: <b>{R.formatarMoeda(x.r.principalCorrigido)}</b></p>}
+              {x.r.correcao.modo === 'valorCorrigido' && <p className="text-foreground">Principal corrigido: <b>{R.formatarMoeda(x.r.principalCorrigido)}</b> (diferença para o valor original: {R.formatarMoeda(x.r.correcao.valorCorrecao)}).</p>}
               {x.r.correcao.modo === 'indice' && <p className="text-foreground">{x.r.correcao.nomeIndice}: fator acumulado <b>{x.r.correcao.fator.toLocaleString('pt-BR', { minimumFractionDigits: 6, maximumFractionDigits: 6 })}</b> ({R.formatarPercentual(x.r.correcao.percentual)}) em {x.r.correcao.meses.length} mês(es) · Valor da correção: <b>{R.formatarMoeda(x.r.correcao.valorCorrecao)}</b> · Principal corrigido: <b>{R.formatarMoeda(x.r.principalCorrigido)}</b>{x.r.correcao.faltantes.length ? ` · sem índice divulgado para ${x.r.correcao.faltantes.map(K.nomeMes).join(', ')}` : ''}</p>}
               {x.r.correcao.modo === 'nenhuma' && <p className="text-foreground">Sem correção monetária: o valor original foi usado como principal.</p>}
             </div>

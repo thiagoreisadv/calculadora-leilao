@@ -41,28 +41,31 @@
       --warning: 148 96 22;
       --radius: 0.5rem;
     }
-    html.dark {
-      --background: 22 24 38;
-      --foreground: 233 233 237;
-      --card: 29 31 45;
-      --card-foreground: 233 233 237;
-      --sidebar: 18 20 31;
-      --field: 22 24 38;
-      --primary: 145 132 217;
-      --primary-foreground: 22 24 38;
-      --primary-text: 181 171 252;
-      --secondary: 43 43 66;
-      --secondary-foreground: 233 233 237;
-      --muted: 43 43 66;
-      --muted-foreground: 147 151 171;
-      --accent: 43 43 66;
-      --accent-foreground: 233 233 237;
-      --destructive: 232 131 143;
-      --border: 49 52 74;
-      --input: 49 52 74;
-      --ring: 145 132 217;
-      --success: 111 196 166;
-      --warning: 224 181 106;
+    /* Tema escuro só na tela: impressão e PDF usam sempre as cores claras, sem trocar o tema (evita o piscar) */
+    @media screen {
+      html.dark {
+        --background: 22 24 38;
+        --foreground: 233 233 237;
+        --card: 29 31 45;
+        --card-foreground: 233 233 237;
+        --sidebar: 18 20 31;
+        --field: 22 24 38;
+        --primary: 145 132 217;
+        --primary-foreground: 22 24 38;
+        --primary-text: 181 171 252;
+        --secondary: 43 43 66;
+        --secondary-foreground: 233 233 237;
+        --muted: 43 43 66;
+        --muted-foreground: 147 151 171;
+        --accent: 43 43 66;
+        --accent-foreground: 233 233 237;
+        --destructive: 232 131 143;
+        --border: 49 52 74;
+        --input: 49 52 74;
+        --ring: 145 132 217;
+        --success: 111 196 166;
+        --warning: 224 181 106;
+      }
     }
     html, body {
       font-family: Inter, system-ui, sans-serif;
@@ -643,14 +646,8 @@
         }
       };
 
-      const handlePrint = () => {
-        const wasDark = darkMode;
-        if(wasDark) setDarkMode(false);
-        setTimeout(() => {
-          window.print();
-          if(wasDark) setDarkMode(true);
-        }, 100);
-      };
+      // As cores de impressão são sempre as claras (CSS @media screen no tema escuro): não troca o tema.
+      const handlePrint = () => window.print();
 
       const handleReset = () => {
         if(window.confirm("Zerar valores desta aba?")) {
@@ -1015,7 +1012,7 @@
         const veiculo = assetType === 'veiculo';
         const titulo = veiculo ? (isRegularizacao ? 'Análise de Compra com Regularização' : 'Análise Veicular') : 'Análise Imobiliária';
         Reg.cabecalhoPlanilha(m, `Planilha de cálculo — ${titulo}`, [['Cliente', clienteNomeLeilao], [veiculo ? 'Veículo' : 'Imóvel', imovelDescLeilao]]);
-        m.secao('Valores informados');
+        m.secao('Valores');
         const rLance = m.item(isRegularizacao ? 'Valor de compra acordado' : 'Valor do lance / arremate', safeBid);
         if (safeEval > 0) m.item('Valor de avaliação', safeEval);
         const rMercado = safeMarket > 0 ? m.item(veiculo ? 'Valor da tabela FIPE' : 'Valor de mercado', safeMarket) : null;
@@ -1077,7 +1074,7 @@
         let somaExibida = 0;
         const add = (rotulo, valor, obs) => { const r = m.item(rotulo, valor, 'moeda', obs); if (primeira === null) primeira = r; somaExibida += valor; };
         if (showItbiEsc) add('Imposto de Transmissão (ITBI)', itbiCostEsc, safeNumber(valorVenalEsc) > safeNegocio ? 'base: valor venal' : '');
-        if (showLavraturaEsc) add('Ato de Escrituração Imobiliária', lavraturaCostExibido, escrituraExtrapolada ? 'valor extrapolado da tabela' : '');
+        if (showLavraturaEsc) add('Ato de Escrituração Imobiliária', lavraturaCostExibido, '');
         if (showFunrejusEsc) add('Funrejus compulsório (0,2% — TJPR)', funrejusCost);
         if (showCertidoesEsc && safeNumber(certidoesEsc) > 0) add('Certidões e buscas', safeNumber(certidoesEsc));
         if (showDiligenciasEsc && safeNumber(diligenciasEsc) > 0) add('Diligências / assessoria', safeNumber(diligenciasEsc));
@@ -1101,7 +1098,7 @@
         }
         m.vazio();
         const criterios = [
-          ['Modo de cálculo', escrituraMode === 'pr' ? `Automático — tabelas TJ-PR vigentes desde ${VIGENCIA_TABELAS_PR}` : 'Custas informadas manualmente'],
+          ['Modo de cálculo', escrituraMode === 'pr' ? `Automático — tabelas TJ-PR vigentes desde ${VIGENCIA_TABELAS_PR}` : 'Valores próprios'],
           ['ITBI', textoTaxa(itbiEscritura).replace(' sobre o lance', ' sobre o valor do negócio')],
         ];
         if (formato === 'pdf') baixarPdfApp(Reg.baixarPdfSimples(m.linhas, criterios, 'Memorial de Custas de Escrituração', clienteNome || imovelDesc || 'escritura'));
@@ -1708,7 +1705,7 @@
                         <tbody>
                           <tr className="border-b border-gray-300"><td className="py-1.5 font-bold">Base da Transação</td><td className="py-1.5 text-right font-bold">{formatMoney(safeNegocio)}</td></tr>
                           {showItbiEsc && <tr className="border-b border-gray-300"><td className="py-1.5">Imposto de Transmissão (ITBI){safeNumber(valorVenalEsc) > safeNegocio ? ' (s/ valor venal)' : ''}</td><td className="py-1.5 text-right">{formatMoney(itbiCostEsc)}</td></tr>}
-                          {showLavraturaEsc && <tr className="border-b border-gray-300"><td className="py-1.5">Ato de Escrituração Imobiliária{escrituraExtrapolada ? ' *' : ''}</td><td className="py-1.5 text-right">{formatMoney(lavraturaCostExibido)}</td></tr>}
+                          {showLavraturaEsc && <tr className="border-b border-gray-300"><td className="py-1.5">Ato de Escrituração Imobiliária</td><td className="py-1.5 text-right">{formatMoney(lavraturaCostExibido)}</td></tr>}
                           {showFunrejusEsc && <tr className="border-b border-gray-300"><td className="py-1.5">Funrejus Compulsório (0,2% — TJPR)</td><td className="py-1.5 text-right">{formatMoney(funrejusCost)}</td></tr>}
                           {showCertidoesEsc && safeCertidoesEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">Certidões e Buscas</td><td className="py-1.5 text-right">{formatMoney(safeCertidoesEsc)}</td></tr>}
                           {showDiligenciasEsc && safeDiligenciasEsc > 0 && <tr className="border-b border-gray-300"><td className="py-1.5">Diligências / Assessoria</td><td className="py-1.5 text-right">{formatMoney(safeDiligenciasEsc)}</td></tr>}
@@ -1745,9 +1742,6 @@
                         </tbody>
                       </table>
 
-                      {escrituraExtrapolada && (
-                        <p className="text-[8px] text-gray-600 text-justify leading-relaxed mb-10">* A tabela oficial do Tabelionato de Notas não define faixas acima de R$226.000,00; o valor exibido é uma estimativa mínima baseada na última faixa conhecida — confirme com o tabelionato.</p>
-                      )}
 
                       <div className="flex justify-between text-[9px] avoid-break">
                         <div className="text-center w-56">

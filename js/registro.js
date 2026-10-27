@@ -17,7 +17,7 @@
   function textoCorrecao(c) {
     if (c.modo === 'percentual') return `${R.formatarPercentual(c.percentual)} → ${m(c.valorCorrecao)}`;
     if (c.modo === 'indice') return `${c.nomeIndice} ${R.formatarPercentual(c.percentual)} → ${m(c.valorCorrecao)}`;
-    if (c.modo === 'valorCorrigido') return `Valor informado (${m(c.valorCorrecao)})`;
+    if (c.modo === 'valorCorrigido') return `Valor corrigido (${m(c.valorCorrecao)})`;
     return 'Sem correção';
   }
 
@@ -36,7 +36,7 @@
   function montarCalculo(o) {
     const t = o.totais;
     const origem = origemCorrecao(o.resultados);
-    const rotuloCorrecao = origem.comIndice ? (origem.manual ? 'Correção monetária (índice oficial e valores informados)' : 'Correção monetária (índice oficial)') : 'Correção monetária (informada manualmente pelo usuário)';
+    const rotuloCorrecao = 'Correção monetária';
     const comHonorarios = t.honorarios !== 0;
     const resumo = [
       ['Valor original', m(t.original)],
@@ -46,7 +46,7 @@
       ['Multa', m(t.multa)],
     ];
     if (comHonorarios) resumo.push(['Honorários', m(t.honorarios)]);
-    if (t.encargosNominais !== 0) resumo.push(['Outros encargos (valores informados, sem atualização)', m(t.encargosNominais)]);
+    if (t.encargosNominais !== 0) resumo.push(['Outros encargos', m(t.encargosNominais)]);
     resumo.push(['Pagamentos', t.pagamentos ? `-${m(t.pagamentos)}` : m(0)]);
     if (t.creditoNaoImputado !== 0) resumo.push(['Excedente de pagamentos (não imputado)', m(t.creditoNaoImputado)]);
 
@@ -68,7 +68,7 @@
     const secoes = [{ titulo: 'Detalhamento por parcela', colunas, numericas, linhas, rodape }];
     const notaTotal = [];
     if (t.honorariosFixos) notaTotal.push(`honorários de valor fixo (${m(t.honorariosFixos)})`);
-    if (t.encargosNominais) notaTotal.push(`outros encargos informados (${m(t.encargosNominais)})`);
+    if (t.encargosNominais) notaTotal.push(`outros encargos (${m(t.encargosNominais)})`);
 
     return {
       tipo: o.tipo,
@@ -86,8 +86,8 @@
       alertas: o.alertas || [],
       observacoes: [o.observacoes, notaTotal.length ? `O saldo final inclui, além do total das parcelas: ${notaTotal.join(' e ')}.` : ''].filter(Boolean).join('\n'),
       fonte: origem.comIndice
-        ? `Cálculo realizado localmente neste navegador. Correção monetária pelos índices oficiais da tabela do Banco Central do Brasil (SGS)${origem.atualizadoEm ? `, atualizada em ${origem.atualizadoEm}` : ''}${origem.manual ? ', e por valores informados pelo usuário' : ''}; demais critérios informados pelo usuário`
-        : 'Cálculo realizado localmente neste navegador, com a correção monetária e os critérios informados pelo usuário (nenhum índice ou API foi consultado)',
+        ? `Índices de correção: Banco Central do Brasil (SGS)${origem.atualizadoEm ? `, tabela atualizada em ${origem.atualizadoEm}` : ''}`
+        : '',
       totais: t,
       planilha: o,
     };
@@ -124,7 +124,7 @@
         T(p.competencia ? `${p.descricao} (${p.competencia})` : p.descricao),
         T(p.vencimento),
         N(r.original, 'moeda'),
-        (c.modo === 'percentual' || c.modo === 'indice') ? N(c.percentual / 100, 'percentual') : T(c.modo === 'valorCorrigido' ? 'valor informado' : '—'),
+        (c.modo === 'percentual' || c.modo === 'indice') ? N(c.percentual / 100, 'percentual') : T(c.modo === 'valorCorrigido' ? 'valor corrigido' : '—'),
         (c.modo === 'percentual' || c.modo === 'indice') ? F(`ROUND(D${n}*E${n},2)`, c.valorCorrecao, 'moeda') : N(c.valorCorrecao, 'moeda'),
         F(`D${n}+F${n}`, r.principalCorrigido, 'moeda'),
         N(r.juros, 'moeda'), N(r.multa, 'moeda'), N(r.honorarios, 'moeda'), N(r.pagamentos, 'moeda'), N(r.creditoNaoImputado, 'moeda'),
@@ -138,7 +138,7 @@
     linhas.push([]);
     let refExtras = [];
     if (t.honorariosFixos) { linhas.push([T('', 'padrao'), T('Honorários de valor fixo (somados uma única vez)', 'rotulo'), T(''), N(t.honorariosFixos, 'moeda')]); refExtras.push(`D${linhas.length}`); }
-    if (t.encargosNominais) { linhas.push([T(''), T('Outros encargos (valores informados, sem atualização)', 'rotulo'), T(''), N(t.encargosNominais, 'moeda')]); refExtras.push(`D${linhas.length}`); }
+    if (t.encargosNominais) { linhas.push([T(''), T('Outros encargos', 'rotulo'), T(''), N(t.encargosNominais, 'moeda')]); refExtras.push(`D${linhas.length}`); }
     linhas.push([T(''), T('SALDO FINAL ATUALIZADO', 'rotulo'), T(''), F(['M' + linhaTotal].concat(refExtras).join('+'), t.saldoFinal, 'destaque')]);
     if ((o.linhasExtras || []).length) { linhas.push([]); (o.linhasExtras || []).forEach((e) => linhas.push([T(''), T(e[0], 'rotulo'), T(''), N(e[1], 'moeda')])); }
     linhas.push([]);
@@ -234,7 +234,7 @@
     }
     if (reg.observacoes) { doc.secao('Observações'); doc.paragrafo(reg.observacoes); }
     doc.espaco(8);
-    doc.paragrafo(`Fonte dos dados: ${reg.fonte || ''}.`, { tam: 7.5, cor: '0.392 0.455 0.545' });
+    if (reg.fonte) doc.paragrafo(`${reg.fonte}.`, { tam: 7.5, cor: '0.392 0.455 0.545' });
     return doc.gerar();
   }
 

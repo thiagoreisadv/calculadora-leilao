@@ -16,9 +16,9 @@
   let sequencia = 0;
   const novoId = () => { sequencia += 1; return `l${Date.now().toString(36)}${sequencia}`; };
 
-  const inicial = () => ({ titulo: '', credor: '', devedor: '', observacoes: '', linhas: [], criterios: K.criteriosPadrao() });
+  const inicial = () => ({ titulo: '', credor: '', devedor: '', observacoes: '', linhas: [], criterios: K.criteriosPadrao(), lote: B.loteInicial() });
 
-  const novaLinha = () => ({ id: novoId(), descricao: '', competencia: '', vencimento: '', valor: '', outros: '', correcao: B.correcaoInicial(), jurosPct: '', multaPct: '', pagamentos: [] });
+  const novaLinha = (lote) => ({ id: novoId(), descricao: '', competencia: '', vencimento: '', valor: '', outros: '', correcao: lote ? B.correcaoDoLote(lote) : B.correcaoInicial(), jurosPct: '', multaPct: '', pagamentos: [] });
 
 
   function LinhaEditavel({ linha, indice, onChange, onRemover, erros, criterios }) {
@@ -41,7 +41,7 @@
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <CampoTexto rotulo="Descrição" valor={linha.descricao} onChange={(v) => onChange({ descricao: v })} maxLength={80} className="lg:col-span-2" />
           <CampoCompetencia rotulo="Competência" valor={linha.competencia} onChange={(v) => onChange({ competencia: v })} erro={erro('competencia')} />
-          <CampoData rotulo="Vencimento" obrigatorio valor={linha.vencimento} onChange={(v) => onChange({ vencimento: v })} erro={erro('vencimento')} />
+          <CampoData rotulo="Vencimento" obrigatorio valor={linha.vencimento} onChange={(v) => onChange({ vencimento: v, ...(v.length === 10 && (!linha.competencia || linha.competencia === linha.vencimento.slice(3)) ? { competencia: v.slice(3) } : {}) })} erro={erro('vencimento')} />
           <CampoMoeda rotulo="Valor original" obrigatorio valor={linha.valor} onChange={(v) => onChange({ valor: v })} erro={erro('valor')} />
           <CampoMoeda rotulo="Outros encargos (nominais)" valor={linha.outros} onChange={(v) => onChange({ outros: v })} className="lg:col-span-2" erro={erro('outros')} />
         </div>
@@ -102,7 +102,7 @@
     const m = R.formatarMoeda;
     function celulas(i) {
       const x = res.resultados[i]; const l = res.linhas[i]; const o = res.outros[i];
-      return [i + 1, l.descricao || '—', l.competencia || '—', l.vencimento, m(x.original), `${m(x.correcao.valorCorrecao)}${x.correcao.modo === 'percentual' ? ` (${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'indice' ? ` (${x.correcao.nomeIndice} ${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'valorCorrigido' ? ' (informado)' : ''}`, m(x.juros), m(x.multa), o ? m(o) : '—', x.pagamentos ? `-${m(x.pagamentos)}` : '—', m(x.saldo + o)];
+      return [i + 1, l.descricao || '—', l.competencia || '—', l.vencimento, m(x.original), `${m(x.correcao.valorCorrecao)}${x.correcao.modo === 'percentual' ? ` (${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'indice' ? ` (${x.correcao.nomeIndice} ${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'valorCorrigido' ? ' (valor corrigido)' : ''}`, m(x.juros), m(x.multa), o ? m(o) : '—', x.pagamentos ? `-${m(x.pagamentos)}` : '—', m(x.saldo + o)];
     }
 
     function exportarCsv() {
@@ -155,14 +155,16 @@
               <div>
                 <h3 className="text-[13px] font-medium text-foreground">Obrigações</h3>
               </div>
-              <Botao tamanho="sm" variante="primario" icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha()] })}>Adicionar obrigação</Botao>
+              <Botao tamanho="sm" variante="primario" icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha(f.lote)] })}>Adicionar obrigação</Botao>
             </div>
+            <B.CorrecaoLote valor={f.lote} onChange={(v) => definirF({ ...f, lote: v })} quantidade={f.linhas.length}
+              onAplicar={() => { const linhas = B.aplicarLote(f.linhas, f.lote); if (linhas) alterar({ linhas }); }} />
             {f.linhas.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhuma obrigação.</p>}
             {f.linhas.map((l, i) => (
               <LinhaEditavel key={l.id} linha={l} indice={i} erros={errosForm} criterios={f.criterios}
                 onChange={(parte) => alterarLinha(l.id, parte)} onRemover={() => alterar({ linhas: f.linhas.filter((x) => x.id !== l.id) })} />
             ))}
-            {f.linhas.length > 0 && <Botao icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha()] })}>Adicionar obrigação</Botao>}
+            {f.linhas.length > 0 && <Botao icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha(f.lote)] })}>Adicionar obrigação</Botao>}
           </div>
         </div>
       ) },

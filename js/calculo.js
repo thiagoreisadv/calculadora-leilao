@@ -102,6 +102,42 @@
     return { fator, meses, faltantes };
   }
 
+  // ---------- Salário mínimo nacional (R$) ----------
+  // Tabela embutida (valor vigente a partir do mês indicado) para funcionar sem dados/indices.json;
+  // a série 1619 do Banco Central, gravada pelo robô na tabela, tem prioridade.
+  const SALARIO_MINIMO_BASE = {
+    '2005-05': 300, '2006-04': 350, '2007-04': 380, '2008-03': 415, '2009-02': 465, '2010-01': 510,
+    '2011-01': 540, '2011-03': 545, '2012-01': 622, '2013-01': 678, '2014-01': 724, '2015-01': 788,
+    '2016-01': 880, '2017-01': 937, '2018-01': 954, '2019-01': 998, '2020-01': 1039, '2020-02': 1045,
+    '2021-01': 1100, '2022-01': 1212, '2023-01': 1302, '2023-05': 1320, '2024-01': 1412, '2025-01': 1518,
+    '2026-01': 1621,
+  };
+
+  // Aceita 'MM/AAAA', 'DD/MM/AAAA' ou 'AAAA-MM'; devolve 'AAAA-MM' ou null.
+  function chaveCompetencia(texto) {
+    const s = String(texto || '').trim();
+    let x = /^(\d{4})-(\d{2})$/.exec(s);
+    if (x) return s;
+    x = /^(?:\d{2}\/)?(\d{2})\/(\d{4})$/.exec(s);
+    return x && Number(x[1]) >= 1 && Number(x[1]) <= 12 ? `${x[2]}-${x[1]}` : null;
+  }
+
+  // Salário mínimo vigente na competência (o último valor conhecido até ela) ou null.
+  function salarioMinimo(competencia) {
+    const k = chaveCompetencia(competencia);
+    if (!k) return null;
+    const serie = tabelaIndices && tabelaIndices.series && tabelaIndices.series.SALARIO_MINIMO;
+    const valores = { ...SALARIO_MINIMO_BASE, ...(serie && serie.valores ? serie.valores : {}) };
+    if (typeof valores[k] === 'number') return valores[k];
+    const anteriores = Object.keys(valores).filter((m) => m <= k).sort();
+    return anteriores.length ? valores[anteriores[anteriores.length - 1]] : null;
+  }
+
+  function competenciaAtual() {
+    const h = new Date();
+    return `${String(h.getMonth() + 1).padStart(2, '0')}/${h.getFullYear()}`;
+  }
+
   // Devolve o principal corrigido. A correção é aplicada AQUI, uma única vez; as demais etapas
   // recebem apenas "principalCorrigido" e nunca reaplicam a correção.
   // contexto = { inicio, fim } é usado pela correção por índice.
@@ -366,9 +402,9 @@
     const memoria = [`Valor original: ${m(correcao.original)} (vencimento em ${vencMora}).`];
     if (aVencer) memoria.push(`Vencimento posterior à data final do cálculo (${fim}): parcela tratada como vencida antecipadamente nessa data.`);
     if (correcao.modo === 'percentual') {
-      memoria.push(`Correção monetária informada manualmente pelo usuário: ${pct(correcao.percentual)} acumulado sobre ${m(correcao.original)} = ${m(correcao.valorCorrecao)}. Não foi calculada por índice oficial nem por consulta automática.`);
+      memoria.push(`Correção monetária: ${pct(correcao.percentual)} acumulado sobre ${m(correcao.original)} = ${m(correcao.valorCorrecao)}.`);
     } else if (correcao.modo === 'valorCorrigido') {
-      memoria.push(`Principal corrigido informado manualmente pelo usuário: ${m(correcao.principalCorrigido)} (diferença de ${m(correcao.valorCorrecao)} em relação ao valor original). Valor utilizado como está, sem nova aplicação de correção.`);
+      memoria.push(`Principal corrigido: ${m(correcao.principalCorrigido)} (diferença de ${m(correcao.valorCorrecao)} em relação ao valor original).`);
     } else if (correcao.modo === 'indice') {
       const fonte = `fonte: Banco Central do Brasil, série SGS ${correcao.codigoSerie}${correcao.atualizadoEm ? `, tabela atualizada em ${correcao.atualizadoEm}` : ''}`;
       if (correcao.meses.length) {
@@ -387,7 +423,7 @@
     else if (!multa) memoria.push(`Multa de ${pct(multaPct)}: não incide, pois o valor foi pago até o vencimento (${vencMora}).`);
     else memoria.push(`Multa de ${pct(multaPct)} sobre ${m(baseMulta)} = ${m(multa)} (aplicada uma única vez${pagosAteVencimento ? `; base = principal corrigido ${m(principal)} − ${m(pagosAteVencimento)} pagos até o vencimento` : ', sobre o principal corrigido'}).`);
     if (pagamentos.length) {
-      memoria.push(`Pagamentos informados: ${pagamentos.map((p) => `${m(p.valor)} em ${p.data}`).join('; ')} (total ${m(somaPagamentos)}). ${c.imputacao === 'art354' && c.juros && c.juros.ativo && !aVencer ? 'Imputados primeiro nos juros e depois no principal, em ordem cronológica.' : 'Abatidos do saldo final de principal e juros, sem recalcular os juros.'}${multaQuitada ? ` O valor pago além do principal e dos juros quitou ${m(multaQuitada)} da multa.` : ''}${credito ? ` Há ${m(credito)} de pagamento excedente, não imputado.` : ''}`);
+      memoria.push(`Pagamentos: ${pagamentos.map((p) => `${m(p.valor)} em ${p.data}`).join('; ')} (total ${m(somaPagamentos)}). ${c.imputacao === 'art354' && c.juros && c.juros.ativo && !aVencer ? 'Imputados primeiro nos juros e depois no principal, em ordem cronológica.' : 'Abatidos do saldo final de principal e juros, sem recalcular os juros.'}${multaQuitada ? ` O valor pago além do principal e dos juros quitou ${m(multaQuitada)} da multa.` : ''}${credito ? ` Há ${m(credito)} de pagamento excedente, não imputado.` : ''}`);
     }
     if (honorarios) memoria.push(`Honorários de ${pct(R.lerValor(c.honorarios.valor))} sobre ${m(R.arredondar(saldoPrincipalJuros + multaDevida))} (principal corrigido + juros + multa − pagamentos) = ${m(honorarios)}.`);
     memoria.push(`Saldo atualizado = ${m(principal)} (principal corrigido) + ${m(juros)} (juros) + ${m(multa)} (multa) + ${m(honorarios)} (honorários) − ${m(somaPagamentos)} (pagamentos)${credito ? ` + ${m(credito)} (excedente não imputado)` : ''} = ${m(saldo)}.`);
@@ -453,7 +489,7 @@
   }
 
   return {
-    MODOS_CORRECAO, INDICES, correcaoPadrao, criteriosPadrao, definirIndices, indicesCarregados, ultimoMesIndice, fatorIndice, nomeMes,
+    MODOS_CORRECAO, INDICES, correcaoPadrao, criteriosPadrao, definirIndices, indicesCarregados, ultimoMesIndice, fatorIndice, nomeMes, salarioMinimo, competenciaAtual, chaveCompetencia,
     aplicarCorrecao, periodoEntre, acumuladoJuros, apurarJuros,
     validarCorrecao, validarCriterios, validarParcela, validarCalculo, criteriosDaParcela, honorariosFixos,
     estaAVencer, separarVincendas, calcularParcela, consolidar, outrosEncargosTotal, particionarRitos,

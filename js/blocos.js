@@ -19,9 +19,9 @@
     const manual = modos.some((x) => x.modo === 'percentual' || x.modo === 'valorCorrigido');
     if (indices.length) {
       const tabela = K.indicesCarregados();
-      linhas.push(['Correção monetária', `${indices.join(', ')}: variações mensais do mês do vencimento até o mês anterior ao da data final, acumuladas (tabela do Banco Central do Brasil${tabela && tabela.atualizadoEm ? `, atualizada em ${tabela.atualizadoEm}` : ''})${manual ? '; nas demais parcelas, percentual ou valor corrigido informado pelo usuário' : ''}`]);
+      linhas.push(['Correção monetária', `${indices.join(', ')}: variações mensais do mês do vencimento até o mês anterior ao da data final, acumuladas (tabela do Banco Central do Brasil${tabela && tabela.atualizadoEm ? `, atualizada em ${tabela.atualizadoEm}` : ''})${manual ? '; nas demais parcelas, percentual acumulado ou valor corrigido' : ''}`]);
     } else {
-      linhas.push(['Correção monetária', 'Informada manualmente pelo usuário (percentual acumulado ou valor já corrigido, por parcela); não calculada por índice oficial nem por consulta automática']);
+      linhas.push(['Correção monetária', 'Percentual acumulado ou valor já corrigido, por parcela']);
     }
     if (c.juros && c.juros.ativo) {
       linhas.push(['Juros moratórios', `${R.formatarPercentual(R.lerValor(c.juros.percentual))} ${c.juros.periodicidade === 'anual' ? 'ao ano' : 'ao mês'}, ${c.juros.modalidade === 'compostos' ? 'compostos (capitalizados)' : 'simples'}, do vencimento até a data final, sobre o principal corrigido; período = meses completos + dias restantes ÷ 30`]);
@@ -35,7 +35,6 @@
     linhas.push(['Abatimento de pagamentos', c.imputacao === 'art354' ? 'Imputação cronológica: primeiro nos juros e depois no principal (art. 354 do Código Civil), com juros recalculados sobre o principal restante' : 'Abatidos do saldo final de principal e juros, sem recalcular os juros']);
     linhas.push(['Multa e mora', 'Multa só sobre o valor em atraso no vencimento (pagamento em dia afasta a multa); pagamento além do principal e dos juros quita a multa']);
     linhas.push(['Parcelas a vencer na data final', c.vincendas === 'excluir' ? 'Ficam fora do cálculo e são listadas à parte' : 'Tratadas como vencidas antecipadamente na data final: sem juros, com multa (se aplicada)']);
-    linhas.push(['Responsabilidade pelos critérios', 'Definidos pelo usuário para o caso concreto; a ferramenta não valida sua adequação jurídica.']);
     return linhas;
   }
 
@@ -59,7 +58,7 @@
     if (!c) return 'Sem correção';
     if (c.modo === 'indice') return `Correção: ${(K.INDICES[c.indice] || K.INDICES.IPCA).nome}`;
     if (c.modo === 'percentual') return `Correção: ${c.percentual || '—'}%`;
-    if (c.modo === 'valorCorrigido') return 'Valor corrigido informado';
+    if (c.modo === 'valorCorrigido') return 'Valor corrigido';
     return 'Sem correção';
   }
 
@@ -134,6 +133,42 @@
   }
 
   // ---------- Critérios de cálculo (juros, multa, honorários, pagamentos) ----------
+  // ---------- Correção em lote: usada pelos geradores de parcelas e por "Aplicar a todas" ----------
+  const OPCOES_LOTE = [
+    ...Object.entries(K.INDICES).map(([valor, x]) => ({ valor, rotulo: x.nome })),
+    { valor: 'percentual', rotulo: 'Percentual' },
+    { valor: 'nenhuma', rotulo: 'Sem correção' },
+  ];
+  const loteInicial = () => ({ opcao: 'IPCA', percentual: '' });
+
+  function correcaoDoLote(lote) {
+    const l = lote || loteInicial();
+    if (K.INDICES[l.opcao]) return { ...K.correcaoPadrao(), modo: 'indice', indice: l.opcao };
+    if (l.opcao === 'percentual') return { ...K.correcaoPadrao(), modo: 'percentual', percentual: l.percentual };
+    return K.correcaoPadrao();
+  }
+
+  // Aplica a correção do lote a todos os itens; devolve null (e avisa) quando falta dado.
+  function aplicarLote(itens, lote) {
+    const l = lote || loteInicial();
+    if (!itens.length) { UI.avisar('Inclua as parcelas antes.', 'erro'); return null; }
+    if (l.opcao === 'percentual' && !(R.lerValor(l.percentual) >= 0)) { UI.avisar('Informe o percentual.', 'erro'); return null; }
+    const correcao = correcaoDoLote(l);
+    UI.avisar(`${rotuloCorrecao(correcao)} em ${itens.length} item(ns).`);
+    return itens.map((x) => ({ ...x, correcao: { ...correcao } }));
+  }
+
+  function CorrecaoLote({ valor, onChange, quantidade = 0, onAplicar, rotulo = 'Correção' }) {
+    const l = valor || loteInicial();
+    return (
+      <div className="flex flex-wrap items-end gap-3">
+        <Selecao className="w-40" rotulo={rotulo} valor={l.opcao} onChange={(v) => onChange({ ...l, opcao: v })} opcoes={OPCOES_LOTE} />
+        {l.opcao === 'percentual' && <CampoPercentual className="w-32" rotulo="Acumulado" valor={l.percentual} onChange={(v) => onChange({ ...l, percentual: v })} />}
+        {onAplicar && quantidade > 0 && <Botao onClick={onAplicar}>Aplicar a todas ({quantidade})</Botao>}
+      </div>
+    );
+  }
+
   function CriteriosCalculo({ valor, onChange, erros = [], textoMulta = 'Multa (%)', notaMulta, rotuloData = 'Atualizar até' }) {
     const c = valor;
     const alterar = (parte) => onChange({ ...c, ...parte });
@@ -213,7 +248,7 @@
       <div className="space-y-3">
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           <Indicador rotulo="Valor original" valor={R.formatarMoeda(totais.original)} />
-          <Indicador rotulo="Correção monetária (informada)" valor={R.formatarMoeda(totais.correcao)} />
+          <Indicador rotulo="Correção monetária" valor={R.formatarMoeda(totais.correcao)} />
           <Indicador rotulo="Principal corrigido" valor={R.formatarMoeda(totais.principalCorrigido)} />
           <Indicador rotulo="Juros" valor={R.formatarMoeda(totais.juros)} />
           <Indicador rotulo="Multa" valor={R.formatarMoeda(totais.multa)} />
@@ -240,7 +275,7 @@
   // Descrição curta da correção de uma parcela, para tabelas.
   function textoCorrecao(correcao) {
     if (correcao.modo === 'percentual') return `${R.formatarPercentual(correcao.percentual)} → ${R.formatarMoeda(correcao.valorCorrecao)}`;
-    if (correcao.modo === 'valorCorrigido') return `Valor informado (${R.formatarMoeda(correcao.valorCorrecao)})`;
+    if (correcao.modo === 'valorCorrigido') return `Valor corrigido (${R.formatarMoeda(correcao.valorCorrecao)})`;
     if (correcao.modo === 'indice') return `${correcao.nomeIndice} ${R.formatarPercentual(correcao.percentual)} → ${R.formatarMoeda(correcao.valorCorrecao)}${correcao.faltantes && correcao.faltantes.length ? ' (parcial)' : ''}`;
     return 'Sem correção';
   }
@@ -312,7 +347,7 @@
   }
 
   window.CentralBlocos = {
-    descreverCriterios, useIndices, correcaoInicial, rotuloCorrecao, CorrecaoManual, CriteriosCalculo, PainelTotais, ResumoConsolidado, ListaAlertas,
+    descreverCriterios, useIndices, correcaoInicial, rotuloCorrecao, CorrecaoManual, CorrecaoLote, loteInicial, correcaoDoLote, aplicarLote, CriteriosCalculo, PainelTotais, ResumoConsolidado, ListaAlertas,
     textoCorrecao, VisualizadorDocumento, guardarMemoria, gerarPlanilhaCalculo, gerarPdfCalculo, gerarPdfRegistro,
   };
 })();

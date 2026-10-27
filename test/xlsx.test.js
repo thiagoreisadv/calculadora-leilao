@@ -81,7 +81,7 @@ test('planilha de cálculo: valores, fórmulas e totais coerentes com o motor', 
   assert.equal(t.saldoFinal, R.arredondar(t.saldo + 500 + 50));
   assert.match(s1, /Rito da prisão/);
   assert.doesNotMatch(s1, /não foi calculada por índice oficial/); // o aviso saiu da planilha; a memória de cálculo continua descrevendo o critério
-  assert.match(z['xl/worksheets/sheet2.xml'], /informada manualmente pelo usuário/);
+  assert.doesNotMatch(z['xl/worksheets/sheet2.xml'], /manualmente|pelo usuário/);
   assert.match(z['xl/worksheets/sheet3.xml'], /Juros/);
 });
 
