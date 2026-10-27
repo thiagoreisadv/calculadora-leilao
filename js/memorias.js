@@ -71,7 +71,7 @@
     }
 
     return (
-      <Pagina titulo="Memórias de cálculo" descricao="Consulte, imprima e exporte os demonstrativos dos seus cálculos, com os critérios utilizados.">
+      <Pagina titulo="Memórias de cálculo" descricao="Demonstrativos guardados neste navegador.">
         <Alerta tipo="info" titulo="Guardado somente neste navegador">
           O histórico não é sincronizado, não vai para nenhum servidor e some se os dados do navegador forem apagados. Faça uma cópia de segurança para guardar seus demonstrativos com segurança.
           <div className="mt-3 flex flex-wrap gap-2">
@@ -88,17 +88,17 @@
             <div className="space-y-3">
               <Selecao rotulo="Filtrar por tipo" valor={filtro} onChange={definirFiltro} placeholder="Todos os tipos"
                 opcoes={Object.entries(NOMES).map(([valor, rotulo]) => ({ valor, rotulo }))} />
-              {visiveis.length === 0 && <p className="text-sm text-muted-foreground py-4">{lista.length ? 'Nenhum cálculo deste tipo.' : 'Você ainda não gerou nenhuma memória de cálculo. Faça um cálculo e use "Gerar memória de cálculo".'}</p>}
+              {visiveis.length === 0 && <p className="text-sm text-muted-foreground py-4">{lista.length ? 'Nenhum cálculo deste tipo.' : 'Você ainda não gerou nenhuma memória de cálculo. Faça um cálculo e use "Salvar memória".'}</p>}
               <ul className="space-y-2 max-h-[34rem] overflow-y-auto">
                 {visiveis.map((r) => (
                   <li key={r.id}>
                     <button type="button" aria-pressed={r.id === selecionado} onClick={() => definirSelecionado(r.id)}
-                      className={`w-full text-left p-3 rounded-xl border flex gap-3 items-start ${r.id === selecionado ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/25' : 'border-border hover:bg-slate-50 dark:hover:bg-white/5'}`}>
-                      <Icone nome={ICONES[r.tipo] || 'memoria'} className="w-5 h-5 mt-0.5 text-navy-500 dark:text-emerald-400 flex-shrink-0" />
+                      className={`w-full text-left p-3 rounded-[10px] border flex gap-3 items-start transition-colors ${r.id === selecionado ? 'border-primary bg-primary/10' : 'border-border hover:bg-primary/5'}`}>
+                      <Icone nome={ICONES[r.tipo] || 'memoria'} className="w-5 h-5 mt-0.5 text-primary" />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold text-foreground truncate">{r.subtitulo || r.titulo}</span>
+                        <span className="block text-[13.5px] text-foreground truncate">{r.subtitulo || r.titulo}</span>
                         <span className="block text-xs text-muted-foreground">{NOMES[r.tipo] || r.tipo} · {dataCurta(r.criadoEm)}</span>
-                        {r.total && <span className="block text-sm font-bold text-emerald-700 dark:text-emerald-400 tabular-nums mt-0.5">{r.total.valor}</span>}
+                        {r.total && <span className="block text-[13.5px] text-primary-text tabular-nums mt-0.5">{r.total.valor}</span>}
                       </span>
                     </button>
                   </li>
@@ -112,15 +112,15 @@
               <div className="space-y-5">
                 <B.ListaAlertas alertas={atual.alertas} />
                 {atual.total && (
-                  <div className="rounded-xl bg-navy-900 dark:bg-emerald-700 text-white p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">{atual.total.rotulo}</div>
-                    <div className="text-2xl sm:text-3xl font-extrabold tabular-nums">{atual.total.valor}</div>
-                    <div className="text-xs text-white/80 mt-1">Referência: {atual.dataReferencia}</div>
+                  <div className="rounded-[10px] border border-border bg-field p-4">
+                    <div className="text-[12.5px] text-muted-foreground">{atual.total.rotulo}</div>
+                    <div className="text-[28px] font-medium tracking-[-0.02em] tabular-nums text-foreground">{atual.total.valor}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Referência: {atual.dataReferencia}</div>
                   </div>
                 )}
-                <dl className="grid grid-cols-1 sm:grid-cols-[170px_1fr] gap-x-4 gap-y-1.5 text-sm">
+                <dl className="grid grid-cols-1 sm:grid-cols-[170px_1fr] gap-x-4 gap-y-1.5 text-[13px]">
                   {[...(atual.identificacao || []), ...(atual.criterios || []).slice(0, 4)].filter((p) => p[1]).map(([k, v]) => (
-                    <React.Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd className="font-medium text-foreground break-words">{v}</dd></React.Fragment>
+                    <React.Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd className="text-foreground break-words">{v}</dd></React.Fragment>
                   ))}
                 </dl>
                 <div className="flex flex-wrap gap-2">

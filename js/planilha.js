@@ -11,7 +11,7 @@
   const R = window.CentralRegras;
   const K = window.CentralCalculo;
   const M = window.CentralModulos;
-  const { Pagina, Cartao, Botao, Alerta, CampoTexto, CampoMoeda, CampoData, CampoCompetencia, CampoPercentual, Tabela } = UI;
+  const { Pagina, Cartao, Botao, Alerta, CampoTexto, CampoMoeda, CampoData, CampoCompetencia, CampoPercentual, AreaTexto, Grade, Col, Calculador, AcoesPainel, Tabela } = UI;
 
   let sequencia = 0;
   const novoId = () => { sequencia += 1; return `l${Date.now().toString(36)}${sequencia}`; };
@@ -28,9 +28,9 @@
     const [proprios, definirProprios] = useState(linha.jurosPct !== '' || linha.multaPct !== '');
     const erro = (campo) => (erros.find((e) => e.linha === indice && e.campo === campo) || {}).mensagem;
     return (
-      <div className="rounded-xl border border-border p-3 sm:p-4 section-open">
+      <div className="rounded-[10px] border border-border p-3 sm:p-4 section-open">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Linha {indice + 1}</span>
+          <span className="text-[12.5px] text-muted-foreground">Linha {indice + 1}</span>
           <div className="flex flex-wrap gap-1 justify-end">
             <Botao tamanho="sm" variante="fantasma" aria-expanded={correcao} onClick={() => definirCorrecao(!correcao)}>{rotuloModo(linha.correcao)}</Botao>
             <Botao tamanho="sm" variante="fantasma" aria-expanded={pagamentos} onClick={() => definirPagamentos(!pagamentos)}>Pagamentos{linha.pagamentos.length ? ` (${linha.pagamentos.length})` : ''}</Botao>
@@ -46,18 +46,18 @@
           <CampoMoeda rotulo="Outros encargos (nominais)" valor={linha.outros} onChange={(v) => onChange({ outros: v })} className="lg:col-span-2" ajuda="Somados sem atualização, se houver fundamento." erro={erro('outros')} />
         </div>
         {correcao && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 section-open">
+          <div className="mt-4 pt-4 border-t border-border section-open">
             <B.CorrecaoManual compacto valor={linha.correcao} onChange={(c) => onChange({ correcao: c })} valorOriginal={linha.valor} erro={erro('correcao')} titulo="Correção monetária desta linha" />
           </div>
         )}
         {proprios && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 grid grid-cols-1 sm:grid-cols-2 gap-3 section-open">
+          <div className="mt-4 pt-4 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-3 section-open">
             <CampoPercentual rotulo="Taxa de juros desta linha" valor={linha.jurosPct} onChange={(v) => onChange({ jurosPct: v })} placeholder="padrão" ajuda="Vazio usa o padrão da planilha; 0 desliga os juros. Periodicidade e modalidade seguem o padrão." erro={erro('jurosPct')} />
             <CampoPercentual rotulo="Multa desta linha" valor={linha.multaPct} onChange={(v) => onChange({ multaPct: v })} placeholder="padrão" ajuda="Vazio usa o padrão; 0 desliga a multa." erro={erro('multaPct')} />
           </div>
         )}
         {pagamentos && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700/50 section-open">
+          <div className="mt-4 pt-4 border-t border-border section-open">
             <M.ListaPagamentos itens={linha.pagamentos} onChange={(v) => onChange({ pagamentos: v })} erro={erro('pagamento')} />
           </div>
         )}
@@ -69,6 +69,7 @@
     const [f, definirF, limpar] = UI.useRascunho('planilha2', inicial);
     const [errosForm, definirErros] = useState([]);
     const [res, definirRes] = useState(null);
+    const [aba, definirAba] = useState('obrigacoes');
     const topo = useRef(null);
 
     const alterar = (parte) => { definirF({ ...f, ...parte }); definirRes(null); };
@@ -91,7 +92,7 @@
       const outros = f.linhas.map((l) => R.arredondar(R.lerValor(l.outros) || 0));
       const totais = K.consolidar(resultados, { honorariosFixos: K.honorariosFixos(f.criterios), encargosNominais: outros.reduce((s, v) => s + v, 0) });
       definirRes({ resultados, outros, totais, linhas: f.linhas.map((l) => ({ ...l })) });
-      setTimeout(() => topo.current && topo.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+      if (window.innerWidth < 1024) setTimeout(() => topo.current && topo.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
     }
 
     const m = R.formatarMoeda;
@@ -136,66 +137,81 @@
       B.gerarPdfCalculo(entrada(), f.titulo || 'planilha-debitos');
     }
 
-    return (
-      <Pagina titulo="Planilha consolidada de débitos" descricao="Gerencie várias obrigações numa única tela, informe a correção monetária e os pagamentos de cada uma e veja o total consolidado.">
-        <Cartao titulo="1. Identificação" descricao="Nomes e descrições ficam apenas neste navegador e aparecem no demonstrativo.">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <CampoTexto rotulo="Título da planilha" valor={f.titulo} onChange={(v) => alterar({ titulo: v })} placeholder="Ex.: Débitos do contrato 123" />
-            <CampoTexto rotulo="Credor" valor={f.credor} onChange={(v) => alterar({ credor: v })} />
-            <CampoTexto rotulo="Devedor" valor={f.devedor} onChange={(v) => alterar({ devedor: v })} />
-          </div>
-        </Cartao>
-
-        <Cartao titulo="2. Critérios padrão" descricao="Aplicados a todas as linhas, exceto onde a linha tiver taxa de juros ou multa próprias.">
-          <B.CriteriosCalculo valor={f.criterios} onChange={(c) => alterar({ criterios: c })} erros={errosForm.filter((e) => e.linha === undefined)} />
-        </Cartao>
-
-        <Cartao titulo="3. Obrigações" descricao={`${f.linhas.length} linha(s). Máximo de ${R.LIMITE_PARCELAS}. A correção monetária é informada em cada linha.`}
-          acoes={<Botao tamanho="sm" icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha()] })}>Adicionar linha</Botao>}>
-          <div className="space-y-4">
-            {f.linhas.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma linha. Clique em "Adicionar linha" para começar.</p>}
+    const abas = [
+      { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'planilha', conteudo: (
+        <div className="space-y-4">
+          <Grade>
+            <Col span={2}><CampoTexto rotulo="Título da planilha" valor={f.titulo} onChange={(v) => alterar({ titulo: v })} placeholder="Ex.: Débitos do contrato 123" /></Col>
+            <Col span={2}><CampoTexto rotulo="Credor" valor={f.credor} onChange={(v) => alterar({ credor: v })} /></Col>
+            <Col span={2}><CampoTexto rotulo="Devedor" valor={f.devedor} onChange={(v) => alterar({ devedor: v })} /></Col>
+          </Grade>
+          <div className="border-t border-border pt-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-[13px] font-medium text-foreground">Obrigações</h3>
+                <p className="mt-1 text-[12px] text-muted-foreground">{f.linhas.length} linha(s), máximo de {R.LIMITE_PARCELAS}. A correção monetária é informada em cada linha.</p>
+              </div>
+              <Botao tamanho="sm" variante="primario" icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha()] })}>Adicionar obrigação</Botao>
+            </div>
+            {f.linhas.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhuma linha. Clique em "Adicionar obrigação" para começar.</p>}
             {f.linhas.map((l, i) => (
               <LinhaEditavel key={l.id} linha={l} indice={i} erros={errosForm}
                 onChange={(parte) => alterarLinha(l.id, parte)} onRemover={() => alterar({ linhas: f.linhas.filter((x) => x.id !== l.id) })} />
             ))}
-            {f.linhas.length > 0 && <Botao icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha()] })}>Adicionar linha</Botao>}
-            <div>
-              <label htmlFor="obs-planilha" className="block text-sm font-semibold text-foreground mb-1.5">Observações (aparecem no demonstrativo)</label>
-              <textarea id="obs-planilha" rows={3} maxLength={1000} value={f.observacoes} onChange={(e) => alterar({ observacoes: e.target.value })}
-                className="block w-full px-3 py-2 text-sm rounded-lg border border-input bg-white dark:bg-slate-800 text-foreground" />
-            </div>
+            {f.linhas.length > 0 && <Botao icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha()] })}>Adicionar obrigação</Botao>}
           </div>
-        </Cartao>
+        </div>
+      ) },
+      { id: 'criterios', rotulo: 'Critérios', icone: 'percentual', conteudo: (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-[13px] font-medium text-foreground mb-1">Critérios padrão</h3>
+            <p className="mb-3 text-[12px] text-muted-foreground">Aplicados a todas as linhas, exceto onde a linha tiver taxa de juros ou multa próprias.</p>
+            <B.CriteriosCalculo valor={f.criterios} onChange={(c) => alterar({ criterios: c })} erros={errosForm.filter((e) => e.linha === undefined)} />
+          </div>
+          <div className="border-t border-border pt-5">
+            <AreaTexto rotulo="Observações (aparecem no demonstrativo)" valor={f.observacoes} onChange={(v) => alterar({ observacoes: v })} />
+          </div>
+        </div>
+      ) },
+    ];
 
-        {errosForm.length > 0 && (
+    const painel = (
+      <B.PainelTotais totais={res && res.totais} mostrarHonorarios={f.criterios.honorarios.ativo} rotulo="Total consolidado" vazio="Inclua as obrigações e clique em Calcular planilha."
+        kpis={res ? [{ l: 'Obrigações', v: String(res.linhas.length) }, { l: 'Principal somado', v: m(res.totais.original) }, { l: 'Pagamentos', v: res.totais.pagamentos ? `-${m(res.totais.pagamentos)}` : m(0) }] : undefined}
+        topo={errosForm.length > 0 && (
           <Alerta tipo="erro" titulo="Revise os dados informados">
             <ul className="list-disc pl-5 space-y-0.5">{errosForm.slice(0, 8).map((e, i) => <li key={i}>{e.mensagem}</li>)}{errosForm.length > 8 && <li>… e mais {errosForm.length - 8} ajustes.</li>}</ul>
           </Alerta>
         )}
+        acoes={
+          <AcoesPainel
+            solido={{ rotulo: 'Calcular planilha', icone: 'atualizar', onClick: calcular, desabilitado: !f.linhas.length }}
+            principal={{ rotulo: 'Exportar CSV', icone: 'csv', onClick: exportarCsv, desabilitado: !res }}
+            linha={[{ rotulo: 'Excel', icone: 'xls', onClick: gerarPlanilha, desabilitado: !res }, { rotulo: 'Mais', icone: 'baixar', desabilitado: !res, menu: [
+              { rotulo: 'Planilha de cálculo (PDF)', onClick: gerarPdf },
+              { rotulo: 'Salvar memória de cálculo', onClick: gerarMemoria },
+            ] }]}
+            onLimpar={() => { limpar(); definirRes(null); definirErros([]); }} />
+        } />
+    );
 
-        <div className="sticky bottom-3 z-20 flex flex-wrap gap-2 p-3 rounded-xl bg-card/95 border border-border shadow-card backdrop-blur">
-          <Botao variante="verde" icone="atualizar" disabled={!f.linhas.length} onClick={calcular} className="flex-1 sm:flex-none sm:min-w-[220px]">Calcular planilha</Botao>
-          <Botao onClick={() => { limpar(); definirRes(null); definirErros([]); }}>Limpar tudo</Botao>
-        </div>
+    const detalhes = res && (
+      <div ref={topo}>
+        <Cartao titulo="Detalhes da planilha" descricao={`Calculado até ${f.criterios.dataFinal} com a correção monetária informada em cada linha.`} className="section-open print-hide">
+          <div className="space-y-3">
+            <Tabela legenda="Planilha consolidada" colunas={['Nº', 'Descrição', 'Competência', 'Vencimento', 'Valor original', 'Correção monetária', 'Juros', 'Multa', 'Outros encargos', 'Pagamentos', 'Saldo atualizado']} numericas={[4, 5, 6, 7, 8, 9, 10]}
+              linhas={res.resultados.map((_, i) => celulas(i))}
+              rodape={['', 'Totais', '', '', m(res.totais.original), m(res.totais.correcao), m(res.totais.juros), m(res.totais.multa), m(res.totais.encargosNominais), res.totais.pagamentos ? `-${m(res.totais.pagamentos)}` : '—', m(res.totais.saldoFinal)]} />
+            <p className="text-xs text-muted-foreground">O saldo de cada linha inclui honorários em percentual, quando aplicados. Honorários de valor fixo entram uma única vez no total.</p>
+          </div>
+        </Cartao>
+      </div>
+    );
 
-        <div ref={topo} />
-        {res && (
-          <Cartao titulo="Resultado consolidado" descricao={`Calculado até ${f.criterios.dataFinal} com a correção monetária informada em cada linha. Alterar qualquer dado limpa este resultado: calcule novamente.`} className="section-open">
-            <div className="space-y-5">
-              <B.ResumoConsolidado totais={res.totais} mostrarHonorarios={f.criterios.honorarios.ativo} />
-              <Tabela legenda="Planilha consolidada" colunas={['Nº', 'Descrição', 'Competência', 'Vencimento', 'Valor original', 'Correção monetária', 'Juros', 'Multa', 'Outros encargos', 'Pagamentos', 'Saldo atualizado']} numericas={[4, 5, 6, 7, 8, 9, 10]}
-                linhas={res.resultados.map((_, i) => celulas(i))}
-                rodape={['', 'Totais', '', '', m(res.totais.original), m(res.totais.correcao), m(res.totais.juros), m(res.totais.multa), m(res.totais.encargosNominais), res.totais.pagamentos ? `-${m(res.totais.pagamentos)}` : '—', m(res.totais.saldoFinal)]} />
-              <p className="text-xs text-muted-foreground">O saldo de cada linha inclui honorários em percentual, quando aplicados. Honorários de valor fixo entram uma única vez no total.</p>
-              <div className="flex flex-wrap gap-2">
-                <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo (Excel)</Botao>
-                <Botao variante="verde" icone="baixar" onClick={gerarPdf}>Gerar planilha de cálculo (PDF)</Botao>
-                <Botao variante="primario" icone="memoria" onClick={gerarMemoria}>Gerar memória de cálculo</Botao>
-                <Botao icone="baixar" onClick={exportarCsv}>Exportar CSV</Botao>
-              </div>
-            </div>
-          </Cartao>
-        )}
+    return (
+      <Pagina titulo="Planilha consolidada" descricao="Várias obrigações com total consolidado." nota="Correção monetária informada por você · cálculo local no navegador">
+        <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} textoRodape="o resultado aparece ao clicar em Calcular planilha" />
       </Pagina>
     );
   }

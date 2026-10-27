@@ -6,66 +6,45 @@
   const { useState, useEffect, useRef, useCallback } = React;
   const R = window.CentralRegras;
 
-  // ---------- Ícones (traço único, 24x24) ----------
-  const CAMINHOS = {
-    painel: <><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></>,
-    leilao: <><path d="M14 13l-8.5 8.5a2.1 2.1 0 0 1-3-3L11 10" /><path d="M16 16l6-6" /><path d="M8 8l6-6" /><path d="M9 7l8 8" /><path d="M21 11l-8-8" /></>,
-    debito: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 8h10" /><path d="M7 12h4" /><path d="M7 16h4" /><path d="M15 12h2" /><path d="M15 16h2" /></>,
-    pensao: <><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z" /></>,
-    contrato: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6" /><path d="M9 17h6" /></>,
-    acordo: <><path d="M11 17l2 2a1 1 0 0 0 3-3" /><path d="M14 14l2.5 2.5a1 1 0 0 0 3-3L16 10" /><path d="M3 11l3-3 4 1 4-2 4 3" /><path d="M5 13l4 4" /></>,
-    planilha: <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M3 15h18" /><path d="M9 3v18" /><path d="M15 3v18" /></>,
-    memoria: <><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /><path d="M12 7v5l3 2" /></>,
-    sol: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
-    lua: <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" />,
-    mais: <><path d="M12 5v14" /><path d="M5 12h14" /></>,
-    lixeira: <><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 14h10l1-14" /><path d="M10 11v5M14 11v5" /></>,
-    baixar: <><path d="M12 3v12" /><path d="M7 11l5 5 5-5" /><path d="M4 20h16" /></>,
-    imprimir: <><path d="M6 9V2h12v7" /><path d="M6 18H4v-7h16v7h-2" /><rect x="6" y="14" width="12" height="8" /></>,
-    ok: <><circle cx="12" cy="12" r="9" /><path d="M8 12.5l3 3 5-6" /></>,
-    aviso: <><path d="M12 3l10 18H2z" /><path d="M12 10v5" /><path d="M12 18h.01" /></>,
-    erro: <><circle cx="12" cy="12" r="9" /><path d="M15 9l-6 6M9 9l6 6" /></>,
-    info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 8h.01" /></>,
-    atualizar: <><path d="M21 12a9 9 0 1 1-3-6.7" /><path d="M21 4v5h-5" /></>,
-    seta: <path d="M5 12h14M13 6l6 6-6 6" />,
-    chevron: <path d="M6 9l6 6 6-6" />,
-    editar: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></>,
-    menu: <><path d="M4 6h16M4 12h16M4 18h16" /></>,
-    x: <path d="M6 6l12 12M18 6L6 18" />,
-  };
-
+  // ---------- Ícones (Phosphor regular, embutidos em js/icones.js) ----------
   function Icone({ nome, className = 'w-5 h-5' }) {
+    const interno = (window.CentralIcones || {})[nome] || '';
     return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true" focusable="false">
-        {CAMINHOS[nome] || null}
-      </svg>
+      <svg viewBox="0 0 256 256" fill="currentColor" className={`flex-shrink-0 ${className}`} aria-hidden="true" focusable="false" dangerouslySetInnerHTML={{ __html: interno }} />
     );
   }
 
   // ---------- Estrutura ----------
-  function Pagina({ titulo, descricao, acoes, children }) {
+  // Cabeçalho (título + subtítulo + nota à direita) e corpo rolável. No computador a página ocupa a altura
+  // da janela e só o corpo rola; no celular a página inteira rola.
+  function Pagina({ titulo, descricao, acoes, nota, children }) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+      <div className="flex flex-col lg:h-full min-h-0 print:block print:h-auto">
+        <header className="flex-none px-4 sm:px-8 pt-5 sm:pt-[22px] flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-4 print-hide">
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-navy-900 dark:text-white">{titulo}</h1>
-            {descricao && <p className="mt-1 text-sm text-muted-foreground max-w-2xl">{descricao}</p>}
+            <h1 className="text-2xl font-medium tracking-[-0.02em] text-foreground mb-1">{titulo}</h1>
+            {descricao && <p className="text-[13px] text-muted-foreground">{descricao}</p>}
           </div>
-          {acoes && <div className="flex flex-wrap gap-2">{acoes}</div>}
-        </div>
-        <div className="space-y-5">{children}</div>
+          {(acoes || nota) && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:justify-end">
+              {nota && <span className="text-xs text-muted-foreground">{nota}</span>}
+              {acoes}
+            </div>
+          )}
+        </header>
+        <div className="app-body flex-1 min-h-0 lg:overflow-auto px-4 sm:px-8 pt-5 pb-6 space-y-5 print:p-0">{children}</div>
       </div>
     );
   }
 
   function Cartao({ titulo, descricao, acoes, children, className = '' }) {
     return (
-      <section className={`bg-card text-card-foreground rounded-xl border border-border shadow-sm ${className}`}>
+      <section className={`bg-card text-card-foreground rounded-[14px] border border-border ${className}`}>
         {(titulo || acoes) && (
-          <div className="flex items-start justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-6">
+          <div className="flex items-start justify-between gap-3 px-4 sm:px-6 pt-4 sm:pt-5">
             <div className="min-w-0">
-              {titulo && <h2 className="text-base font-semibold leading-none text-foreground">{titulo}</h2>}
-              {descricao && <p className="mt-1.5 text-sm text-muted-foreground">{descricao}</p>}
+              {titulo && <h2 className="text-[15px] font-medium text-foreground">{titulo}</h2>}
+              {descricao && <p className="mt-1 text-[13px] text-muted-foreground">{descricao}</p>}
             </div>
             {acoes && <div className="flex gap-2 flex-shrink-0">{acoes}</div>}
           </div>
@@ -75,19 +54,47 @@
     );
   }
 
+  // Bloco recolhível para campos opcionais.
+  function Revelar({ titulo, aberto, onAlternar, children }) {
+    return (
+      <div className="border-t border-border pt-3">
+        <button type="button" onClick={onAlternar} aria-expanded={aberto}
+          className="inline-flex items-center gap-1.5 text-[13px] text-primary-text hover:underline underline-offset-4">
+          <Icone nome="chevron" className={`w-3.5 h-3.5 transition-transform ${aberto ? 'rotate-180' : ''}`} /> {titulo}
+        </button>
+        {aberto && <div className="mt-4 space-y-4 section-open">{children}</div>}
+      </div>
+    );
+  }
+
+  // Controle segmentado (escolha única entre poucas opções): trilho --field, ativo em acento.
+  function Segmentado({ opcoes, valor, onChange, rotulo, className = '', cheio }) {
+    return (
+      <div role="radiogroup" aria-label={rotulo} className={`flex gap-[3px] p-[3px] rounded-[9px] bg-field border border-border ${cheio ? 'w-full' : 'w-fit max-w-full'} ${className}`}>
+        {opcoes.map((o) => (
+          <button key={o.valor} type="button" role="radio" aria-checked={valor === o.valor} onClick={() => onChange(o.valor)}
+            className={`${cheio ? 'flex-1' : 'flex-auto'} min-w-0 h-[30px] px-3 rounded-[7px] inline-flex items-center justify-center gap-1.5 text-[12.5px] whitespace-nowrap overflow-hidden text-ellipsis transition-colors ${valor === o.valor ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-primary/10'}`}>
+            {o.icone && <Icone nome={o.icone} className="w-4 h-4" />}{o.rotulo}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   // ---------- Botões e alertas ----------
-  // Botão no padrão shadcn/ui (variantes default, outline, ghost, destructive; foco com anel de 3px)
-  const BASE_BOTAO = 'inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50';
+  const BASE_BOTAO = 'inline-flex shrink-0 items-center justify-center gap-2 rounded-lg whitespace-nowrap overflow-hidden text-ellipsis transition-colors disabled:pointer-events-none disabled:opacity-50';
   const VARIANTES = {
-    primario: 'bg-primary text-primary-foreground shadow-xs hover:bg-primary/90',
-    verde: 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700',
-    secundario: 'border border-input bg-card text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
-    perigo: 'border border-destructive/40 bg-card text-destructive shadow-xs hover:bg-destructive/10',
-    fantasma: 'text-foreground hover:bg-accent hover:text-accent-foreground',
+    // contorno de acento (ação principal), sólido de acento (calcular), secundário com borda, perigo e fantasma
+    primario: 'border border-primary bg-transparent text-primary-text hover:bg-primary/15',
+    verde: 'border border-primary bg-transparent text-primary-text hover:bg-primary/15',
+    solido: 'border border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+    secundario: 'border border-border bg-transparent text-foreground hover:bg-primary/10',
+    perigo: 'border border-destructive/40 bg-transparent text-destructive hover:bg-destructive/10',
+    fantasma: 'text-muted-foreground hover:bg-primary/10 hover:text-foreground',
   };
 
   function Botao({ variante = 'secundario', carregando = false, icone, children, className = '', tamanho = 'md', ...resto }) {
-    const dim = tamanho === 'sm' ? 'px-3 h-8 text-xs' : 'px-4 h-10 text-sm';
+    const dim = tamanho === 'sm' ? 'px-3 h-8 text-[13px]' : 'px-4 h-[38px] text-[13.5px]';
     return (
       <button type="button" {...resto} disabled={resto.disabled || carregando}
         className={`${BASE_BOTAO} ${dim} ${VARIANTES[variante]} ${className}`}>
@@ -104,19 +111,19 @@
   }
 
   const ESTILO_ALERTA = {
-    erro: ['bg-red-50 border-red-200 text-red-800 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-200', 'erro'],
-    aviso: ['bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-900/50 dark:text-amber-200', 'aviso'],
-    sucesso: ['bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/25 dark:border-emerald-900/50 dark:text-emerald-200', 'ok'],
-    info: ['bg-slate-50 border-slate-200 text-slate-700 dark:bg-white/5 dark:border-slate-700 dark:text-slate-200', 'info'],
+    erro: ['bg-destructive/10 border-destructive/30 text-destructive', 'erro'],
+    aviso: ['bg-warning/10 border-warning/30 text-warning', 'aviso'],
+    sucesso: ['bg-success/10 border-success/30 text-success', 'ok'],
+    info: ['bg-field border-border text-foreground', 'info'],
   };
 
   function Alerta({ tipo = 'info', titulo, children, acao }) {
     const [classes, icone] = ESTILO_ALERTA[tipo];
     return (
-      <div role={tipo === 'erro' ? 'alert' : 'status'} className={`flex gap-3 px-4 py-3 rounded-lg border text-sm ${classes}`}>
-        <Icone nome={icone} className="w-5 h-5 flex-shrink-0 mt-0.5" />
+      <div role={tipo === 'erro' ? 'alert' : 'status'} className={`flex gap-3 px-4 py-3 rounded-[10px] border text-[13px] ${classes}`}>
+        <Icone nome={icone} className="w-[18px] h-[18px] mt-0.5" />
         <div className="min-w-0 flex-1">
-          {titulo && <div className="font-semibold">{titulo}</div>}
+          {titulo && <div className="font-medium">{titulo}</div>}
           <div className={titulo ? 'mt-0.5' : ''}>{children}</div>
           {acao && <div className="mt-2">{acao}</div>}
         </div>
@@ -125,18 +132,18 @@
   }
 
   // ---------- Campos de formulário ----------
-  // Input no padrão shadcn/ui: borda --input, sombra xs, anel de foco de 3px, estado inválido em --destructive
-  const CLASSE_ENTRADA = 'block w-full h-10 min-w-0 px-3 py-1 text-base md:text-sm rounded-md border border-input bg-transparent dark:bg-input/30 text-foreground shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20';
+  // Altura 38, raio 8, borda --border, fundo --field, números tabulares, foco com borda de acento + anel de 3px.
+  const CLASSE_ENTRADA = 'block w-full h-[38px] min-w-0 px-[11px] text-base md:text-[13.5px] rounded-lg border border-border bg-field text-foreground transition-[border-color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-65 aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20';
 
   function Campo({ rotulo, ajuda, erro, obrigatorio, id, children, className = '' }) {
     return (
       <div className={className}>
-        <label htmlFor={id} className="block text-sm font-semibold text-foreground mb-1.5">
-          {rotulo}{obrigatorio && <span className="text-red-600" aria-hidden="true"> *</span>}
+        <label htmlFor={id} className="block text-[12.5px] text-muted-foreground mb-1.5">
+          {rotulo}{obrigatorio && <span className="text-destructive" aria-hidden="true"> *</span>}
         </label>
         {children}
-        {erro ? <p id={id ? `${id}-erro` : undefined} role="alert" className="mt-1 text-xs font-medium text-red-600 dark:text-red-400">{erro}</p>
-          : ajuda ? <p className="mt-1 text-xs text-muted-foreground">{ajuda}</p> : null}
+        {erro ? <p id={id ? `${id}-erro` : undefined} role="alert" className="mt-1.5 text-[11.5px] text-destructive">{erro}</p>
+          : ajuda ? <p className="mt-1.5 text-[11.5px] text-muted-foreground">{ajuda}</p> : null}
       </div>
     );
   }
@@ -186,10 +193,10 @@
 
     return (
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 pointer-events-none">R$</span>
+        <span className="absolute left-[11px] top-1/2 -translate-y-1/2 text-[12.5px] text-muted-foreground pointer-events-none">R$</span>
         <input ref={ref} type="text" inputMode="decimal" autoComplete="off" value={texto} placeholder={placeholder} maxLength={20}
           onChange={digitar} onBlur={sair} {...resto}
-          className={`${CLASSE_ENTRADA} pl-10 tabular-nums ${className}`} />
+          className={`${CLASSE_ENTRADA} pl-8 tabular-nums ${className}`} />
       </div>
     );
   }
@@ -213,8 +220,8 @@
           <input id={id} type="text" inputMode="decimal" value={valor || ''} placeholder={placeholder} maxLength={9}
             aria-invalid={Boolean(erro)} aria-describedby={erro ? `${id}-erro` : undefined}
             onChange={(e) => onChange(e.target.value.replace(/[^\d.,]/g, ''))}
-            className={`${CLASSE_ENTRADA} pr-9 tabular-nums ${bordaEntrada(erro)}`} />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400 pointer-events-none">%</span>
+            className={`${CLASSE_ENTRADA} pr-8 tabular-nums ${bordaEntrada(erro)}`} />
+          <span className="absolute right-[11px] top-1/2 -translate-y-1/2 text-[12.5px] text-muted-foreground pointer-events-none">%</span>
         </div>
       </Campo>
     );
@@ -240,7 +247,7 @@
             aria-invalid={Boolean(mensagem)} aria-describedby={mensagem ? `${id}-erro` : undefined}
             onChange={(e) => onChange(mascararData(e.target.value))}
             className={`${CLASSE_ENTRADA} tabular-nums ${bordaEntrada(mensagem)}`} />
-          {comHoje && <Botao tamanho="sm" className="!h-10 flex-shrink-0" onClick={() => onChange(R.hojeBR())}>Hoje</Botao>}
+          {comHoje && <Botao className="flex-shrink-0" onClick={() => onChange(R.hojeBR())}>Hoje</Botao>}
         </div>
       </Campo>
     );
@@ -279,30 +286,40 @@
     return (
       <label htmlFor={id} className={`flex items-start gap-3 ${desabilitado ? 'opacity-60' : 'cursor-pointer'}`}>
         <input id={id} type="checkbox" role="switch" checked={marcado} disabled={desabilitado} onChange={(e) => onChange(e.target.checked)}
-          className="mt-0.5 w-5 h-5 rounded border-slate-300 text-emerald-600 accent-emerald-600" />
+          className="mt-0.5 w-[18px] h-[18px] rounded accent-primary" />
         <span className="min-w-0">
-          <span className="block text-sm font-semibold text-foreground">{rotulo}</span>
+          <span className="block text-[13.5px] text-foreground">{rotulo}</span>
           {descricao && <span className="block text-xs text-muted-foreground">{descricao}</span>}
         </span>
       </label>
     );
   }
 
+  // Área de texto no mesmo padrão dos campos.
+  function AreaTexto({ rotulo, valor, onChange, linhas = 3, maxLength = 1000, className }) {
+    const id = useId('area');
+    return (
+      <Campo rotulo={rotulo} id={id} className={className}>
+        <textarea id={id} rows={linhas} maxLength={maxLength} value={valor} onChange={(e) => onChange(e.target.value)}
+          className={`${CLASSE_ENTRADA} h-auto py-2 leading-relaxed`} />
+      </Campo>
+    );
+  }
+
   // ---------- Indicadores e tabelas ----------
   const TOM = {
-    neutro: 'bg-card border-border shadow-xs',
-    positivo: 'bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/25 dark:border-emerald-900/50',
-    destaque: 'bg-navy-900 border-navy-900 text-white dark:bg-emerald-700 dark:border-emerald-600',
-    alerta: 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50',
+    neutro: 'bg-card border-border',
+    positivo: 'bg-success/10 border-success/30',
+    destaque: 'bg-primary/10 border-primary/40',
+    alerta: 'bg-warning/10 border-warning/30',
   };
 
   function Indicador({ rotulo, valor, detalhe, tom = 'neutro', className = '' }) {
-    const escuro = tom === 'destaque';
     return (
-      <div className={`rounded-xl border p-4 ${TOM[tom]} ${className}`}>
-        <div className={`text-[11px] font-semibold uppercase tracking-wide ${escuro ? 'text-white/70' : 'text-muted-foreground'}`}>{rotulo}</div>
-        <div key={valor} className={`value-update mt-1 font-extrabold tabular-nums ${escuro ? 'text-2xl sm:text-3xl text-white' : 'text-lg sm:text-xl text-foreground'}`}>{valor}</div>
-        {detalhe && <div className={`mt-1 text-[11px] font-medium ${escuro ? 'text-white/80' : 'text-muted-foreground'}`}>{detalhe}</div>}
+      <div className={`rounded-xl border px-[18px] py-4 ${TOM[tom]} ${className}`}>
+        <div className="text-xs text-muted-foreground">{rotulo}</div>
+        <div key={valor} className={`value-update mt-1.5 font-medium tracking-[-0.01em] tabular-nums text-foreground ${tom === 'destaque' ? 'text-2xl' : 'text-[22px]'}`}>{valor}</div>
+        {detalhe && <div className="mt-1 text-xs text-muted-foreground">{detalhe}</div>}
       </div>
     );
   }
@@ -310,27 +327,171 @@
   function Tabela({ colunas, linhas, numericas = [], rodape, vazio = 'Nenhum item.', legenda }) {
     const nums = new Set(numericas);
     return (
-      <div className="overflow-x-auto -mx-4 sm:mx-0 rounded-lg border border-border">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-[10px] border border-border">
+        <table className="w-full text-[13px]">
           {legenda && <caption className="sr-only">{legenda}</caption>}
-          <thead className="bg-muted/50">
-            <tr>{colunas.map((c, i) => <th key={c} scope="col" className={`px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground whitespace-nowrap ${nums.has(i) ? 'text-right' : 'text-left'}`}>{c}</th>)}</tr>
+          <thead className="bg-field">
+            <tr>{colunas.map((c, i) => <th key={c} scope="col" className={`px-3 py-2.5 text-xs font-normal text-muted-foreground whitespace-nowrap ${nums.has(i) ? 'text-right' : 'text-left'}`}>{c}</th>)}</tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+          <tbody className="divide-y divide-border">
             {linhas.length === 0 ? (
-              <tr><td colSpan={colunas.length} className="px-3 py-6 text-center text-slate-500">{vazio}</td></tr>
+              <tr><td colSpan={colunas.length} className="px-3 py-6 text-center text-muted-foreground">{vazio}</td></tr>
             ) : linhas.map((l, i) => (
-              <tr key={i} className="hover:bg-slate-50/60 dark:hover:bg-white/5">
+              <tr key={i} className="hover:bg-primary/5">
                 {l.map((c, j) => <td key={j} className={`px-3 py-2.5 align-top ${nums.has(j) ? 'text-right tabular-nums whitespace-nowrap' : ''} text-foreground`}>{c}</td>)}
               </tr>
             ))}
           </tbody>
           {rodape && (
-            <tfoot className="bg-muted/50 font-bold">
+            <tfoot className="bg-field font-medium border-t border-border">
               <tr>{rodape.map((c, j) => <td key={j} className={`px-3 py-2.5 text-foreground ${nums.has(j) ? 'text-right tabular-nums whitespace-nowrap' : ''}`}>{c}</td>)}</tr>
             </tfoot>
           )}
         </table>
+      </div>
+    );
+  }
+
+  // Grade de 6 colunas do formulário (campos ocupam 2 colunas; textos longos 3 a 6; em telas pequenas, 1 coluna)
+  const SPANS = { 1: 'sm:col-span-1', 2: 'sm:col-span-2', 3: 'sm:col-span-3', 4: 'sm:col-span-4', 6: 'sm:col-span-6' };
+  function Grade({ children, className = '' }) {
+    return <div className={`grid grid-cols-1 sm:grid-cols-6 gap-x-4 gap-y-[18px] content-start ${className}`}>{children}</div>;
+  }
+  function Col({ span = 2, children, className = '' }) {
+    return <div className={`min-w-0 ${SPANS[span]} ${className}`}>{children}</div>;
+  }
+
+  // ---------- Calculador: formulário em abas + painel de resultado ----------
+  // Rampa de cores da barra de composição e dos marcadores do painel de resultado.
+  const RAMPA = ['#9184d9', '#b5abfc', '#796cbf', '#d2cefd', '#5d5294', '#9397ab', '#595d6c'];
+  const TOM_TEXTO = { bom: 'text-success', ruim: 'text-destructive', aviso: 'text-warning' };
+  const ICONE_STATUS = { bom: 'ok', ruim: 'erro', aviso: 'aviso' };
+
+  // Card do formulário (abas + corpo que rola + rodapé com "Próxima") ao lado do painel de resultado.
+  // abas: [{ id, rotulo, icone, conteudo }]; painel e detalhes são nós React.
+  function Calculador({ abas, aba, onAba, painel, detalhes, textoRodape = 'o resultado se atualiza a cada digitação' }) {
+    const i = Math.max(0, abas.findIndex((a) => a.id === aba));
+    const atual = abas[i];
+    const ultima = i === abas.length - 1;
+    const refPainel = useRef(null);
+    const proxima = () => {
+      if (!ultima) { onAba(abas[i + 1].id); return; }
+      if (refPainel.current) refPainel.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    return (
+      <>
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_372px] gap-5 lg:gap-6 lg:h-[calc(100vh-140px)] lg:min-h-[540px] print-hide">
+          <section className="min-w-0 min-h-0 bg-card border border-border rounded-[14px] flex flex-col overflow-hidden">
+            <div role="tablist" aria-label="Etapas do formulário" className="flex-none flex gap-1 px-3 sm:px-5 border-b border-border overflow-x-auto">
+              {abas.map((a) => (
+                <button key={a.id} type="button" role="tab" id={`aba-${a.id}`} aria-selected={a.id === atual.id} aria-controls={`painel-${a.id}`} onClick={() => onAba(a.id)}
+                  className={`flex-none h-[46px] px-3.5 flex items-center gap-2 text-[13.5px] whitespace-nowrap transition-colors ${a.id === atual.id ? 'text-primary-text shadow-[inset_0_-2px_0_rgb(var(--primary))]' : 'text-muted-foreground hover:text-foreground'}`}>
+                  {a.icone && <Icone nome={a.icone} className="w-[17px] h-[17px]" />}{a.rotulo}
+                </button>
+              ))}
+            </div>
+            <div role="tabpanel" id={`painel-${atual.id}`} aria-labelledby={`aba-${atual.id}`} key={atual.id} className="flex-1 min-h-0 lg:overflow-auto px-4 sm:px-6 py-5 sm:py-[22px] section-open">
+              {atual.conteudo}
+            </div>
+            <div className="flex-none flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-t border-border">
+              <span className="text-[12.5px] text-muted-foreground min-w-0 truncate">Etapa {i + 1} de {abas.length} · {textoRodape}</span>
+              <Botao onClick={proxima} className="flex-none !h-9 !text-[13px]" variante="primario">
+                {ultima ? 'Ver resultado' : `Próxima: ${abas[i + 1].rotulo}`} <Icone nome="seta" className="w-4 h-4" />
+              </Botao>
+            </div>
+          </section>
+          <div ref={refPainel} className="min-w-0 min-h-0 flex flex-col scroll-mt-4">{painel}</div>
+        </div>
+        {detalhes}
+      </>
+    );
+  }
+
+  // Painel de resultado: valor principal, status, barra de composição, indicadores, linhas e ações.
+  // linhas: [{ l, v, n, neg, skip }]  n = valor numérico (define a barra); skip = não entra na barra.
+  function PainelResultado({ rotulo, valor, tomValor, status, kpis, linhas = [], topo, acoes, children }) {
+    const total = linhas.reduce((s, x) => s + (x.skip ? 0 : Math.abs(x.n || 0)), 0) || 1;
+    const comCor = linhas.map((x, i) => ({ ...x, cor: x.skip ? 'transparent' : RAMPA[i % RAMPA.length] }));
+    const barra = comCor.filter((x) => !x.skip && x.n > 0);
+    return (
+      <aside aria-label="Resultado" className="flex-1 min-h-0 lg:overflow-auto bg-card border border-border rounded-[14px] p-[22px] flex flex-col">
+        <div className="text-[12.5px] text-muted-foreground">{rotulo}</div>
+        <div key={valor} className={`value-update text-[34px] leading-tight font-medium tracking-[-0.025em] tabular-nums mt-1.5 mb-2 break-words ${tomValor === 'ruim' ? 'text-destructive' : 'text-foreground'}`}>{valor}</div>
+        {status && (
+          <div className={`text-[12.5px] flex gap-1.5 items-center ${TOM_TEXTO[status.tom]}`}><Icone nome={ICONE_STATUS[status.tom]} className="w-4 h-4" />{status.texto}</div>
+        )}
+        {topo && <div className="mt-4 space-y-2">{topo}</div>}
+        {barra.length > 0 && (
+          <div className="flex h-1.5 rounded-[3px] overflow-hidden gap-0.5 mt-[18px] mb-1.5" aria-hidden="true">
+            {barra.map((x, i) => <div key={i} style={{ width: `${(x.n / total) * 100}%`, background: x.cor, minWidth: 2 }} />)}
+          </div>
+        )}
+        {kpis && kpis.length > 0 && (
+          <div className="flex flex-wrap justify-between gap-x-4 gap-y-2 mt-3.5 mb-1.5">
+            {kpis.map((k) => (
+              <div key={k.l}>
+                <div className="text-[11.5px] text-muted-foreground">{k.l}</div>
+                <div className={`text-[15px] mt-[3px] tabular-nums whitespace-nowrap ${k.tom ? TOM_TEXTO[k.tom] : 'text-foreground'}`}>{k.v}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {comCor.length > 0 && (
+          <div className="mt-3">
+            {comCor.map((x, i) => (
+              <div key={`${x.l}-${i}`} className="flex justify-between gap-2.5 py-2 border-b border-border text-[13px]">
+                <span className="text-muted-foreground flex items-center gap-2 min-w-0"><span className="w-[7px] h-[7px] rounded-sm flex-none" style={{ background: x.cor }} /><span className="truncate">{x.l}</span></span>
+                <span className={`tabular-nums flex-none ${x.neg ? 'text-destructive' : 'text-foreground'}`}>{x.v}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {children}
+        {acoes && <div className="mt-auto pt-[18px] flex flex-col gap-2">{acoes}</div>}
+      </aside>
+    );
+  }
+
+  // Ações do painel: ação principal (contorno), linha com dois botões (um pode abrir menu) e "Limpar".
+  function AcoesPainel({ solido, principal, linha = [], onLimpar, rotuloLimpar = 'Limpar campos' }) {
+    const [aberto, setAberto] = useState(null);
+    const ref = useRef(null);
+    useEffect(() => {
+      if (aberto === null) return undefined;
+      const fora = (e) => { if (ref.current && !ref.current.contains(e.target)) setAberto(null); };
+      const tecla = (e) => { if (e.key === 'Escape') setAberto(null); };
+      document.addEventListener('mousedown', fora);
+      window.addEventListener('keydown', tecla);
+      return () => { document.removeEventListener('mousedown', fora); window.removeEventListener('keydown', tecla); };
+    }, [aberto]);
+    return (
+      <div ref={ref} className="flex flex-col gap-2 print-hide">
+        {solido && <Botao variante="solido" icone={solido.icone} onClick={solido.onClick} disabled={solido.desabilitado} className="w-full">{solido.rotulo}</Botao>}
+        {principal && <Botao variante="primario" icone={principal.icone} onClick={principal.onClick} disabled={principal.desabilitado} className="w-full">{principal.rotulo}</Botao>}
+        {linha.length > 0 && (
+          <div className={`grid gap-2 ${linha.length === 2 ? 'grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]' : 'grid-cols-1'}`}>
+            {linha.map((b, i) => (
+              <div key={b.rotulo} className="relative min-w-0">
+                <Botao onClick={b.menu ? () => setAberto(aberto === i ? null : i) : b.onClick} disabled={b.desabilitado} icone={b.icone} className="w-full !px-2.5"
+                  aria-haspopup={b.menu ? 'menu' : undefined} aria-expanded={b.menu ? aberto === i : undefined}>
+                  {b.rotulo}{b.menu && <Icone nome="chevron" className={`w-3.5 h-3.5 transition-transform ${aberto === i ? 'rotate-180' : ''}`} />}
+                </Botao>
+                {b.menu && aberto === i && (
+                  <div role="menu" className="absolute bottom-full right-0 left-auto mb-2 z-20 min-w-[240px] py-1 rounded-[10px] border border-border bg-card shadow-md section-open">
+                    {b.menu.map((item) => (
+                      <button key={item.rotulo} type="button" role="menuitem" onClick={() => { setAberto(null); item.onClick(); }}
+                        className="w-full text-left px-4 py-2.5 text-[13px] text-foreground hover:bg-primary/10">
+                        <span>{item.rotulo}</span>
+                        {item.detalhe && <span className="block text-xs text-muted-foreground">{item.detalhe}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {onLimpar && <Botao variante="fantasma" onClick={onLimpar} className="w-full !h-8">{rotuloLimpar}</Botao>}
       </div>
     );
   }
@@ -347,14 +508,14 @@
     }, [aberto]);
     if (!aberto) return null;
     return (
-      <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-slate-900/50" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancelar(); }}>
-        <div role="alertdialog" aria-modal="true" aria-labelledby="dlg-titulo" className="section-open w-full max-w-md rounded-xl bg-card border border-slate-200 dark:border-slate-700 shadow-card p-5">
-          <h2 id="dlg-titulo" className="text-base font-bold text-foreground">{titulo}</h2>
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{mensagem}</p>
+      <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 bg-black/50" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onCancelar(); }}>
+        <div role="alertdialog" aria-modal="true" aria-labelledby="dlg-titulo" className="section-open w-full max-w-md rounded-[14px] bg-card border border-border shadow-md p-5">
+          <h2 id="dlg-titulo" className="text-base font-medium text-foreground">{titulo}</h2>
+          <p className="mt-2 text-[13px] text-muted-foreground">{mensagem}</p>
           <div className="mt-5 flex justify-end gap-2">
             <Botao onClick={onCancelar}>Cancelar</Botao>
             <button ref={botao} type="button" onClick={onConfirmar}
-              className={`inline-flex items-center justify-center rounded-md px-4 h-10 text-sm font-medium text-white ${perigo ? 'bg-red-600 hover:bg-red-700' : 'bg-navy-900 hover:bg-navy-700'}`}>{rotuloConfirmar}</button>
+              className={`inline-flex items-center justify-center rounded-lg px-4 h-[38px] text-[13.5px] ${perigo ? 'bg-destructive text-background' : 'bg-primary text-primary-foreground'} hover:opacity-90`}>{rotuloConfirmar}</button>
           </div>
         </div>
       </div>
@@ -413,7 +574,7 @@
   }
 
   window.CentralUI = {
-    Icone, Pagina, Cartao, Botao, Carregando, Alerta, Campo, CampoTexto, EntradaMoeda, CampoMoeda, CampoPercentual, CampoData, CampoCompetencia,
-    Selecao, Chave, Indicador, Tabela, Confirmacao, avisar, navegar, baixarArquivo, nomeArquivo, identidade, mascararData, useRascunho,
+    Icone, Pagina, Cartao, Revelar, Segmentado, Botao, Carregando, Alerta, Campo, CampoTexto, EntradaMoeda, CampoMoeda, CampoPercentual, CampoData, CampoCompetencia,
+    CLASSE_ENTRADA, Selecao, Chave, AreaTexto, Indicador, Tabela, Grade, Col, Calculador, PainelResultado, AcoesPainel, RAMPA, Confirmacao, avisar, navegar, baixarArquivo, nomeArquivo, identidade, mascararData, useRascunho,
   };
 })();
