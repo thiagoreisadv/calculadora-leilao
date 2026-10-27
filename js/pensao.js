@@ -62,7 +62,7 @@
             <Botao variante="perigo" tamanho="sm" icone="lixeira" aria-label={`Remover competência ${indice + 1}`} onClick={onRemover} />
           </div>
         </div>
-        {f.fixacao.tipo === 'percentual' && !Number.isNaN(devido) && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Valor devido: {R.formatarMoeda(devido)}</p>}
+        {f.fixacao.tipo === 'percentual' && !Number.isNaN(devido) && <p className="mt-1 text-xs text-muted-foreground">Valor devido: {R.formatarMoeda(devido)}</p>}
         {prescrita && <p className="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-400">Anterior à data de corte da prescrição: não entra no cálculo.</p>}
         {corrigir && (
           <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50 section-open">
@@ -235,11 +235,11 @@
               <CampoCompetencia rotulo="Do mês" valor={f.gerador.de} onChange={(v) => alterar({ gerador: { ...f.gerador, de: v } })} />
               <CampoCompetencia rotulo="Até o mês" valor={f.gerador.ate} onChange={(v) => alterar({ gerador: { ...f.gerador, ate: v } })} />
               <CampoTexto rotulo="Dia do vencimento" valor={f.gerador.dia} onChange={(v) => alterar({ gerador: { ...f.gerador, dia: v.replace(/\D/g, '').slice(0, 2) } })} inputMode="numeric" maxLength={2} />
-              <Botao variante="primario" icone="mais" className="!h-11" onClick={gerarCompetencias}>Gerar meses</Botao>
+              <Botao variante="primario" icone="mais" className="!h-10" onClick={gerarCompetencias}>Gerar meses</Botao>
             </div>
-            {f.competencias.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">Nenhuma competência incluída.</p>}
+            {f.competencias.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma competência incluída.</p>}
             {f.competencias.length > 0 && (
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-100 dark:divide-slate-700/50 max-h-[32rem] overflow-y-auto">
+              <div className="rounded-xl border border-border divide-y divide-slate-100 dark:divide-slate-700/50 max-h-[32rem] overflow-y-auto">
                 {f.competencias.map((c, i) => (
                   <LinhaCompetencia key={c.id} c={c} indice={i} f={f} erros={errosForm} onChange={(parte) => alterarComp(c.id, parte)} onRemover={() => alterar({ competencias: f.competencias.filter((y) => y.id !== c.id), pagamentos: f.pagamentos.filter((p) => p.destino !== c.id) })} />
                 ))}
@@ -252,14 +252,14 @@
 
         <Cartao titulo="4. Pagamentos realizados" descricao="Cada pagamento abate a competência que você indicar. Nenhuma imputação automática é feita entre competências.">
           <div className="space-y-3">
-            {f.pagamentos.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum pagamento informado.</p>}
+            {f.pagamentos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum pagamento informado.</p>}
             {f.pagamentos.map((p, i) => (
-              <div key={p.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1.4fr_auto] gap-3 items-end p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 section-open">
+              <div key={p.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1.4fr_auto] gap-3 items-end p-3 rounded-xl border border-border section-open">
                 <CampoData rotulo={`Data do pagamento ${i + 1}`} valor={p.data} onChange={(v) => alterar({ pagamentos: f.pagamentos.map((y) => (y.id === p.id ? { ...y, data: v } : y)) })} />
                 <CampoMoeda rotulo="Valor pago" valor={p.valor} onChange={(v) => alterar({ pagamentos: f.pagamentos.map((y) => (y.id === p.id ? { ...y, valor: v } : y)) })} />
                 <Selecao rotulo="Competência abatida" valor={p.destino} placeholder="Selecione" onChange={(v) => alterar({ pagamentos: f.pagamentos.map((y) => (y.id === p.id ? { ...y, destino: v } : y)) })}
                   opcoes={f.competencias.map((c) => ({ valor: c.id, rotulo: c.mes_ano || '(sem competência)' }))} />
-                <Botao variante="perigo" tamanho="sm" icone="lixeira" className="!h-11" aria-label={`Remover pagamento ${i + 1}`} onClick={() => alterar({ pagamentos: f.pagamentos.filter((y) => y.id !== p.id) })}>Remover</Botao>
+                <Botao variante="perigo" tamanho="sm" icone="lixeira" className="!h-10" aria-label={`Remover pagamento ${i + 1}`} onClick={() => alterar({ pagamentos: f.pagamentos.filter((y) => y.id !== p.id) })}>Remover</Botao>
               </div>
             ))}
             {erroCampo('pagamento') && <p role="alert" className="text-xs font-medium text-red-600">{erroCampo('pagamento')}</p>}
@@ -278,9 +278,9 @@
         </Cartao>
 
         <Cartao titulo="6. Observações">
-          <label htmlFor="obs-pensao" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Observações (aparecem no demonstrativo)</label>
+          <label htmlFor="obs-pensao" className="block text-sm font-semibold text-foreground mb-1.5">Observações (aparecem no demonstrativo)</label>
           <textarea id="obs-pensao" rows={3} maxLength={1000} value={f.observacoes} onChange={(e) => alterar({ observacoes: e.target.value })}
-            className="block w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
+            className="block w-full px-3 py-2 text-sm rounded-lg border border-input bg-white dark:bg-slate-800 text-foreground" />
         </Cartao>
 
         {errosForm.length > 0 && (
@@ -289,7 +289,7 @@
           </Alerta>
         )}
 
-        <div className="sticky bottom-3 z-20 flex flex-wrap gap-2 p-3 rounded-2xl bg-white/95 dark:bg-[#14243A]/95 border border-slate-200 dark:border-slate-700/60 shadow-card backdrop-blur">
+        <div className="sticky bottom-3 z-20 flex flex-wrap gap-2 p-3 rounded-xl bg-card/95 border border-border shadow-card backdrop-blur">
           <Botao variante="verde" icone="atualizar" onClick={calcular} className="flex-1 sm:flex-none sm:min-w-[240px]">Calcular pensão</Botao>
           <Botao onClick={() => { limpar(); definirResultado(null); definirErros([]); }}>Limpar tudo</Botao>
         </div>
@@ -303,20 +303,20 @@
                 <Indicador rotulo="Rito da prisão (art. 528, §§ 3º e 7º, CPC)" valor={m(x.ritos.prisao.total)} detalhe={`${x.ritos.prisao.indices.length} competência(s)`} />
                 <Indicador rotulo="Rito da expropriação (art. 528, § 8º, CPC)" valor={m(x.ritos.expropriacao.total)} detalhe={`${x.ritos.expropriacao.indices.length} competência(s)`} />
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{x.ritos.nota}</p>
+              <p className="text-xs text-muted-foreground">{x.ritos.nota}</p>
               {x.prescritas.length > 0 && <Alerta tipo="aviso">Competências fora do cálculo por serem anteriores à data de corte da prescrição ({f.corte}): {x.prescritas.map((c) => c.mes_ano).join(', ')}.</Alerta>}
               <Tabela legenda="Resultado por competência" colunas={['Competência', 'Vencimento', 'Valor devido', 'Correção informada', 'Principal corrigido', 'Juros', 'Multa', 'Pagamentos', 'Saldo']} numericas={[2, 3, 4, 5, 6, 7, 8]}
                 linhas={x.resultados.map((r, i) => [x.lista[i].competencia, x.lista[i].vencimento, m(r.original), B.textoCorrecao(r.correcao), m(r.principalCorrigido), m(r.juros), m(r.multa), r.pagamentos ? `-${m(r.pagamentos)}` : '—', m(r.saldo)])}
                 rodape={['Total', '', m(x.totais.original), m(x.totais.correcao), m(x.totais.principalCorrigido), m(x.totais.juros), m(x.totais.multa), x.totais.pagamentos ? `-${m(x.totais.pagamentos)}` : '—', m(x.totais.saldo)]} />
-              <details className="rounded-xl border border-slate-200 dark:border-slate-700/60 p-4 group">
-                <summary className="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-200 list-none flex items-center justify-between">
+              <details className="rounded-xl border border-border p-4 group">
+                <summary className="cursor-pointer text-sm font-semibold text-foreground list-none flex items-center justify-between">
                   Memória de cálculo por competência <UI.Icone nome="chevron" className="w-4 h-4 transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="mt-3 space-y-4">
                   {x.resultados.map((r, i) => (
                     <div key={i}>
-                      <div className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Competência {x.lista[i].competencia} — vencimento {x.lista[i].vencimento}</div>
-                      <ol className="list-decimal pl-5 space-y-1 text-sm text-slate-700 dark:text-slate-200">{r.memoria.map((l, k) => <li key={k}>{l}</li>)}</ol>
+                      <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">Competência {x.lista[i].competencia} — vencimento {x.lista[i].vencimento}</div>
+                      <ol className="list-decimal pl-5 space-y-1 text-sm text-foreground">{r.memoria.map((l, k) => <li key={k}>{l}</li>)}</ol>
                     </div>
                   ))}
                 </div>

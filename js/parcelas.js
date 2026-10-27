@@ -47,9 +47,9 @@
     const [correcao, definirCorrecao] = useState(parcela.correcao.modo !== 'nenhuma');
     const erro = (campo) => (erros.find((e) => e.linha === indice && e.campo === campo) || {}).mensagem;
     return (
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 p-3 sm:p-4 section-open">
+      <div className="rounded-xl border border-border p-3 sm:p-4 section-open">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{rotuloBase} {indice + 1}</span>
+          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{rotuloBase} {indice + 1}</span>
           <div className="flex flex-wrap gap-1 justify-end">
             <Botao tamanho="sm" variante="fantasma" onClick={() => definirCorrecao(!correcao)} aria-expanded={correcao}>{rotuloModo(parcela.correcao)}</Botao>
             <Botao tamanho="sm" variante="fantasma" onClick={() => definirPagamentos(!pagamentos)} aria-expanded={pagamentos}>
@@ -172,8 +172,8 @@
 
         <Cartao titulo="2. Parcelas" descricao="Inclua cada parcela vencida e informe, em cada uma, a correção monetária (percentual acumulado ou valor já corrigido).">
           <div className="space-y-4">
-            <details className="rounded-xl border border-dashed border-slate-300 dark:border-slate-600 p-4 group">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-200 list-none flex items-center justify-between">
+            <details className="rounded-xl border border-dashed border-input p-4 group">
+              <summary className="cursor-pointer text-sm font-semibold text-foreground list-none flex items-center justify-between">
                 Gerar parcelas mensais <UI.Icone nome="chevron" className="w-4 h-4 transition-transform group-open:rotate-180" />
               </summary>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
@@ -185,13 +185,13 @@
             </details>
 
             {f.parcelas.length > 1 && (
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 p-4 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
+              <div className="rounded-xl border border-border p-4 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
                 <CampoPercentual rotulo="Aplicar o mesmo percentual de correção a todas as parcelas" valor={f.aplicarPercentual} onChange={(v) => definirF({ ...f, aplicarPercentual: v })} ajuda="Atalho: substitui a correção de cada parcela; depois você pode ajustar uma a uma." />
-                <Botao onClick={aplicarMesmoPercentual} className="!h-11">Aplicar a todas</Botao>
+                <Botao onClick={aplicarMesmoPercentual} className="!h-10">Aplicar a todas</Botao>
               </div>
             )}
 
-            {f.parcelas.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">Nenhuma parcela incluída ainda.</p>}
+            {f.parcelas.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma parcela incluída ainda.</p>}
             {f.parcelas.map((x, i) => (
               <LinhaParcela key={x.id} parcela={x} indice={i} erros={errosForm} rotuloBase={p.parcela}
                 onChange={(parte) => alterarParcela(x.id, parte)} onRemover={() => alterar({ parcelas: f.parcelas.filter((y) => y.id !== x.id) })} />
@@ -209,9 +209,9 @@
           <div className="space-y-5">
             <M.ListaEncargos itens={f.encargos} onChange={(v) => alterar({ encargos: v })} />
             <div>
-              <label htmlFor={`obs-${p.chave}`} className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Observações (aparecem no demonstrativo)</label>
+              <label htmlFor={`obs-${p.chave}`} className="block text-sm font-semibold text-foreground mb-1.5">Observações (aparecem no demonstrativo)</label>
               <textarea id={`obs-${p.chave}`} rows={3} maxLength={1000} value={f.observacoes} onChange={(e) => alterar({ observacoes: e.target.value })}
-                className="block w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
+                className="block w-full px-3 py-2 text-sm rounded-lg border border-input bg-white dark:bg-slate-800 text-foreground" />
             </div>
           </div>
         </Cartao>
@@ -222,7 +222,7 @@
           </Alerta>
         )}
 
-        <div className="sticky bottom-3 z-20 flex flex-wrap gap-2 p-3 rounded-2xl bg-white/95 dark:bg-[#14243A]/95 border border-slate-200 dark:border-slate-700/60 shadow-card backdrop-blur">
+        <div className="sticky bottom-3 z-20 flex flex-wrap gap-2 p-3 rounded-xl bg-card/95 border border-border shadow-card backdrop-blur">
           <Botao variante="verde" icone="atualizar" onClick={calcular} className="flex-1 sm:flex-none sm:min-w-[240px]">
             {`Atualizar ${f.parcelas.length || ''} parcela${f.parcelas.length === 1 ? '' : 's'}`.replace('  ', ' ')}
           </Botao>
@@ -236,15 +236,15 @@
               <B.ResumoConsolidado totais={r.totais} mostrarHonorarios={f.criterios.honorarios.ativo} />
               <Tabela legenda="Resultado por parcela" colunas={['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Correção informada', 'Principal corrigido', 'Juros', 'Multa', 'Pagamentos', 'Saldo']} numericas={[3, 4, 5, 6, 7, 8, 9]}
                 linhas={r.resultados.map((x, i) => [i + 1, r.parcelas[i].descricao || `${p.parcela} ${i + 1}`, r.parcelas[i].vencimento, R.formatarMoeda(x.original), B.textoCorrecao(x.correcao), R.formatarMoeda(x.principalCorrigido), R.formatarMoeda(x.juros), R.formatarMoeda(x.multa), x.pagamentos ? `-${R.formatarMoeda(x.pagamentos)}` : '—', R.formatarMoeda(x.saldo)])} />
-              <details className="rounded-xl border border-slate-200 dark:border-slate-700/60 p-4 group">
-                <summary className="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-200 list-none flex items-center justify-between">
+              <details className="rounded-xl border border-border p-4 group">
+                <summary className="cursor-pointer text-sm font-semibold text-foreground list-none flex items-center justify-between">
                   Memória de cálculo por parcela <UI.Icone nome="chevron" className="w-4 h-4 transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="mt-3 space-y-4">
                   {r.resultados.map((x, i) => (
                     <div key={i}>
-                      <div className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">{r.parcelas[i].descricao || `${p.parcela} ${i + 1}`} — {r.parcelas[i].vencimento}</div>
-                      <ol className="list-decimal pl-5 space-y-1 text-sm text-slate-700 dark:text-slate-200">{x.memoria.map((l, k) => <li key={k}>{l}</li>)}</ol>
+                      <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-1">{r.parcelas[i].descricao || `${p.parcela} ${i + 1}`} — {r.parcelas[i].vencimento}</div>
+                      <ol className="list-decimal pl-5 space-y-1 text-sm text-foreground">{x.memoria.map((l, k) => <li key={k}>{l}</li>)}</ol>
                     </div>
                   ))}
                 </div>

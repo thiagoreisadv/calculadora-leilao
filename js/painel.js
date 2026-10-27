@@ -30,9 +30,9 @@
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {ATALHOS.map((a) => (
               <button key={a.modulo} type="button" onClick={() => UI.navegar(a.modulo)}
-                className="text-left p-4 rounded-xl border border-slate-200 dark:border-slate-700/60 hover:border-emerald-500 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 group">
-                <span className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100"><Icone nome={a.icone} className="w-5 h-5 text-navy-500 dark:text-emerald-400" />{a.titulo}</span>
-                <span className="block mt-1.5 text-xs text-slate-500 dark:text-slate-400">{a.texto}</span>
+                className="text-left p-4 rounded-xl border border-border hover:border-emerald-500 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 group">
+                <span className="flex items-center gap-2 text-sm font-bold text-foreground"><Icone nome={a.icone} className="w-5 h-5 text-navy-500 dark:text-emerald-400" />{a.titulo}</span>
+                <span className="block mt-1.5 text-xs text-muted-foreground">{a.texto}</span>
                 <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">Iniciar <Icone nome="seta" className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" /></span>
               </button>
             ))}
@@ -41,13 +41,13 @@
 
         <Cartao titulo="Últimos cálculos" acoes={historico.length > 0 ? <Botao tamanho="sm" onClick={() => UI.navegar('memorias')}>Ver todos</Botao> : null}>
           {historico.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">Seus demonstrativos aparecerão aqui depois que você gerar a primeira memória de cálculo. Eles ficam apenas neste navegador.</p>
+            <p className="text-sm text-muted-foreground">Seus demonstrativos aparecerão aqui depois que você gerar a primeira memória de cálculo. Eles ficam apenas neste navegador.</p>
           ) : (
             <ul className="divide-y divide-slate-100 dark:divide-slate-700/50">
               {historico.slice(0, 5).map((r) => (
                 <li key={r.id}>
                   <button type="button" onClick={() => UI.navegar('memorias', { id: r.id })} className="w-full flex items-center justify-between gap-3 py-3 text-left hover:bg-slate-50 dark:hover:bg-white/5 px-2 rounded-lg">
-                    <span className="min-w-0"><span className="block text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{r.subtitulo || r.titulo}</span><span className="block text-xs text-slate-500 dark:text-slate-400">{M.NOMES_TIPOS[r.tipo] || r.tipo} · {M.dataCurta(r.criadoEm)}</span></span>
+                    <span className="min-w-0"><span className="block text-sm font-semibold text-foreground truncate">{r.subtitulo || r.titulo}</span><span className="block text-xs text-muted-foreground">{M.NOMES_TIPOS[r.tipo] || r.tipo} · {M.dataCurta(r.criadoEm)}</span></span>
                     {r.total && <span className="text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{r.total.valor}</span>}
                   </button>
                 </li>

@@ -28,9 +28,9 @@
     const [proprios, definirProprios] = useState(linha.jurosPct !== '' || linha.multaPct !== '');
     const erro = (campo) => (erros.find((e) => e.linha === indice && e.campo === campo) || {}).mensagem;
     return (
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 p-3 sm:p-4 section-open">
+      <div className="rounded-xl border border-border p-3 sm:p-4 section-open">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Linha {indice + 1}</span>
+          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Linha {indice + 1}</span>
           <div className="flex flex-wrap gap-1 justify-end">
             <Botao tamanho="sm" variante="fantasma" aria-expanded={correcao} onClick={() => definirCorrecao(!correcao)}>{rotuloModo(linha.correcao)}</Botao>
             <Botao tamanho="sm" variante="fantasma" aria-expanded={pagamentos} onClick={() => definirPagamentos(!pagamentos)}>Pagamentos{linha.pagamentos.length ? ` (${linha.pagamentos.length})` : ''}</Botao>
@@ -153,16 +153,16 @@
         <Cartao titulo="3. Obrigações" descricao={`${f.linhas.length} linha(s). Máximo de ${R.LIMITE_PARCELAS}. A correção monetária é informada em cada linha.`}
           acoes={<Botao tamanho="sm" icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha()] })}>Adicionar linha</Botao>}>
           <div className="space-y-4">
-            {f.linhas.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">Nenhuma linha. Clique em "Adicionar linha" para começar.</p>}
+            {f.linhas.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma linha. Clique em "Adicionar linha" para começar.</p>}
             {f.linhas.map((l, i) => (
               <LinhaEditavel key={l.id} linha={l} indice={i} erros={errosForm}
                 onChange={(parte) => alterarLinha(l.id, parte)} onRemover={() => alterar({ linhas: f.linhas.filter((x) => x.id !== l.id) })} />
             ))}
             {f.linhas.length > 0 && <Botao icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha()] })}>Adicionar linha</Botao>}
             <div>
-              <label htmlFor="obs-planilha" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Observações (aparecem no demonstrativo)</label>
+              <label htmlFor="obs-planilha" className="block text-sm font-semibold text-foreground mb-1.5">Observações (aparecem no demonstrativo)</label>
               <textarea id="obs-planilha" rows={3} maxLength={1000} value={f.observacoes} onChange={(e) => alterar({ observacoes: e.target.value })}
-                className="block w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
+                className="block w-full px-3 py-2 text-sm rounded-lg border border-input bg-white dark:bg-slate-800 text-foreground" />
             </div>
           </div>
         </Cartao>
@@ -173,7 +173,7 @@
           </Alerta>
         )}
 
-        <div className="sticky bottom-3 z-20 flex flex-wrap gap-2 p-3 rounded-2xl bg-white/95 dark:bg-[#14243A]/95 border border-slate-200 dark:border-slate-700/60 shadow-card backdrop-blur">
+        <div className="sticky bottom-3 z-20 flex flex-wrap gap-2 p-3 rounded-xl bg-card/95 border border-border shadow-card backdrop-blur">
           <Botao variante="verde" icone="atualizar" disabled={!f.linhas.length} onClick={calcular} className="flex-1 sm:flex-none sm:min-w-[220px]">Calcular planilha</Botao>
           <Botao onClick={() => { limpar(); definirRes(null); definirErros([]); }}>Limpar tudo</Botao>
         </div>
@@ -186,7 +186,7 @@
               <Tabela legenda="Planilha consolidada" colunas={['Nº', 'Descrição', 'Competência', 'Vencimento', 'Valor original', 'Correção monetária', 'Juros', 'Multa', 'Outros encargos', 'Pagamentos', 'Saldo atualizado']} numericas={[4, 5, 6, 7, 8, 9, 10]}
                 linhas={res.resultados.map((_, i) => celulas(i))}
                 rodape={['', 'Totais', '', '', m(res.totais.original), m(res.totais.correcao), m(res.totais.juros), m(res.totais.multa), m(res.totais.encargosNominais), res.totais.pagamentos ? `-${m(res.totais.pagamentos)}` : '—', m(res.totais.saldoFinal)]} />
-              <p className="text-xs text-slate-500 dark:text-slate-400">O saldo de cada linha inclui honorários em percentual, quando aplicados. Honorários de valor fixo entram uma única vez no total.</p>
+              <p className="text-xs text-muted-foreground">O saldo de cada linha inclui honorários em percentual, quando aplicados. Honorários de valor fixo entram uma única vez no total.</p>
               <div className="flex flex-wrap gap-2">
                 <Botao variante="verde" icone="baixar" onClick={gerarPlanilha}>Gerar planilha de cálculo (Excel)</Botao>
                 <Botao variante="verde" icone="baixar" onClick={gerarPdf}>Gerar planilha de cálculo (PDF)</Botao>

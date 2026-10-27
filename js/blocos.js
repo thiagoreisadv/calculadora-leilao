@@ -53,8 +53,8 @@
     }
     return (
       <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">{titulo}</legend>
-        <div className={`flex flex-wrap gap-1 rounded-lg border border-slate-300 dark:border-slate-600 p-1 bg-slate-50 dark:bg-slate-800 ${compacto ? 'w-full' : 'w-fit max-w-full'}`} role="group" aria-label={titulo}>
+        <legend className="text-sm font-semibold text-foreground mb-2">{titulo}</legend>
+        <div className={`flex flex-wrap gap-1 rounded-lg border border-input p-1 bg-slate-50 dark:bg-slate-800 ${compacto ? 'w-full' : 'w-fit max-w-full'}`} role="group" aria-label={titulo}>
           {OPCOES_CORRECAO.map(([v, r]) => (
             <button key={v} type="button" aria-pressed={c.modo === v} onClick={() => alterar({ modo: v })}
               className={`px-3 h-9 text-sm font-semibold rounded-md ${c.modo === v ? 'bg-navy-900 text-white dark:bg-emerald-600' : 'text-slate-600 dark:text-slate-300 hover:bg-white/60 dark:hover:bg-white/10'}`}>{r}</button>
@@ -90,7 +90,7 @@
             opcoes={[{ valor: 'final', rotulo: 'Abater do saldo final' }, { valor: 'art354', rotulo: 'Imputar em juros e depois principal (art. 354 CC)' }]}
             ajuda="Só faz diferença quando há pagamentos informados." />
         </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 divide-y divide-slate-200 dark:divide-slate-700/60">
+        <div className="rounded-xl border border-border divide-y divide-slate-200 dark:divide-slate-700/60">
           <div className="p-4 space-y-3">
             <Chave rotulo="Juros moratórios" descricao="Aplique somente se houver previsão contratual, legal ou na decisão." marcado={c.juros.ativo} onChange={(v) => alterar({ juros: { ...c.juros, ativo: v } })} />
             {c.juros.ativo && (
@@ -98,7 +98,7 @@
                 <CampoPercentual rotulo="Taxa de juros" valor={c.juros.percentual} onChange={(v) => alterar({ juros: { ...c.juros, percentual: v } })} erro={erro('jurosPercentual')} />
                 <Selecao rotulo="Taxa" valor={c.juros.periodicidade} onChange={(v) => alterar({ juros: { ...c.juros, periodicidade: v } })} opcoes={[{ valor: 'mensal', rotulo: 'Ao mês' }, { valor: 'anual', rotulo: 'Ao ano' }]} erro={erro('jurosPeriodicidade')} />
                 <Selecao rotulo="Modalidade" valor={c.juros.modalidade} onChange={(v) => alterar({ juros: { ...c.juros, modalidade: v } })} opcoes={[{ valor: 'simples', rotulo: 'Juros simples' }, { valor: 'compostos', rotulo: 'Juros compostos' }]} erro={erro('jurosModalidade')} />
-                <p className="sm:col-span-3 text-xs text-slate-500 dark:text-slate-400">Os juros contam do vencimento até a data final, sobre o principal corrigido. Período = meses completos + dias restantes ÷ 30. Não escolha juros compostos sem previsão que o autorize.</p>
+                <p className="sm:col-span-3 text-xs text-muted-foreground">Os juros contam do vencimento até a data final, sobre o principal corrigido. Período = meses completos + dias restantes ÷ 30. Não escolha juros compostos sem previsão que o autorize.</p>
               </div>
             )}
           </div>

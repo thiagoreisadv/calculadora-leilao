@@ -23,12 +23,12 @@
     const alterar = (id, parte) => onChange(itens.map((p) => (p.id === id ? { ...p, ...parte } : p)));
     return (
       <div className="space-y-3">
-        {itens.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum pagamento informado. Inclua pagamentos parciais para abatê-los do saldo.</p>}
+        {itens.length === 0 && <p className="text-sm text-muted-foreground">Nenhum pagamento informado. Inclua pagamentos parciais para abatê-los do saldo.</p>}
         {itens.map((p, i) => (
-          <div key={p.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 section-open">
+          <div key={p.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end p-3 rounded-xl border border-border section-open">
             <CampoData rotulo={`Data do pagamento ${i + 1}`} valor={p.data} onChange={(v) => alterar(p.id, { data: v })} />
             <CampoMoeda rotulo="Valor pago" valor={p.valor} onChange={(v) => alterar(p.id, { valor: v })} />
-            <Botao variante="perigo" tamanho="sm" icone="lixeira" className="!h-11" aria-label={`Remover pagamento ${i + 1}`} onClick={() => onChange(itens.filter((x) => x.id !== p.id))}>Remover</Botao>
+            <Botao variante="perigo" tamanho="sm" icone="lixeira" className="!h-10" aria-label={`Remover pagamento ${i + 1}`} onClick={() => onChange(itens.filter((x) => x.id !== p.id))}>Remover</Botao>
           </div>
         ))}
         {erro && <p role="alert" className="text-xs font-medium text-red-600">{erro}</p>}
@@ -41,12 +41,12 @@
     const alterar = (id, parte) => onChange(itens.map((p) => (p.id === id ? { ...p, ...parte } : p)));
     return (
       <div className="space-y-3">
-        {itens.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum encargo adicional. Use este campo para custas ou despesas cujo valor já seja conhecido; eles são somados sem atualização monetária.</p>}
+        {itens.length === 0 && <p className="text-sm text-muted-foreground">Nenhum encargo adicional. Use este campo para custas ou despesas cujo valor já seja conhecido; eles são somados sem atualização monetária.</p>}
         {itens.map((p, i) => (
-          <div key={p.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end p-3 rounded-xl border border-slate-200 dark:border-slate-700/60 section-open">
+          <div key={p.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end p-3 rounded-xl border border-border section-open">
             <CampoTexto rotulo={`Descrição do encargo ${i + 1}`} valor={p.desc} onChange={(v) => alterar(p.id, { desc: v })} maxLength={80} />
             <CampoMoeda rotulo="Valor" valor={p.valor} onChange={(v) => alterar(p.id, { valor: v })} />
-            <Botao variante="perigo" tamanho="sm" icone="lixeira" className="!h-11" aria-label={`Remover encargo ${i + 1}`} onClick={() => onChange(itens.filter((x) => x.id !== p.id))}>Remover</Botao>
+            <Botao variante="perigo" tamanho="sm" icone="lixeira" className="!h-10" aria-label={`Remover encargo ${i + 1}`} onClick={() => onChange(itens.filter((x) => x.id !== p.id))}>Remover</Botao>
           </div>
         ))}
         <Botao tamanho="sm" icone="mais" onClick={() => onChange([...itens, { id: novoId(), desc: '', valor: '' }])}>Adicionar encargo</Botao>
@@ -163,9 +163,9 @@
           <div className="space-y-5">
             <ListaEncargos itens={f.encargos} onChange={(v) => alterar({ encargos: v })} />
             <div>
-              <label htmlFor="obs-debito" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Observações (aparecem no demonstrativo)</label>
+              <label htmlFor="obs-debito" className="block text-sm font-semibold text-foreground mb-1.5">Observações (aparecem no demonstrativo)</label>
               <textarea id="obs-debito" rows={3} maxLength={1000} value={f.observacoes} onChange={(e) => alterar({ observacoes: e.target.value })}
-                className="block w-full px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
+                className="block w-full px-3 py-2 text-sm rounded-lg border border-input bg-white dark:bg-slate-800 text-foreground" />
             </div>
           </div>
         </Cartao>
@@ -176,7 +176,7 @@
           </Alerta>
         )}
 
-        <div className="sticky bottom-3 z-20 flex flex-wrap gap-2 p-3 rounded-2xl bg-white/95 dark:bg-[#14243A]/95 border border-slate-200 dark:border-slate-700/60 shadow-card backdrop-blur">
+        <div className="sticky bottom-3 z-20 flex flex-wrap gap-2 p-3 rounded-xl bg-card/95 border border-border shadow-card backdrop-blur">
           <Botao variante="verde" icone="atualizar" onClick={calcular} className="flex-1 sm:flex-none sm:min-w-[220px]">Atualizar débito</Botao>
           <Botao onClick={() => { limpar(); definirResultado(null); definirErros([]); }}>Limpar tudo</Botao>
         </div>
@@ -186,20 +186,20 @@
           <Cartao titulo="Resultado da atualização" descricao={`Calculado até ${f.criterios.dataFinal} com a correção monetária informada por você.`} className="section-open">
             <div className="space-y-5">
               <B.ResumoConsolidado totais={x.totais} mostrarHonorarios={f.criterios.honorarios.ativo} />
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 p-4 text-sm">
-                <div className="font-bold text-slate-700 dark:text-slate-200 mb-1">Correção monetária utilizada</div>
-                {x.r.correcao.modo === 'percentual' && <p className="text-slate-700 dark:text-slate-200">Percentual informado: <b>{R.formatarPercentual(x.r.correcao.percentual)}</b> · Valor da correção: <b>{R.formatarMoeda(x.r.correcao.valorCorrecao)}</b> · Principal corrigido: <b>{R.formatarMoeda(x.r.principalCorrigido)}</b></p>}
-                {x.r.correcao.modo === 'valorCorrigido' && <p className="text-slate-700 dark:text-slate-200">Principal corrigido <b>informado manualmente</b>: <b>{R.formatarMoeda(x.r.principalCorrigido)}</b> (diferença para o valor original: {R.formatarMoeda(x.r.correcao.valorCorrecao)}). Nenhuma correção adicional foi aplicada.</p>}
-                {x.r.correcao.modo === 'nenhuma' && <p className="text-slate-700 dark:text-slate-200">Sem correção monetária: o valor original foi usado como principal.</p>}
+              <div className="rounded-xl border border-border p-4 text-sm">
+                <div className="font-bold text-foreground mb-1">Correção monetária utilizada</div>
+                {x.r.correcao.modo === 'percentual' && <p className="text-foreground">Percentual informado: <b>{R.formatarPercentual(x.r.correcao.percentual)}</b> · Valor da correção: <b>{R.formatarMoeda(x.r.correcao.valorCorrecao)}</b> · Principal corrigido: <b>{R.formatarMoeda(x.r.principalCorrigido)}</b></p>}
+                {x.r.correcao.modo === 'valorCorrigido' && <p className="text-foreground">Principal corrigido <b>informado manualmente</b>: <b>{R.formatarMoeda(x.r.principalCorrigido)}</b> (diferença para o valor original: {R.formatarMoeda(x.r.correcao.valorCorrecao)}). Nenhuma correção adicional foi aplicada.</p>}
+                {x.r.correcao.modo === 'nenhuma' && <p className="text-foreground">Sem correção monetária: o valor original foi usado como principal.</p>}
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Memória de cálculo</h3>
-                <ol className="list-decimal pl-5 space-y-1.5 text-sm text-slate-700 dark:text-slate-200">{x.r.memoria.map((l, i) => <li key={i}>{l}</li>)}</ol>
+                <h3 className="text-sm font-bold text-foreground mb-2">Memória de cálculo</h3>
+                <ol className="list-decimal pl-5 space-y-1.5 text-sm text-foreground">{x.r.memoria.map((l, i) => <li key={i}>{l}</li>)}</ol>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Critérios efetivamente utilizados</h3>
+                <h3 className="text-sm font-bold text-foreground mb-2">Critérios efetivamente utilizados</h3>
                 <dl className="grid grid-cols-1 sm:grid-cols-[220px_1fr] gap-x-4 gap-y-1.5 text-sm">
-                  {x.criteriosDescritos.map(([k, v]) => <React.Fragment key={k}><dt className="text-slate-500 dark:text-slate-400">{k}</dt><dd className="font-medium text-slate-800 dark:text-slate-100">{v}</dd></React.Fragment>)}
+                  {x.criteriosDescritos.map(([k, v]) => <React.Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd className="font-medium text-foreground">{v}</dd></React.Fragment>)}
                 </dl>
               </div>
               <div className="flex flex-wrap gap-2">

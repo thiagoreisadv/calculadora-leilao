@@ -53,6 +53,12 @@ Todos os campos de valor usam a mesma máscara (`EntradaMoeda` em `js/componente
 - o `.` do teclado numérico vira vírgula; colar `R$ 1.500,00` funciona;
 - ao sair do campo, completa as casas decimais (`1.500` → `1.500,00`).
 
+## Design system (shadcn/ui, sem build)
+
+O visual segue o shadcn/ui: tokens de cor em CSS (`--background`, `--card`, `--primary`, `--muted`, `--border`, `--input`, `--ring`, `--destructive`, `--radius`) em `:root` e `html.dark`, mapeados no `tailwind.config` do `index.html`. Botão, cartão, campo, abas (`Segmentado`) e selo usam as mesmas classes dos componentes do shadcn (anel de foco de 3px, `shadow-xs`, `rounded-md`). Para mudar a paleta, altere só os tokens.
+
+O repositório inclui `.mcp.json` com o servidor [shadcn-ui-mcp-server](https://github.com/Jpisnice/shadcn-ui-mcp-server), para consultar o código oficial dos componentes ao evoluir a interface (precisa de acesso a `raw.githubusercontent.com`; um token do GitHub em `GITHUB_PERSONAL_ACCESS_TOKEN` evita o limite de 60 consultas por hora).
+
 ## Arquitetura
 
 ```
