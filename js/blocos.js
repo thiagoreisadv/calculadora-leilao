@@ -4,16 +4,25 @@
  * Exportados em window.CentralBlocos.
  */
 (() => {
-  const { useRef, useEffect } = React;
+  const { useRef, useEffect, useState } = React;
   const UI = window.CentralUI;
   const R = window.CentralRegras;
   const K = window.CentralCalculo;
   const { Icone, Botao, Alerta, CampoData, CampoPercentual, CampoMoeda, Selecao, Chave, Indicador, Segmentado, PainelResultado } = UI;
 
   // ---------- Descrição dos critérios (tela e demonstrativo) ----------
-  function descreverCriterios(c) {
+  // parcelas (opcional): lista com a correção escolhida em cada uma, para descrever a origem da correção.
+  function descreverCriterios(c, parcelas) {
     const linhas = [['Data final do cálculo', c.dataFinal]];
-    linhas.push(['Correção monetária', 'Informada manualmente pelo usuário (percentual acumulado ou valor já corrigido, por parcela); não calculada por índice oficial nem por consulta automática']);
+    const modos = (parcelas || []).map((p) => p.correcao || {});
+    const indices = [...new Set(modos.filter((x) => x.modo === 'indice').map((x) => (K.INDICES[x.indice] || K.INDICES.IPCA).nome))];
+    const manual = modos.some((x) => x.modo === 'percentual' || x.modo === 'valorCorrigido');
+    if (indices.length) {
+      const tabela = K.indicesCarregados();
+      linhas.push(['Correção monetária', `${indices.join(', ')}: variações mensais do mês do vencimento até o mês anterior ao da data final, acumuladas (tabela do Banco Central do Brasil${tabela && tabela.atualizadoEm ? `, atualizada em ${tabela.atualizadoEm}` : ''})${manual ? '; nas demais parcelas, percentual ou valor corrigido informado pelo usuário' : ''}`]);
+    } else {
+      linhas.push(['Correção monetária', 'Informada manualmente pelo usuário (percentual acumulado ou valor já corrigido, por parcela); não calculada por índice oficial nem por consulta automática']);
+    }
     if (c.juros && c.juros.ativo) {
       linhas.push(['Juros moratórios', `${R.formatarPercentual(R.lerValor(c.juros.percentual))} ${c.juros.periodicidade === 'anual' ? 'ao ano' : 'ao mês'}, ${c.juros.modalidade === 'compostos' ? 'compostos (capitalizados)' : 'simples'}, do vencimento até a data final, sobre o principal corrigido; período = meses completos + dias restantes ÷ 30`]);
     } else {
@@ -24,23 +33,70 @@
       ? (c.honorarios.modo === 'p' ? `${R.formatarPercentual(R.lerValor(c.honorarios.valor))} sobre principal corrigido + juros + multa − pagamentos` : `${R.formatarMoeda(R.lerValor(c.honorarios.valor))} (valor fixo, uma única vez)`)
       : 'Não aplicados']);
     linhas.push(['Abatimento de pagamentos', c.imputacao === 'art354' ? 'Imputação cronológica: primeiro nos juros e depois no principal (art. 354 do Código Civil), com juros recalculados sobre o principal restante' : 'Abatidos do saldo final de principal e juros, sem recalcular os juros']);
+    linhas.push(['Multa e mora', 'Multa só sobre o valor em atraso no vencimento (pagamento em dia afasta a multa); pagamento além do principal e dos juros quita a multa']);
+    linhas.push(['Parcelas a vencer na data final', c.vincendas === 'excluir' ? 'Ficam fora do cálculo e são listadas à parte' : 'Tratadas como vencidas antecipadamente na data final: sem juros, com multa (se aplicada)']);
     linhas.push(['Responsabilidade pelos critérios', 'Definidos pelo usuário para o caso concreto; a ferramenta não valida sua adequação jurídica.']);
     return linhas;
   }
 
-  // ---------- Correção monetária informada manualmente ----------
+  // ---------- Tabela de índices: estado de carregamento (js/indices.js) ----------
+  function useIndices() {
+    const [estado, definir] = useState(() => ({ ...(window.CentralIndicesEstado || { status: 'carregando' }) }));
+    useEffect(() => {
+      const f = (e) => definir({ ...e.detail });
+      window.addEventListener('central-indices', f);
+      if (window.CentralIndicesEstado) definir({ ...window.CentralIndicesEstado });
+      return () => window.removeEventListener('central-indices', f);
+    }, []);
+    return estado;
+  }
+
+  // Correção sugerida para parcelas novas: índice oficial (IPCA). O motor continua com "sem correção" como padrão.
+  const correcaoInicial = () => ({ ...K.correcaoPadrao(), modo: 'indice', indice: 'IPCA' });
+
+  // Rótulo curto da correção escolhida (botões das linhas de parcelas)
+  function rotuloCorrecao(c) {
+    if (!c) return 'Sem correção';
+    if (c.modo === 'indice') return `Correção: ${(K.INDICES[c.indice] || K.INDICES.IPCA).nome}`;
+    if (c.modo === 'percentual') return `Correção: ${c.percentual || '—'}%`;
+    if (c.modo === 'valorCorrigido') return 'Valor corrigido informado';
+    return 'Sem correção';
+  }
+
+  // ---------- Correção monetária ----------
   const OPCOES_CORRECAO = [
-    ['percentual', 'Percentual de correção'],
+    ['indice', 'Índice oficial'],
+    ['percentual', 'Percentual'],
     ['valorCorrigido', 'Valor já corrigido'],
     ['nenhuma', 'Sem correção'],
   ];
+  const OPCOES_INDICE = Object.entries(K.INDICES).map(([valor, x]) => ({ valor, rotulo: x.descricao }));
 
-  function CorrecaoManual({ valor, onChange, valorOriginal, erro, titulo = 'Correção monetária', compacto }) {
+  // vencimento e dataFinal permitem a prévia da correção por índice enquanto o usuário digita.
+  function CorrecaoManual({ valor, onChange, valorOriginal, vencimento, dataFinal, erro, titulo = 'Correção monetária', compacto }) {
     const c = valor || K.correcaoPadrao();
     const alterar = (parte) => onChange({ ...c, ...parte });
+    const indices = useIndices();
     const original = R.lerValor(valorOriginal);
     let previa = null;
-    if (original > 0) {
+    let avisoIndice = null;
+    if (c.modo === 'indice') {
+      if (indices.status === 'carregando') avisoIndice = 'Carregando a tabela de índices…';
+      else if (indices.status !== 'ok') avisoIndice = 'A tabela de índices ainda não está disponível. Use "Percentual" ou "Valor já corrigido" por enquanto.';
+      else {
+        const chave = K.INDICES[c.indice] ? c.indice : 'IPCA';
+        const ultimo = K.ultimoMesIndice(chave);
+        avisoIndice = `Tabela do Banco Central atualizada em ${indices.atualizadoEm || '—'}${ultimo ? ` · último ${K.INDICES[chave].nome} divulgado: ${K.nomeMes(ultimo)}` : ''}.`;
+        if (original > 0 && R.dataEhValida(vencimento) && R.dataEhValida(dataFinal)) {
+          const r = K.aplicarCorrecao(original, { ...c, indice: chave }, { inicio: vencimento, fim: dataFinal });
+          if (!r.meses.length && !r.faltantes.length) previa = 'Nenhum mês decorrido até a data final: sem correção.';
+          else {
+            const periodo = r.meses.length ? `${K.nomeMes(r.meses[0].mes)} a ${K.nomeMes(r.meses[r.meses.length - 1].mes)}` : '—';
+            previa = `${r.nomeIndice} acumulado ${R.formatarPercentual(r.percentual)} (${periodo}) · Correção: ${R.formatarMoeda(r.valorCorrecao)} · Principal corrigido: ${R.formatarMoeda(r.principalCorrigido)}${r.faltantes.length ? ` · sem índice divulgado para ${r.faltantes.map(K.nomeMes).join(', ')}` : ''}`;
+          }
+        } else if (original > 0) previa = 'Informe o vencimento e a data final para ver a correção.';
+      }
+    } else if (original > 0) {
       if (c.modo === 'percentual' && R.lerValor(c.percentual) >= 0) {
         const r = K.aplicarCorrecao(original, c);
         previa = `Correção: ${R.formatarMoeda(r.valorCorrecao)} · Principal corrigido: ${R.formatarMoeda(r.principalCorrigido)}`;
@@ -54,8 +110,15 @@
     return (
       <fieldset className="space-y-3">
         <legend className="text-[12.5px] text-muted-foreground mb-1.5">{titulo}</legend>
-        <Segmentado rotulo={titulo} valor={c.modo} onChange={(v) => alterar({ modo: v })} cheio={!compacto}
+        <Segmentado rotulo={titulo} valor={c.modo} onChange={(v) => alterar({ modo: v, indice: c.indice || 'IPCA' })} cheio={!compacto}
           opcoes={OPCOES_CORRECAO.map(([valor, rotulo]) => ({ valor, rotulo }))} />
+        {c.modo === 'indice' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
+            <Selecao rotulo="Índice" valor={K.INDICES[c.indice] ? c.indice : 'IPCA'} onChange={(v) => alterar({ indice: v })} opcoes={OPCOES_INDICE} erro={erro}
+              ajuda="Variações mensais do mês do vencimento até o mês anterior ao da data final." />
+            {avisoIndice && <p className={`text-[11.5px] sm:pt-[26px] ${indices.status === 'ok' || indices.status === 'carregando' ? 'text-muted-foreground' : 'text-warning'}`}>{avisoIndice}</p>}
+          </div>
+        )}
         {c.modo === 'percentual' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
             <CampoPercentual rotulo="Correção monetária acumulada do período" obrigatorio valor={c.percentual} onChange={(v) => alterar({ percentual: v })} erro={erro}
@@ -85,6 +148,9 @@
           <Selecao rotulo="Abatimento dos pagamentos" valor={c.imputacao} onChange={(v) => alterar({ imputacao: v })} erro={erro('imputacao')}
             opcoes={[{ valor: 'final', rotulo: 'Abater do saldo final' }, { valor: 'art354', rotulo: 'Imputar em juros e depois principal (art. 354 CC)' }]}
             ajuda="Só faz diferença quando há pagamentos informados." />
+          <Selecao rotulo="Parcelas que vencem depois da data final" valor={c.vincendas || 'antecipar'} onChange={(v) => alterar({ vincendas: v })} erro={erro('vincendas')} className="sm:col-span-2"
+            opcoes={[{ valor: 'antecipar', rotulo: 'Vencimento antecipado: entram na data final, sem juros e com multa' }, { valor: 'excluir', rotulo: 'Ficam fora do cálculo (listadas à parte)' }]}
+            ajuda="Ex.: acordo descumprido com parcelas ainda a vencer. Não há juros sem atraso; a multa segue o critério acima." />
         </div>
         <div className="rounded-[10px] border border-border divide-y divide-border">
           <div className="p-4 space-y-3">
@@ -130,7 +196,7 @@
     const t = totais;
     const linhas = !t ? [] : [
       { l: 'Valor original', v: m(t.original), n: t.original },
-      { l: 'Correção informada', v: m(t.correcao), n: t.correcao },
+      { l: 'Correção monetária', v: m(t.correcao), n: t.correcao },
       { l: 'Juros', v: m(t.juros), n: t.juros },
       { l: 'Multa', v: m(t.multa), n: t.multa },
       (mostrarHonorarios || t.honorarios !== 0) && { l: 'Honorários', v: m(t.honorarios), n: t.honorarios },
@@ -183,6 +249,7 @@
   function textoCorrecao(correcao) {
     if (correcao.modo === 'percentual') return `${R.formatarPercentual(correcao.percentual)} → ${R.formatarMoeda(correcao.valorCorrecao)}`;
     if (correcao.modo === 'valorCorrigido') return `Valor informado (${R.formatarMoeda(correcao.valorCorrecao)})`;
+    if (correcao.modo === 'indice') return `${correcao.nomeIndice} ${R.formatarPercentual(correcao.percentual)} → ${R.formatarMoeda(correcao.valorCorrecao)}${correcao.faltantes && correcao.faltantes.length ? ' (parcial)' : ''}`;
     return 'Sem correção';
   }
 
@@ -253,7 +320,7 @@
   }
 
   window.CentralBlocos = {
-    descreverCriterios, CorrecaoManual, CriteriosCalculo, PainelTotais, ResumoConsolidado, ListaAlertas,
+    descreverCriterios, useIndices, correcaoInicial, rotuloCorrecao, CorrecaoManual, CriteriosCalculo, PainelTotais, ResumoConsolidado, ListaAlertas,
     textoCorrecao, VisualizadorDocumento, guardarMemoria, gerarPlanilhaCalculo, gerarPdfCalculo, gerarPdfRegistro,
   };
 })();

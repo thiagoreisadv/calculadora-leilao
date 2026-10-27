@@ -116,3 +116,19 @@ test('PDF do demonstrativo não traz o aviso de que o valor não substitui a an�
   assert.ok(!t.includes(P.hex('não substitui')));
   assert.ok(t.includes(P.hex('Fonte dos dados')));
 });
+
+test('correção por índice: Excel com percentual e fórmula, PDF com a fonte do Banco Central', () => {
+  C.definirIndices({ atualizadoEm: '10/07/2025', series: { IPCA: { codigo: 433, valores: { '2025-01': 0.16, '2025-02': 1.31, '2025-03': 0.56, '2025-04': 0.43, '2025-05': 0.26, '2025-06': 0.24 } } } });
+  const crit = { ...C.criteriosPadrao(), dataFinal: '10/07/2025' };
+  const parcelas = [{ descricao: 'Aluguel', vencimento: '10/01/2025', valor: '1000', correcao: { modo: 'indice', indice: 'IPCA' }, pagamentos: [] }];
+  const resultados = parcelas.map((x) => C.calcularParcela(x, crit));
+  const o = { tipo: 'contrato', titulo: 'Memória — índice', parcelas: [{ descricao: 'Aluguel', vencimento: '10/01/2025' }], resultados, totais: C.consolidar(resultados), dataFinal: crit.dataFinal, criterios: [] };
+  const reg = Reg.montarCalculo(o);
+  assert.match(reg.fonte, /Banco Central/);
+  assert.ok(reg.resumo.some((l) => /índice oficial/.test(l[0])));
+  const t = validarEstrutura(Reg.pdfDeRegistro(reg));
+  assert.ok(t.includes(P.hex('IPCA')));
+  const plan = Reg.montarPlanilha(o);
+  assert.ok(JSON.stringify(plan).includes('ROUND('), 'correção por índice usa a mesma fórmula da planilha');
+  C.definirIndices(null);
+});

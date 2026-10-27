@@ -1,20 +1,27 @@
 /*
  * Motor de cálculo local da Central de Cálculos.
  *
- * A correção monetária NÃO é calculada aqui nem por nenhuma API: o usuário informa o percentual
- * acumulado do período OU o valor do principal já corrigido (ou escolhe não corrigir). A partir
- * desse principal, o motor calcula juros, multa, honorários, abatimento de pagamentos e saldo.
- * Sem chamadas de rede. Funciona no navegador (window.CentralCalculo) e no Node (testes).
+ * Correção monetária, por parcela: percentual acumulado informado pelo usuário, valor do principal já
+ * corrigido, índice oficial (IPCA, INPC, IGP-M ou IPCA-E, pela tabela dados/indices.json gerada a partir
+ * do Banco Central) ou sem correção. O motor não faz chamadas de rede: a tabela de índices é entregue a
+ * ele por definirIndices(). Funciona no navegador (window.CentralCalculo) e no Node (testes).
  *
  * Regras (todas reproduzidas na memória de cálculo):
- *  - Principal corrigido = valor original + correção informada (percentual) | valor corrigido informado | valor original.
- *    A correção é aplicada uma única vez; juros e multa incidem sobre o principal corrigido.
+ *  - Principal corrigido = valor original + correção. A correção é aplicada uma única vez; juros e multa
+ *    incidem sobre o principal corrigido.
+ *  - Índice: variações mensais do mês do vencimento até o mês anterior ao da data final (meses decorridos),
+ *    acumuladas por produto. Mês ainda sem índice divulgado fica de fora e é apontado na memória.
  *  - Juros: taxa informada, ao mês ou ao ano, simples ou compostos, do vencimento até a data final.
- *    Período = meses completos + dias restantes / 30.
- *  - Multa: percentual sobre o principal corrigido, aplicada uma única vez.
+ *    Período = meses completos + dias restantes / 30. Parcela não vencida na data final não tem juros.
+ *  - Multa: percentual sobre o valor em atraso no vencimento (principal corrigido − pagamentos feitos até o
+ *    vencimento), aplicada uma única vez. Pagamento em dia afasta a multa.
+ *  - Parcela que vence depois da data final: "antecipar" (vencimento antecipado na data final: sem juros,
+ *    com multa, se houver) ou "excluir" (fica fora do cálculo, listada à parte).
  *  - Honorários: percentual sobre (principal corrigido + juros + multa − pagamentos) ou valor fixo (uma vez).
  *  - Pagamentos: "final" abate do saldo final sem recalcular juros; "art354" imputa em ordem cronológica,
  *    primeiro nos juros acumulados e depois no principal (juros recalculados sobre o principal restante).
+ *    Pagamento antecipado é aceito (conta a partir do vencimento). Pagamento que excede principal e juros
+ *    quita a multa; o que sobrar fica como excedente não imputado.
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(require('./regras.js'));
@@ -23,7 +30,15 @@
   'use strict';
 
   const DIA_MS = 86400000;
-  const MODOS_CORRECAO = ['nenhuma', 'percentual', 'valorCorrigido'];
+  const MODOS_CORRECAO = ['nenhuma', 'percentual', 'valorCorrigido', 'indice'];
+  // Índices oficiais disponíveis (séries do Sistema Gerenciador de Séries Temporais do Banco Central)
+  const INDICES = {
+    IPCA: { codigo: 433, nome: 'IPCA', descricao: 'IPCA (IBGE)' },
+    INPC: { codigo: 188, nome: 'INPC', descricao: 'INPC (IBGE)' },
+    IGPM: { codigo: 189, nome: 'IGP-M', descricao: 'IGP-M (FGV)' },
+    IPCAE: { codigo: 10764, nome: 'IPCA-E', descricao: 'IPCA-E (IBGE)' },
+  };
+  const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   const m = R.formatarMoeda;
   const pct = (v) => R.formatarPercentual(v);
   const num = (v, casas) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
@@ -31,7 +46,7 @@
   // ---------- Modelos padrão ----------
 
   function correcaoPadrao() {
-    return { modo: 'nenhuma', percentual: '', valorCorrigido: '' };
+    return { modo: 'nenhuma', percentual: '', valorCorrigido: '', indice: 'IPCA' };
   }
 
   function criteriosPadrao() {
@@ -41,14 +56,56 @@
       multa: { ativo: false, percentual: '' },
       honorarios: { ativo: false, modo: 'p', valor: '' },
       imputacao: 'final',
+      vincendas: 'antecipar',
     };
   }
 
-  // ---------- Correção monetária informada manualmente ----------
+  // ---------- Tabela de índices (dados/indices.json) ----------
+  // Formato: { atualizadoEm, fonte, series: { IPCA: { codigo, valores: { 'AAAA-MM': variação % } }, ... } }
+  let tabelaIndices = null;
+  function definirIndices(dados) {
+    tabelaIndices = dados && dados.series ? dados : null;
+    return Boolean(tabelaIndices);
+  }
+  function indicesCarregados() { return tabelaIndices; }
+
+  const chaveMes = (ano, mes) => `${ano}-${String(mes).padStart(2, '0')}`;
+  const nomeMes = (chave) => `${MESES[Number(chave.slice(5, 7)) - 1]}/${chave.slice(0, 4)}`;
+
+  // Último mês com índice divulgado na série (AAAA-MM) ou null.
+  function ultimoMesIndice(chave) {
+    const serie = tabelaIndices && tabelaIndices.series && tabelaIndices.series[chave];
+    if (!serie || !serie.valores) return null;
+    const meses = Object.keys(serie.valores).sort();
+    return meses.length ? meses[meses.length - 1] : null;
+  }
+
+  // Fator acumulado do índice: variações mensais do mês do vencimento até o mês anterior ao da data final.
+  function fatorIndice(chave, inicio, fim) {
+    const a = R.lerData(inicio);
+    const b = R.lerData(fim);
+    const serie = tabelaIndices && tabelaIndices.series && tabelaIndices.series[chave];
+    const meses = [];
+    const faltantes = [];
+    let fator = 1;
+    if (a && b && b.ts > a.ts) {
+      let ano = a.ano; let mes = a.mes;
+      const limite = chaveMes(b.ano, b.mes);
+      while (chaveMes(ano, mes) < limite) {
+        const k = chaveMes(ano, mes);
+        const v = serie && serie.valores ? serie.valores[k] : undefined;
+        if (typeof v === 'number' && Number.isFinite(v)) { fator *= 1 + v / 100; meses.push({ mes: k, valor: v }); }
+        else faltantes.push(k);
+        mes += 1; if (mes > 12) { mes = 1; ano += 1; }
+      }
+    }
+    return { fator, meses, faltantes };
+  }
 
   // Devolve o principal corrigido. A correção é aplicada AQUI, uma única vez; as demais etapas
-  // recebem apenas "principalCorrigido" e nunca reaplicam o percentual.
-  function aplicarCorrecao(valorOriginal, correcao) {
+  // recebem apenas "principalCorrigido" e nunca reaplicam a correção.
+  // contexto = { inicio, fim } é usado pela correção por índice.
+  function aplicarCorrecao(valorOriginal, correcao, contexto) {
     const original = R.arredondar(R.lerValor(valorOriginal));
     const c = correcao || correcaoPadrao();
     if (c.modo === 'percentual') {
@@ -59,6 +116,18 @@
     if (c.modo === 'valorCorrigido') {
       const corrigido = R.arredondar(R.lerValor(c.valorCorrigido));
       return { modo: 'valorCorrigido', original, percentual: null, valorCorrecao: R.arredondar(corrigido - original), principalCorrigido: corrigido, informadoManualmente: true };
+    }
+    if (c.modo === 'indice') {
+      const chave = INDICES[c.indice] ? c.indice : 'IPCA';
+      const ctx = contexto || {};
+      const f = fatorIndice(chave, ctx.inicio, ctx.fim);
+      const valorCorrecao = R.arredondar(original * (f.fator - 1));
+      return {
+        modo: 'indice', indice: chave, nomeIndice: INDICES[chave].nome, codigoSerie: INDICES[chave].codigo, original,
+        fator: f.fator, percentual: (f.fator - 1) * 100, meses: f.meses, faltantes: f.faltantes,
+        valorCorrecao, principalCorrigido: R.arredondar(original + valorCorrecao), informadoManualmente: false,
+        atualizadoEm: tabelaIndices ? tabelaIndices.atualizadoEm : null,
+      };
     }
     return { modo: 'nenhuma', original, percentual: null, valorCorrecao: 0, principalCorrigido: original, informadoManualmente: false };
   }
@@ -148,6 +217,10 @@
       else if (p > 100000) e('percentual de correção fora do limite razoável.');
     }
     if (c.modo === 'valorCorrigido' && !(R.lerValor(c.valorCorrigido) > 0)) e('informe o valor já corrigido (maior que zero).');
+    if (c.modo === 'indice') {
+      if (!INDICES[c.indice]) e('escolha o índice de correção (IPCA, INPC, IGP-M ou IPCA-E).');
+      else if (!tabelaIndices || !tabelaIndices.series || !tabelaIndices.series[c.indice]) e('a tabela de índices não está disponível agora; informe o percentual de correção ou tente mais tarde.');
+    }
     return erros;
   }
 
@@ -170,6 +243,7 @@
       else if (c.honorarios.modo === 'p' && v > 100) erros.push({ campo: 'honorarios', mensagem: 'Honorários em percentual não podem passar de 100%.' });
     }
     if (!['final', 'art354'].includes(c.imputacao)) erros.push({ campo: 'imputacao', mensagem: 'Escolha como os pagamentos serão abatidos.' });
+    if (c.vincendas !== undefined && !['antecipar', 'excluir'].includes(c.vincendas)) erros.push({ campo: 'vincendas', mensagem: 'Escolha como tratar as parcelas que vencem depois da data final.' });
     return erros;
   }
 
@@ -180,7 +254,6 @@
     if (!venc) erros.push({ campo: 'vencimento', linha: indice, mensagem: `${rotulo}: informe o vencimento no formato DD/MM/AAAA.` });
     if (!(R.lerValor(p.valor) > 0)) erros.push({ campo: 'valor', linha: indice, mensagem: `${rotulo}: informe um valor original maior que zero.` });
     const fim = R.lerData(dataFinal);
-    if (venc && fim && venc.ts > fim.ts) erros.push({ campo: 'vencimento', linha: indice, mensagem: `${rotulo}: o vencimento é posterior à data final do cálculo.` });
     validarCorrecao(p.correcao, rotulo, indice).forEach((x) => erros.push(x));
     if (p.jurosPct !== undefined && p.jurosPct !== '' && !(R.lerValor(p.jurosPct) >= 0)) erros.push({ campo: 'jurosPct', linha: indice, mensagem: `${rotulo}: taxa de juros própria inválida.` });
     if (p.multaPct !== undefined && p.multaPct !== '' && !(R.lerValor(p.multaPct) >= 0 && R.lerValor(p.multaPct) <= 100)) erros.push({ campo: 'multaPct', linha: indice, mensagem: `${rotulo}: percentual de multa próprio inválido.` });
@@ -189,7 +262,6 @@
       const vp = R.lerValor(pg.valor);
       if (!dp) erros.push({ campo: 'pagamento', linha: indice, mensagem: `${rotulo}, pagamento ${k + 1}: data inválida (DD/MM/AAAA).` });
       if (!(vp > 0)) erros.push({ campo: 'pagamento', linha: indice, mensagem: `${rotulo}, pagamento ${k + 1}: informe um valor maior que zero.` });
-      if (dp && venc && dp.ts < venc.ts) erros.push({ campo: 'pagamento', linha: indice, mensagem: `${rotulo}, pagamento ${k + 1}: a data é anterior ao vencimento.` });
       if (dp && fim && dp.ts > fim.ts) erros.push({ campo: 'pagamento', linha: indice, mensagem: `${rotulo}, pagamento ${k + 1}: a data é posterior à data final do cálculo.` });
     });
     return erros;
@@ -201,6 +273,30 @@
     else if (parcelas.length > R.LIMITE_PARCELAS) erros.push({ campo: 'parcelas', mensagem: `O limite é de ${R.LIMITE_PARCELAS} parcelas por cálculo.` });
     else parcelas.forEach((p, i) => { erros = erros.concat(validarParcela(p, i, criterios && criterios.dataFinal, rotuloBase)); });
     return erros;
+  }
+
+  // ---------- Parcelas que vencem depois da data final ----------
+
+  // Data que define a mora (multa e "a vencer"): vencimentoMora, quando informado, senão o vencimento.
+  function vencimentoDaMora(parcela) { return parcela.vencimentoMora || parcela.vencimento; }
+
+  function estaAVencer(parcela, dataFinal) {
+    const v = R.lerData(vencimentoDaMora(parcela));
+    const f = R.lerData(dataFinal);
+    return Boolean(v && f && v.ts > f.ts);
+  }
+
+  // Com o critério "excluir", separa as parcelas a vencer (ficam fora do cálculo).
+  // Devolve índices originais para o módulo manter a correspondência com as linhas da tela.
+  function separarVincendas(parcelas, criterios) {
+    const excluir = criterios && criterios.vincendas === 'excluir';
+    const calcular = [];
+    const aVencer = [];
+    (parcelas || []).forEach((p, i) => {
+      if (excluir && estaAVencer(p, criterios.dataFinal)) aVencer.push({ parcela: p, indice: i });
+      else calcular.push({ parcela: p, indice: i });
+    });
+    return { calcular, aVencer };
   }
 
   // ---------- Cálculo de uma parcela ----------
@@ -224,18 +320,23 @@
 
   function calcularParcela(parcela, criteriosGerais) {
     const c = criteriosDaParcela(parcela, criteriosGerais);
-    const correcao = aplicarCorrecao(parcela.valor, parcela.correcao);
-    const principal = correcao.principalCorrigido;
     const inicio = parcela.vencimento;
     const fim = c.dataFinal;
+    const vencMora = vencimentoDaMora(parcela);
+    const aVencer = estaAVencer(parcela, fim);
+    const correcao = aplicarCorrecao(parcela.valor, parcela.correcao, { inicio, fim });
+    const principal = correcao.principalCorrigido;
     const pagamentos = (parcela.pagamentos || []).map((p) => ({ data: p.data, valor: R.arredondar(R.lerValor(p.valor)) }));
     const somaPagamentos = R.arredondar(pagamentos.reduce((s, p) => s + p.valor, 0));
-    const periodo = periodoEntre(inicio, fim);
+    const periodo = aVencer ? { meses: 0, dias: 0, fracionario: 0 } : periodoEntre(inicio, fim);
 
     let juros = 0;
     let credito = 0;
     let passosJuros = [];
-    if (c.juros && c.juros.ativo) {
+    if (aVencer) {
+      credito = R.arredondar(Math.max(0, somaPagamentos - principal));
+      passosJuros = [`Juros: não há atraso na data final (${fim}), pois o vencimento é ${vencMora}; nenhum juro é cobrado.`];
+    } else if (c.juros && c.juros.ativo) {
       const r = apurarJuros({ principal, config: c.juros, inicio, fim, pagamentos, imputacao: c.imputacao });
       juros = R.arredondar(r.valor);
       credito = R.arredondar(r.credito);
@@ -245,34 +346,56 @@
       credito = R.arredondar(Math.max(0, somaPagamentos - principal));
       passosJuros = ['Juros: não aplicados.'];
     }
-    const multaPct = c.multa && c.multa.ativo ? R.lerValor(c.multa.percentual) : 0;
-    const multa = c.multa && c.multa.ativo ? R.arredondar(principal * multaPct / 100) : 0;
-    const saldoPrincipalJuros = R.arredondar(principal + juros - somaPagamentos + credito);
-    const honorarios = c.honorarios && c.honorarios.ativo && c.honorarios.modo === 'p'
-      ? R.arredondar((saldoPrincipalJuros + multa) * R.lerValor(c.honorarios.valor) / 100) : 0;
-    const saldo = R.arredondar(saldoPrincipalJuros + multa + honorarios);
 
-    const memoria = [`Valor original: ${m(correcao.original)} (vencimento em ${inicio}).`];
+    // Multa: só sobre o valor que estava em atraso no vencimento (pagamento em dia afasta a multa).
+    const multaPct = c.multa && c.multa.ativo ? R.lerValor(c.multa.percentual) : 0;
+    const dvMora = R.lerData(vencMora);
+    const pagosAteVencimento = R.arredondar(pagamentos.filter((p) => { const d = R.lerData(p.data); return d && dvMora && d.ts <= dvMora.ts; }).reduce((s, p) => s + p.valor, 0));
+    const baseMulta = R.arredondar(Math.max(0, principal - pagosAteVencimento));
+    const multa = multaPct ? R.arredondar(baseMulta * multaPct / 100) : 0;
+    // Pagamento que excede principal e juros quita a multa; o resto continua como excedente.
+    const multaQuitada = R.arredondar(Math.min(credito, multa));
+    credito = R.arredondar(credito - multaQuitada);
+
+    const saldoPrincipalJuros = R.arredondar(principal + juros - somaPagamentos + credito + multaQuitada);
+    const multaDevida = R.arredondar(multa - multaQuitada);
+    const honorarios = c.honorarios && c.honorarios.ativo && c.honorarios.modo === 'p'
+      ? R.arredondar((saldoPrincipalJuros + multaDevida) * R.lerValor(c.honorarios.valor) / 100) : 0;
+    const saldo = R.arredondar(saldoPrincipalJuros + multaDevida + honorarios);
+
+    const memoria = [`Valor original: ${m(correcao.original)} (vencimento em ${vencMora}).`];
+    if (aVencer) memoria.push(`Vencimento posterior à data final do cálculo (${fim}): parcela tratada como vencida antecipadamente nessa data.`);
     if (correcao.modo === 'percentual') {
       memoria.push(`Correção monetária informada manualmente pelo usuário: ${pct(correcao.percentual)} acumulado sobre ${m(correcao.original)} = ${m(correcao.valorCorrecao)}. Não foi calculada por índice oficial nem por consulta automática.`);
     } else if (correcao.modo === 'valorCorrigido') {
       memoria.push(`Principal corrigido informado manualmente pelo usuário: ${m(correcao.principalCorrigido)} (diferença de ${m(correcao.valorCorrecao)} em relação ao valor original). Valor utilizado como está, sem nova aplicação de correção.`);
+    } else if (correcao.modo === 'indice') {
+      const fonte = `fonte: Banco Central do Brasil, série SGS ${correcao.codigoSerie}${correcao.atualizadoEm ? `, tabela atualizada em ${correcao.atualizadoEm}` : ''}`;
+      if (correcao.meses.length) {
+        const periodoIdx = `${nomeMes(correcao.meses[0].mes)} a ${nomeMes(correcao.meses[correcao.meses.length - 1].mes)}`;
+        memoria.push(`Correção monetária pelo ${correcao.nomeIndice}: variações mensais de ${periodoIdx} (${correcao.meses.length} ${correcao.meses.length === 1 ? 'mês' : 'meses'}; ${fonte}). Fator acumulado ${num(correcao.fator, 6)} (${pct(correcao.percentual)}) sobre ${m(correcao.original)} = ${m(correcao.valorCorrecao)}.`);
+      } else {
+        memoria.push(`Correção monetária pelo ${correcao.nomeIndice}: nenhum mês decorrido entre o vencimento e a data final; sem correção (${fonte}).`);
+      }
+      if (correcao.faltantes.length) memoria.push(`Atenção: ${correcao.nomeIndice} ainda não divulgado para ${correcao.faltantes.map(nomeMes).join(', ')}; ${correcao.faltantes.length === 1 ? 'esse mês ficou' : 'esses meses ficaram'} fora da correção.`);
     } else {
       memoria.push('Correção monetária: não aplicada; o valor original foi utilizado diretamente como principal.');
     }
     memoria.push(`Principal corrigido (base de cálculo dos juros e da multa): ${m(principal)}.`);
     passosJuros.forEach((p) => memoria.push(p));
-    memoria.push(multa ? `Multa de ${pct(multaPct)} sobre o principal corrigido ${m(principal)} = ${m(multa)} (aplicada uma única vez).` : 'Multa: não aplicada.');
+    if (!multaPct) memoria.push('Multa: não aplicada.');
+    else if (!multa) memoria.push(`Multa de ${pct(multaPct)}: não incide, pois o valor foi pago até o vencimento (${vencMora}).`);
+    else memoria.push(`Multa de ${pct(multaPct)} sobre ${m(baseMulta)} = ${m(multa)} (aplicada uma única vez${pagosAteVencimento ? `; base = principal corrigido ${m(principal)} − ${m(pagosAteVencimento)} pagos até o vencimento` : ', sobre o principal corrigido'}).`);
     if (pagamentos.length) {
-      memoria.push(`Pagamentos informados: ${pagamentos.map((p) => `${m(p.valor)} em ${p.data}`).join('; ')} (total ${m(somaPagamentos)}). ${c.imputacao === 'art354' && c.juros && c.juros.ativo ? 'Imputados primeiro nos juros e depois no principal, em ordem cronológica.' : 'Abatidos do saldo final de principal e juros, sem recalcular os juros.'}${credito ? ` Há ${m(credito)} de pagamento excedente, não imputado.` : ''}`);
+      memoria.push(`Pagamentos informados: ${pagamentos.map((p) => `${m(p.valor)} em ${p.data}`).join('; ')} (total ${m(somaPagamentos)}). ${c.imputacao === 'art354' && c.juros && c.juros.ativo && !aVencer ? 'Imputados primeiro nos juros e depois no principal, em ordem cronológica.' : 'Abatidos do saldo final de principal e juros, sem recalcular os juros.'}${multaQuitada ? ` O valor pago além do principal e dos juros quitou ${m(multaQuitada)} da multa.` : ''}${credito ? ` Há ${m(credito)} de pagamento excedente, não imputado.` : ''}`);
     }
-    if (honorarios) memoria.push(`Honorários de ${pct(R.lerValor(c.honorarios.valor))} sobre ${m(R.arredondar(saldoPrincipalJuros + multa))} (principal corrigido + juros + multa − pagamentos) = ${m(honorarios)}.`);
+    if (honorarios) memoria.push(`Honorários de ${pct(R.lerValor(c.honorarios.valor))} sobre ${m(R.arredondar(saldoPrincipalJuros + multaDevida))} (principal corrigido + juros + multa − pagamentos) = ${m(honorarios)}.`);
     memoria.push(`Saldo atualizado = ${m(principal)} (principal corrigido) + ${m(juros)} (juros) + ${m(multa)} (multa) + ${m(honorarios)} (honorários) − ${m(somaPagamentos)} (pagamentos)${credito ? ` + ${m(credito)} (excedente não imputado)` : ''} = ${m(saldo)}.`);
 
     return {
       original: correcao.original, correcao, principalCorrigido: principal,
-      juros, periodo, multa, multaPct, honorarios, pagamentos: somaPagamentos, creditoNaoImputado: credito,
-      saldoPrincipalJuros, saldo, memoria,
+      juros, periodo, multa, multaPct, baseMulta, multaQuitada, honorarios, pagamentos: somaPagamentos, creditoNaoImputado: credito,
+      saldoPrincipalJuros, saldo, memoria, aVencer,
     };
   }
 
@@ -330,8 +453,9 @@
   }
 
   return {
-    MODOS_CORRECAO, correcaoPadrao, criteriosPadrao, aplicarCorrecao, periodoEntre, acumuladoJuros, apurarJuros,
+    MODOS_CORRECAO, INDICES, correcaoPadrao, criteriosPadrao, definirIndices, indicesCarregados, ultimoMesIndice, fatorIndice, nomeMes,
+    aplicarCorrecao, periodoEntre, acumuladoJuros, apurarJuros,
     validarCorrecao, validarCriterios, validarParcela, validarCalculo, criteriosDaParcela, honorariosFixos,
-    calcularParcela, consolidar, outrosEncargosTotal, particionarRitos,
+    estaAVencer, separarVincendas, calcularParcela, consolidar, outrosEncargosTotal, particionarRitos,
   };
 });

@@ -210,9 +210,12 @@ test('validarCalculo: critérios, parcelas, pagamentos e correção por parcela'
   assert.ok(C.validarCalculo(crit, []).some((e) => e.campo === 'parcelas'));
   assert.ok(C.validarCalculo(crit, [parcela({ vencimento: '' })]).some((e) => e.campo === 'vencimento'));
   assert.ok(C.validarCalculo(crit, [parcela({ valor: '0' })]).some((e) => e.campo === 'valor'));
-  assert.ok(C.validarCalculo(crit, [parcela({ vencimento: '10/01/2027' })]).some((e) => /posterior/.test(e.mensagem)));
+  // Vencimento depois da data final e pagamento antecipado não bloqueiam mais o cálculo
+  assert.equal(C.validarCalculo(crit, [parcela({ vencimento: '10/01/2027' })]).length, 0);
+  assert.equal(C.validarCalculo(crit, [parcela({ pagamentos: [{ data: '10/12/2024', valor: '10' }] })]).length, 0);
   assert.ok(C.validarCalculo(crit, [parcela({ correcao: { modo: 'percentual', percentual: '' } })]).some((e) => e.campo === 'correcao'));
-  assert.ok(C.validarCalculo(crit, [parcela({ pagamentos: [{ data: '10/12/2024', valor: '10' }] })]).some((e) => e.campo === 'pagamento'));
+  assert.ok(C.validarCalculo(crit, [parcela({ pagamentos: [{ data: '10/08/2025', valor: '10' }] })]).some((e) => /posterior à data final/.test(e.mensagem)));
+  assert.ok(C.validarCalculo({ ...crit, vincendas: 'outro' }, [parcela()]).some((e) => e.campo === 'vincendas'));
   assert.ok(C.validarCalculo({ ...crit, juros: juros({ percentual: '' }) }, [parcela()]).some((e) => e.campo === 'jurosPercentual'));
   assert.ok(C.validarCalculo({ ...crit, honorarios: { ativo: true, modo: 'p', valor: '150' } }, [parcela()]).some((e) => e.campo === 'honorarios'));
   const erros = C.validarCalculo(crit, [parcela(), parcela({ correcao: { modo: 'valorCorrigido', valorCorrigido: '' } })]);
@@ -270,4 +273,104 @@ test('ritos do art. 528 sem ajuizamento: 3 últimas antes da data-base; prescrit
 
 test('outrosEncargosTotal soma apenas valores válidos', () => {
   assert.equal(C.outrosEncargosTotal([{ valor: '10,50' }, { valor: 'x' }, { valor: '4,5' }]), 15);
+});
+
+// ---------- Situações revisadas: vencimento futuro, multa e pagamentos ----------
+
+const multa10 = { ativo: true, percentual: '10' };
+
+test('parcela a vencer com "antecipar": vence na data final, sem juros, com multa', () => {
+  const r = C.calcularParcela(parcela({ vencimento: '10/09/2025', valor: '1000' }), criterios({ juros: juros(), multa: multa10 }));
+  assert.equal(r.aVencer, true);
+  assert.equal(r.juros, 0);
+  assert.equal(r.multa, 100);
+  assert.equal(r.saldo, 1100);
+  assert.ok(r.memoria.some((l) => /vencida antecipadamente/.test(l)));
+});
+
+test('parcela a vencer com "excluir": fica fora do cálculo', () => {
+  const lista = [parcela({ vencimento: '10/01/2025' }), parcela({ vencimento: '10/09/2025' })];
+  const s = C.separarVincendas(lista, criterios({ vincendas: 'excluir' }));
+  assert.deepEqual(s.calcular.map((x) => x.indice), [0]);
+  assert.deepEqual(s.aVencer.map((x) => x.indice), [1]);
+  assert.equal(C.separarVincendas(lista, criterios()).aVencer.length, 0); // padrão: antecipar
+});
+
+test('pagamento integral até o vencimento afasta a multa', () => {
+  const r = C.calcularParcela(parcela({ valor: '1000', pagamentos: [{ data: '10/01/2025', valor: '1000' }] }), criterios({ multa: multa10 }));
+  assert.equal(r.multa, 0);
+  assert.equal(r.saldo, 0);
+});
+
+test('pagamento parcial em dia: a multa incide só sobre o que ficou em atraso', () => {
+  const r = C.calcularParcela(parcela({ valor: '1000', pagamentos: [{ data: '10/01/2025', valor: '600' }] }), criterios({ multa: multa10 }));
+  assert.equal(r.baseMulta, 400);
+  assert.equal(r.multa, 40);
+  assert.equal(r.saldo, 440);
+});
+
+test('pagamento além do principal e dos juros quita a multa (sem saldo e excedente ao mesmo tempo)', () => {
+  const r = C.calcularParcela(parcela({ valor: '1000', pagamentos: [{ data: '10/03/2025', valor: '1100' }] }), criterios({ multa: multa10 }));
+  assert.equal(r.multaQuitada, 100);
+  assert.equal(r.creditoNaoImputado, 0);
+  assert.equal(r.saldo, 0);
+  const sobra = C.calcularParcela(parcela({ valor: '1000', pagamentos: [{ data: '10/03/2025', valor: '1150' }] }), criterios({ multa: multa10 }));
+  assert.equal(sobra.saldo, 0); // dívida quitada; os 50 a mais ficam como excedente não imputado
+  assert.equal(sobra.creditoNaoImputado, 50);
+});
+
+test('pagamento antecipado é aceito e abate o saldo', () => {
+  const r = C.calcularParcela(parcela({ valor: '1000', pagamentos: [{ data: '05/01/2025', valor: '300' }] }), criterios({ juros: juros(), multa: multa10, imputacao: 'art354' }));
+  assert.equal(r.baseMulta, 700);
+  assert.ok(r.saldo > 0 && r.saldo < 1000);
+});
+
+test('vencimentoMora separa a mora (multa) do início dos juros', () => {
+  // juros desde 10/03 (data inicial informada), multa decidida pelo vencimento real 10/01
+  const r = C.calcularParcela(parcela({ valor: '1000', vencimento: '10/03/2025', vencimentoMora: '10/01/2025', pagamentos: [{ data: '15/02/2025', valor: '1000' }] }), criterios({ multa: multa10 }));
+  assert.equal(r.multa, 100); // pago depois do vencimento real: há multa
+});
+
+// ---------- Correção pelo índice oficial ----------
+
+const TABELA = { atualizadoEm: '10/07/2025', fonte: 'Banco Central do Brasil (SGS)', series: {
+  IPCA: { codigo: 433, valores: { '2025-01': 0.16, '2025-02': 1.31, '2025-03': 0.56, '2025-04': 0.43, '2025-05': 0.26, '2025-06': 0.24 } },
+  IGPM: { codigo: 189, valores: { '2025-01': 0.27, '2025-02': 1.06, '2025-03': -0.34 } },
+} };
+
+test('índice: acumula do mês do vencimento ao mês anterior ao da data final', () => {
+  C.definirIndices(TABELA);
+  const r = C.aplicarCorrecao('1000', { modo: 'indice', indice: 'IPCA' }, { inicio: '10/01/2025', fim: '10/07/2025' });
+  const fator = [0.16, 1.31, 0.56, 0.43, 0.26, 0.24].reduce((f, v) => f * (1 + v / 100), 1);
+  assert.equal(r.meses.length, 6);
+  assert.ok(Math.abs(r.fator - fator) < 1e-12);
+  assert.equal(r.valorCorrecao, Math.round(1000 * (fator - 1) * 100) / 100);
+  assert.equal(r.faltantes.length, 0);
+});
+
+test('índice: meses sem divulgação ficam de fora e são apontados; deflação é considerada', () => {
+  C.definirIndices(TABELA);
+  const r = C.aplicarCorrecao('1000', { modo: 'indice', indice: 'IGPM' }, { inicio: '10/01/2025', fim: '10/06/2025' });
+  assert.deepEqual(r.faltantes, ['2025-04', '2025-05']);
+  assert.equal(r.meses.length, 3);
+  assert.ok(r.meses.some((x) => x.valor < 0));
+  const p = C.calcularParcela(parcela({ valor: '1000', correcao: { modo: 'indice', indice: 'IGPM' } }), criterios({ dataFinal: '10/06/2025' }));
+  assert.ok(p.memoria.some((l) => /IGP-M/.test(l) && /série SGS 189/.test(l)));
+  assert.ok(p.memoria.some((l) => /ainda não divulgado para abr\/2025, mai\/2025/.test(l)));
+});
+
+test('índice: sem tabela carregada a validação pede o percentual manual', () => {
+  C.definirIndices(null);
+  const erros = C.validarCalculo(criterios(), [parcela({ correcao: { modo: 'indice', indice: 'IPCA' } })]);
+  assert.ok(erros.some((e) => e.campo === 'correcao' && /tabela de índices/.test(e.mensagem)));
+  C.definirIndices(TABELA);
+  assert.equal(C.validarCalculo(criterios(), [parcela({ correcao: { modo: 'indice', indice: 'IPCA' } })]).length, 0);
+  assert.ok(C.validarCalculo(criterios(), [parcela({ correcao: { modo: 'indice', indice: 'XYZ' } })]).some((e) => e.campo === 'correcao'));
+});
+
+test('índice: parcela a vencer não é corrigida', () => {
+  C.definirIndices(TABELA);
+  const r = C.calcularParcela(parcela({ valor: '1000', vencimento: '10/09/2025', correcao: { modo: 'indice', indice: 'IPCA' } }), criterios());
+  assert.equal(r.correcao.valorCorrecao, 0);
+  assert.equal(r.principalCorrigido, 1000);
 });

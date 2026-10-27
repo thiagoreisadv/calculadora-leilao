@@ -171,6 +171,7 @@
   <!-- Módulos da plataforma (camadas separadas: utilitários, motor de cálculo local, interface) -->
   <script src="js/regras.js"></script>
   <script src="js/calculo.js"></script>
+  <script src="js/indices.js"></script>
   <script src="js/historico.js"></script>
   <script src="js/demonstrativo.js"></script>
   <script src="js/xlsx.js"></script>
@@ -807,6 +808,10 @@
         }
 
         const finalBest = Math.floor(bestBid);
+        if (finalBest <= 0) {
+          setToast('O orçamento não cobre os custos fixos (dívidas, reformas e taxas): o lance não foi alterado.');
+          return;
+        }
         if (valMode === 'total') {
             setBidValue(finalBest);
         } else {

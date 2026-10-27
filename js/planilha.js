@@ -1,6 +1,6 @@
 /*
  * Módulo: Planilha consolidada de débitos.
- * Várias obrigações numa só tela, cada uma com a sua correção monetária informada manualmente
+ * Várias obrigações numa só tela, cada uma com a sua correção monetária (índice oficial ou informada)
  * (percentual acumulado ou valor já corrigido), pagamentos e, opcionalmente, taxa de juros e multa
  * próprias. Todo o cálculo é local (CentralCalculo); nenhuma API é consultada.
  */
@@ -18,13 +18,13 @@
 
   const inicial = () => ({ titulo: '', credor: '', devedor: '', observacoes: '', linhas: [], criterios: K.criteriosPadrao() });
 
-  const novaLinha = () => ({ id: novoId(), descricao: '', competencia: '', vencimento: '', valor: '', outros: '', correcao: K.correcaoPadrao(), jurosPct: '', multaPct: '', pagamentos: [] });
+  const novaLinha = () => ({ id: novoId(), descricao: '', competencia: '', vencimento: '', valor: '', outros: '', correcao: B.correcaoInicial(), jurosPct: '', multaPct: '', pagamentos: [] });
 
-  const rotuloModo = (c) => ({ percentual: `Correção: ${c.percentual || '—'}%`, valorCorrigido: 'Valor corrigido informado', nenhuma: 'Sem correção' }[c.modo] || 'Sem correção');
 
-  function LinhaEditavel({ linha, indice, onChange, onRemover, erros }) {
+  function LinhaEditavel({ linha, indice, onChange, onRemover, erros, criterios }) {
     const [pagamentos, definirPagamentos] = useState(linha.pagamentos.length > 0);
-    const [correcao, definirCorrecao] = useState(linha.correcao.modo !== 'nenhuma');
+    const [correcao, definirCorrecao] = useState(['percentual', 'valorCorrigido'].includes(linha.correcao.modo));
+    const aVencer = R.dataEhValida(linha.vencimento) && K.estaAVencer(linha, criterios.dataFinal);
     const [proprios, definirProprios] = useState(linha.jurosPct !== '' || linha.multaPct !== '');
     const erro = (campo) => (erros.find((e) => e.linha === indice && e.campo === campo) || {}).mensagem;
     return (
@@ -32,7 +32,7 @@
         <div className="flex items-center justify-between mb-3">
           <span className="text-[12.5px] text-muted-foreground">Linha {indice + 1}</span>
           <div className="flex flex-wrap gap-1 justify-end">
-            <Botao tamanho="sm" variante="fantasma" aria-expanded={correcao} onClick={() => definirCorrecao(!correcao)}>{rotuloModo(linha.correcao)}</Botao>
+            <Botao tamanho="sm" variante="fantasma" aria-expanded={correcao} onClick={() => definirCorrecao(!correcao)}>{B.rotuloCorrecao(linha.correcao)}</Botao>
             <Botao tamanho="sm" variante="fantasma" aria-expanded={pagamentos} onClick={() => definirPagamentos(!pagamentos)}>Pagamentos{linha.pagamentos.length ? ` (${linha.pagamentos.length})` : ''}</Botao>
             <Botao tamanho="sm" variante="fantasma" aria-expanded={proprios} onClick={() => definirProprios(!proprios)}>Juros e multa próprios{(linha.jurosPct !== '' || linha.multaPct !== '') ? ' •' : ''}</Botao>
             <Botao tamanho="sm" variante="perigo" icone="lixeira" aria-label={`Remover linha ${indice + 1}`} onClick={onRemover} />
@@ -45,9 +45,10 @@
           <CampoMoeda rotulo="Valor original" obrigatorio valor={linha.valor} onChange={(v) => onChange({ valor: v })} erro={erro('valor')} />
           <CampoMoeda rotulo="Outros encargos (nominais)" valor={linha.outros} onChange={(v) => onChange({ outros: v })} className="lg:col-span-2" ajuda="Somados sem atualização, se houver fundamento." erro={erro('outros')} />
         </div>
+        {aVencer && <p className="mt-2 text-[11.5px] text-warning">Vence depois da data final: {criterios.vincendas === 'excluir' ? 'fica fora do cálculo.' : 'entra com vencimento antecipado (sem juros; com multa, se houver).'}</p>}
         {correcao && (
           <div className="mt-4 pt-4 border-t border-border section-open">
-            <B.CorrecaoManual compacto valor={linha.correcao} onChange={(c) => onChange({ correcao: c })} valorOriginal={linha.valor} erro={erro('correcao')} titulo="Correção monetária desta linha" />
+            <B.CorrecaoManual compacto valor={linha.correcao} onChange={(c) => onChange({ correcao: c })} valorOriginal={linha.valor} vencimento={linha.vencimento} dataFinal={criterios.dataFinal} erro={erro('correcao')} titulo="Correção monetária desta linha" />
           </div>
         )}
         {proprios && (
@@ -88,17 +89,20 @@
       const erros = validar();
       definirErros(erros);
       if (erros.length) { UI.avisar('Corrija os campos destacados antes de calcular.', 'erro'); return; }
-      const resultados = f.linhas.map((l) => K.calcularParcela(l, f.criterios));
-      const outros = f.linhas.map((l) => R.arredondar(R.lerValor(l.outros) || 0));
+      const { calcular: lista, aVencer } = K.separarVincendas(f.linhas, f.criterios);
+      if (!lista.length) { definirErros([{ campo: 'parcelas', mensagem: 'Todas as linhas vencem depois da data final e o critério as deixa fora do cálculo. Mude a data final ou escolha "Vencimento antecipado".' }]); return; }
+      const linhas = lista.map((x) => x.parcela);
+      const resultados = linhas.map((l) => K.calcularParcela(l, f.criterios));
+      const outros = linhas.map((l) => R.arredondar(R.lerValor(l.outros) || 0));
       const totais = K.consolidar(resultados, { honorariosFixos: K.honorariosFixos(f.criterios), encargosNominais: outros.reduce((s, v) => s + v, 0) });
-      definirRes({ resultados, outros, totais, linhas: f.linhas.map((l) => ({ ...l })) });
+      definirRes({ resultados, outros, totais, linhas: linhas.map((l) => ({ ...l })), aVencer: aVencer.map((x) => ({ ...x.parcela })) });
       if (window.innerWidth < 1024) setTimeout(() => topo.current && topo.current.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
     }
 
     const m = R.formatarMoeda;
     function celulas(i) {
       const x = res.resultados[i]; const l = res.linhas[i]; const o = res.outros[i];
-      return [i + 1, l.descricao || '—', l.competencia || '—', l.vencimento, m(x.original), `${m(x.correcao.valorCorrecao)}${x.correcao.modo === 'percentual' ? ` (${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'valorCorrigido' ? ' (informado)' : ''}`, m(x.juros), m(x.multa), o ? m(o) : '—', x.pagamentos ? `-${m(x.pagamentos)}` : '—', m(x.saldo + o)];
+      return [i + 1, l.descricao || '—', l.competencia || '—', l.vencimento, m(x.original), `${m(x.correcao.valorCorrecao)}${x.correcao.modo === 'percentual' ? ` (${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'indice' ? ` (${x.correcao.nomeIndice} ${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'valorCorrigido' ? ' (informado)' : ''}`, m(x.juros), m(x.multa), o ? m(o) : '—', x.pagamentos ? `-${m(x.pagamentos)}` : '—', m(x.saldo + o)];
     }
 
     function exportarCsv() {
@@ -108,7 +112,7 @@
       });
       const t = res.totais;
       linhas.push(['', 'TOTAL', '', '', R.numeroCSV(t.original), R.numeroCSV(t.correcao), R.numeroCSV(t.principalCorrigido), R.numeroCSV(t.juros), R.numeroCSV(t.multa), R.numeroCSV(t.honorarios), R.numeroCSV(t.encargosNominais), R.numeroCSV(-t.pagamentos), R.numeroCSV(t.saldoFinal)]);
-      const csv = R.gerarCSV(['Número', 'Descrição', 'Competência', 'Vencimento', 'Valor original', 'Correção monetária (informada)', 'Principal corrigido', 'Juros', 'Multa', 'Honorários', 'Outros encargos', 'Pagamentos', 'Saldo atualizado'], linhas);
+      const csv = R.gerarCSV(['Número', 'Descrição', 'Competência', 'Vencimento', 'Valor original', 'Correção monetária', 'Principal corrigido', 'Juros', 'Multa', 'Honorários', 'Outros encargos', 'Pagamentos', 'Saldo atualizado'], linhas);
       UI.baixarArquivo(UI.nomeArquivo(f.titulo || 'planilha-debitos', 'csv'), csv, 'text/csv;charset=utf-8');
     }
 
@@ -119,9 +123,10 @@
         titulo: 'Memória de cálculo — Planilha consolidada de débitos',
         subtitulo: f.titulo || 'Planilha de débitos',
         identificacao: [['Título', f.titulo], ['Credor', f.credor], ['Devedor', f.devedor], ['Linhas', String(res.linhas.length)]],
-        criterios: B.descreverCriterios(f.criterios),
+        criterios: B.descreverCriterios(f.criterios, res.linhas),
         parcelas: res.linhas.map((l, i) => ({ descricao: l.descricao || `Linha ${i + 1}`, competencia: l.competencia, vencimento: l.vencimento })),
-        resultados: res.resultados, totais: t, dataFinal: f.criterios.dataFinal, observacoes: f.observacoes,
+        resultados: res.resultados, totais: t, dataFinal: f.criterios.dataFinal,
+        observacoes: [f.observacoes, res.aVencer.length ? `Linhas com vencimento posterior à data final, fora do cálculo: ${res.aVencer.map((l) => `${l.descricao || 'linha'} (${l.vencimento})`).join(', ')}.` : ''].filter(Boolean).join('\n'),
       };
     }
 
@@ -149,13 +154,13 @@
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-[13px] font-medium text-foreground">Obrigações</h3>
-                <p className="mt-1 text-[12px] text-muted-foreground">{f.linhas.length} linha(s), máximo de {R.LIMITE_PARCELAS}. A correção monetária é informada em cada linha.</p>
+                <p className="mt-1 text-[12px] text-muted-foreground">{f.linhas.length} linha(s), máximo de {R.LIMITE_PARCELAS}. A correção monetária (índice ou valor informado) é escolhida em cada linha.</p>
               </div>
               <Botao tamanho="sm" variante="primario" icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha()] })}>Adicionar obrigação</Botao>
             </div>
             {f.linhas.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhuma linha. Clique em "Adicionar obrigação" para começar.</p>}
             {f.linhas.map((l, i) => (
-              <LinhaEditavel key={l.id} linha={l} indice={i} erros={errosForm}
+              <LinhaEditavel key={l.id} linha={l} indice={i} erros={errosForm} criterios={f.criterios}
                 onChange={(parte) => alterarLinha(l.id, parte)} onRemover={() => alterar({ linhas: f.linhas.filter((x) => x.id !== l.id) })} />
             ))}
             {f.linhas.length > 0 && <Botao icone="mais" onClick={() => alterar({ linhas: [...f.linhas, novaLinha()] })}>Adicionar obrigação</Botao>}
@@ -198,8 +203,9 @@
 
     const detalhes = res && (
       <div ref={topo}>
-        <Cartao titulo="Detalhes da planilha" descricao={`Calculado até ${f.criterios.dataFinal} com a correção monetária informada em cada linha.`} className="section-open print-hide">
+        <Cartao titulo="Detalhes da planilha" descricao={`Calculado até ${f.criterios.dataFinal}, com a correção monetária escolhida em cada linha.`} className="section-open print-hide">
           <div className="space-y-3">
+            {res.aVencer.length > 0 && <Alerta tipo="aviso">Fora do cálculo por vencerem depois da data final ({f.criterios.dataFinal}): {res.aVencer.map((l) => `${l.descricao || 'linha'} (${l.vencimento})`).join(', ')}.</Alerta>}
             <Tabela legenda="Planilha consolidada" colunas={['Nº', 'Descrição', 'Competência', 'Vencimento', 'Valor original', 'Correção monetária', 'Juros', 'Multa', 'Outros encargos', 'Pagamentos', 'Saldo atualizado']} numericas={[4, 5, 6, 7, 8, 9, 10]}
               linhas={res.resultados.map((_, i) => celulas(i))}
               rodape={['', 'Totais', '', '', m(res.totais.original), m(res.totais.correcao), m(res.totais.juros), m(res.totais.multa), m(res.totais.encargosNominais), res.totais.pagamentos ? `-${m(res.totais.pagamentos)}` : '—', m(res.totais.saldoFinal)]} />
@@ -210,7 +216,7 @@
     );
 
     return (
-      <Pagina titulo="Planilha consolidada" descricao="Várias obrigações com total consolidado." nota="Correção monetária informada por você · cálculo local no navegador">
+      <Pagina titulo="Planilha consolidada" descricao="Várias obrigações com total consolidado." nota="Cálculo local no navegador">
         <Calculador abas={abas} aba={aba} onAba={definirAba} painel={painel} detalhes={detalhes} textoRodape="o resultado aparece ao clicar em Calcular planilha" />
       </Pagina>
     );
