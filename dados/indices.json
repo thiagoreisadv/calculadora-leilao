@@ -1,5 +1,5 @@
 {
-  "atualizadoEm": "27/10/2026",
+  "atualizadoEm": "29/10/2026",
   "fonte": "Banco Central do Brasil — Sistema Gerenciador de Séries Temporais (SGS)",
   "series": {
     "IPCA": {
@@ -1178,7 +1178,8 @@
         "2026-06": -0.5,
         "2026-07": -1.16,
         "2026-08": -0.22,
-        "2026-09": 1.57
+        "2026-09": 1.57,
+        "2026-10": 1.47
       }
     },
     "IPCAE": {
