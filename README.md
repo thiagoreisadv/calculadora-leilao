@@ -1,8 +1,9 @@
 # Central de Cálculos de Leilões e Imóveis
 
 Plataforma web de cálculos financeiros e jurídicos, publicada no GitHub Pages
-(<https://thiagoreisadv.github.io/calculadora-leilao/>). Todo o cálculo é feito **no navegador**:
-não há servidor, banco de dados nem consulta a APIs ou a índices econômicos.
+(<https://thiagoreisadv.github.io/calculadora-leilao/>). Os cálculos são executados **no navegador**,
+sem servidor ou banco de dados para os casos dos usuários. A tabela de índices é atualizada em repositório
+por automação e incorporada ao site estático.
 
 ## Módulos
 
@@ -78,8 +79,6 @@ test/                 Testes automáticos
 ```
 
 O site é estático e não precisa de build: os arquivos `js/*.js` são carregados direto pelo navegador, compatível com o GitHub Pages. Os testes são executados automaticamente no GitHub Actions a cada envio para `main` e em pull requests.
-
-As tabelas automáticas de custas do Paraná ficam em `js/tabelas-pr-2026.js`, com vigência explícita. Elas devem ser conferidas e atualizadas quando houver nova tabela oficial; o módulo não altera o motor de atualização monetária.
 
 ## Armazenamento e histórico
 
