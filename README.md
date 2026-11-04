@@ -77,7 +77,9 @@ js/debitos.js · parcelas.js · planilha.js · pensao.js · memorias.js · paine
 test/                 Testes automáticos
 ```
 
-O site é estático e não precisa de build: os arquivos `js/*.js` são carregados direto pelo navegador, compatível com o GitHub Pages.
+O site é estático e não precisa de build: os arquivos `js/*.js` são carregados direto pelo navegador, compatível com o GitHub Pages. Os testes são executados automaticamente no GitHub Actions a cada envio para `main` e em pull requests.
+
+As tabelas automáticas de custas do Paraná ficam em `js/tabelas-pr-2026.js`, com vigência explícita. Elas devem ser conferidas e atualizadas quando houver nova tabela oficial; o módulo não altera o motor de atualização monetária.
 
 ## Armazenamento e histórico
 
@@ -85,7 +87,7 @@ O GitHub Pages é hospedagem estática, sem banco de dados. Por isso:
 
 - **Funciona localmente:** histórico de memórias de cálculo no `localStorage` do navegador, cópia de segurança em JSON (exportar/importar), rascunhos dos formulários durante a sessão da aba, "Casos" da calculadora de leilões.
 - **Não existe:** sincronização entre dispositivos e backup automático. Se os dados do navegador forem apagados, o histórico some.
-- Nenhum dado de cliente é enviado a serviços externos.
+- Os valores e dados digitados nos cálculos não são enviados pelo aplicativo a serviços externos. A página atualmente utiliza provedores externos apenas para carregar fontes e bibliotecas de interface; essas requisições podem registrar dados técnicos usuais de navegação, como endereço IP, junto aos respectivos provedores.
 
 ## Testes
 

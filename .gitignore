@@ -2,3 +2,7 @@ node_modules/
 .wrangler/
 .dev.vars
 *.log
+.agents/
+.claude/
+skills-lock.json
+teste.pdf
