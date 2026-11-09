@@ -140,6 +140,14 @@
     return `${String(dia).padStart(2, '0')}/${String(mes + 1).padStart(2, '0')}/${ano}`;
   }
 
+  // Soma dias a uma data DD/MM/AAAA.
+  function adicionarDias(dataBR, n) {
+    const d = lerData(dataBR);
+    if (!d) return '';
+    const dt = new Date(d.ts + n * 86400000);
+    return `${String(dt.getUTCDate()).padStart(2, '0')}/${String(dt.getUTCMonth() + 1).padStart(2, '0')}/${dt.getUTCFullYear()}`;
+  }
+
   // Aceita "MM/AAAA" e devolve "01/MM/AAAA".
   function competenciaParaData(comp) {
     const m = /^(\d{2})\/(\d{4})$/.exec(String(comp || '').trim());
@@ -177,7 +185,7 @@
   return {
     LIMITE_PARCELAS, arredondar, lerValor, formatarMoeda, formatarPercentual,
     formatarDigitacaoMoeda, editarDigitacaoMoeda, textoCampoMoeda,
-    lerData, dataEhValida, isoParaBR, brParaISO, hojeBR, adicionarMeses, competenciaParaData,
+    lerData, dataEhValida, isoParaBR, brParaISO, hojeBR, adicionarMeses, adicionarDias, competenciaParaData,
     celulaCSV, numeroCSV, gerarCSV, escaparHtml,
   };
 });

@@ -161,7 +161,7 @@
     const id = useId('txt');
     return (
       <Campo rotulo={rotulo} id={id} erro={erro} ajuda={ajuda} obrigatorio={obrigatorio} className={className}>
-        <input id={id} type={tipo} value={valor || ''} maxLength={maxLength} placeholder={placeholder}
+        <input id={id} type={tipo} value={valor || ''} maxLength={maxLength} placeholder={placeholder} autoComplete="off"
           aria-invalid={Boolean(erro)} aria-describedby={erro ? `${id}-erro` : undefined}
           onChange={(e) => onChange(e.target.value)} className={`${CLASSE_ENTRADA} ${bordaEntrada(erro)}`} {...resto} />
       </Campo>

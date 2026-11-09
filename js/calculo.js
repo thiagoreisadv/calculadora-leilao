@@ -30,7 +30,7 @@
   'use strict';
 
   const DIA_MS = 86400000;
-  const MODOS_CORRECAO = ['nenhuma', 'percentual', 'valorCorrigido', 'indice'];
+  const MODOS_CORRECAO = ['nenhuma', 'percentual', 'valorCorrigido', 'indice', 'mediaInpcIgpm'];
   // Índices oficiais disponíveis (séries do Sistema Gerenciador de Séries Temporais do Banco Central)
   const INDICES = {
     IPCA: { codigo: 433, nome: 'IPCA', descricao: 'IPCA (IBGE)' },
@@ -102,6 +102,13 @@
     return { fator, meses, faltantes };
   }
 
+  // Competência 'MM/AAAA' (mês final, incluído por completo) -> data no primeiro dia do mês seguinte,
+  // para reusar fatorIndice (que acumula até o mês anterior ao do parâmetro "fim").
+  function fimMediaExclusivo(termoFinal) {
+    const data = R.competenciaParaData(termoFinal);
+    return data ? R.adicionarMeses(data, 1) : null;
+  }
+
   // ---------- Salário mínimo nacional (R$) ----------
   // Tabela embutida (valor vigente a partir do mês indicado) para funcionar sem dados/indices.json;
   // a série 1619 do Banco Central, gravada pelo robô na tabela, tem prioridade.
@@ -163,6 +170,22 @@
         fator: f.fator, percentual: (f.fator - 1) * 100, meses: f.meses, faltantes: f.faltantes,
         valorCorrecao, principalCorrigido: R.arredondar(original + valorCorrecao), informadoManualmente: false,
         atualizadoEm: tabelaIndices ? tabelaIndices.atualizadoEm : null,
+      };
+    }
+    if (c.modo === 'mediaInpcIgpm') {
+      const ctx = contexto || {};
+      const inicio = c.termoInicial === 'proximo' ? R.adicionarMeses(ctx.inicio, 1) : ctx.inicio;
+      const fimExclusivo = fimMediaExclusivo(c.termoFinal);
+      const fi = fatorIndice('INPC', inicio, fimExclusivo);
+      const fg = fatorIndice('IGPM', inicio, fimExclusivo);
+      const fator = 1 + ((fi.fator - 1) + (fg.fator - 1)) / 2;
+      const valorCorrecao = R.arredondar(original * (fator - 1));
+      const faltantes = [...new Set([...fi.faltantes, ...fg.faltantes])].sort();
+      return {
+        modo: 'mediaInpcIgpm', original, fator, percentual: (fator - 1) * 100,
+        inpc: { fator: fi.fator, percentual: (fi.fator - 1) * 100 }, igpm: { fator: fg.fator, percentual: (fg.fator - 1) * 100 },
+        meses: fi.meses, faltantes, valorCorrecao, principalCorrigido: R.arredondar(original + valorCorrecao), informadoManualmente: false,
+        termoInicial: inicio, termoFinal: c.termoFinal, atualizadoEm: tabelaIndices ? tabelaIndices.atualizadoEm : null,
       };
     }
     return { modo: 'nenhuma', original, percentual: null, valorCorrecao: 0, principalCorrigido: original, informadoManualmente: false };
@@ -256,6 +279,10 @@
     if (c.modo === 'indice') {
       if (!INDICES[c.indice]) e('escolha o índice de correção (IPCA, INPC, IGP-M ou IPCA-E).');
       else if (!tabelaIndices || !tabelaIndices.series || !tabelaIndices.series[c.indice]) e('a tabela de índices não está disponível agora; informe o percentual de correção ou tente mais tarde.');
+    }
+    if (c.modo === 'mediaInpcIgpm') {
+      if (!/^(0[1-9]|1[0-2])\/\d{4}$/.test(String(c.termoFinal || ''))) e('informe o mês final da correção (MM/AAAA).');
+      else if (!tabelaIndices || !tabelaIndices.series || !tabelaIndices.series.INPC || !tabelaIndices.series.IGPM) e('a tabela de índices não está disponível agora; tente mais tarde.');
     }
     return erros;
   }
@@ -414,6 +441,10 @@
         memoria.push(`Correção monetária pelo ${correcao.nomeIndice}: nenhum mês decorrido entre o vencimento e a data final; sem correção (${fonte}).`);
       }
       if (correcao.faltantes.length) memoria.push(`Atenção: ${correcao.nomeIndice} ainda não divulgado para ${correcao.faltantes.map(nomeMes).join(', ')}; ${correcao.faltantes.length === 1 ? 'esse mês ficou' : 'esses meses ficaram'} fora da correção.`);
+    } else if (correcao.modo === 'mediaInpcIgpm') {
+      const fonte = `fonte: Banco Central do Brasil, séries SGS 188 (INPC) e 189 (IGP-M)${correcao.atualizadoEm ? `, tabela atualizada em ${correcao.atualizadoEm}` : ''}`;
+      memoria.push(`Correção monetária pela média entre INPC e IGP-M: INPC acumulado ${pct(correcao.inpc.percentual)} e IGP-M acumulado ${pct(correcao.igpm.percentual)}, de ${nomeMes(R.brParaISO(correcao.termoInicial).slice(0, 7))} até ${correcao.termoFinal} (${fonte}). Média ${pct(correcao.percentual)} sobre ${m(correcao.original)} = ${m(correcao.valorCorrecao)}.`);
+      if (correcao.faltantes.length) memoria.push(`Atenção: INPC ou IGP-M ainda não divulgado para ${correcao.faltantes.map(nomeMes).join(', ')}; ${correcao.faltantes.length === 1 ? 'esse mês ficou' : 'esses meses ficaram'} fora da correção.`);
     } else {
       memoria.push('Correção monetária: não aplicada; o valor original foi utilizado diretamente como principal.');
     }

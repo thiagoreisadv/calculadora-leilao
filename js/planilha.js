@@ -16,14 +16,14 @@
   let sequencia = 0;
   const novoId = () => { sequencia += 1; return `l${Date.now().toString(36)}${sequencia}`; };
 
-  const inicial = () => ({ titulo: '', credor: '', devedor: '', observacoes: '', linhas: [], criterios: K.criteriosPadrao(), lote: B.loteInicial() });
+  const inicial = () => ({ titulo: '', credor: '', devedor: '', observacoes: '', linhas: [], criterios: K.criteriosPadrao(), lote: B.loteInicial(), gerador: B.geradorInicial() });
 
   const novaLinha = (lote) => ({ id: novoId(), descricao: '', competencia: '', vencimento: '', valor: '', outros: '', correcao: lote ? B.correcaoDoLote(lote) : B.correcaoInicial(), jurosPct: '', multaPct: '', pagamentos: [] });
 
 
   function LinhaEditavel({ linha, indice, onChange, onRemover, erros, criterios }) {
     const [pagamentos, definirPagamentos] = useState(linha.pagamentos.length > 0);
-    const [correcao, definirCorrecao] = useState(['percentual', 'valorCorrigido'].includes(linha.correcao.modo));
+    const [correcao, definirCorrecao] = useState(['percentual', 'valorCorrigido', 'mediaInpcIgpm'].includes(linha.correcao.modo));
     const aVencer = R.dataEhValida(linha.vencimento) && K.estaAVencer(linha, criterios.dataFinal);
     const [proprios, definirProprios] = useState(linha.jurosPct !== '' || linha.multaPct !== '');
     const erro = (campo) => (erros.find((e) => e.linha === indice && e.campo === campo) || {}).mensagem;
@@ -75,6 +75,13 @@
 
     const alterar = (parte) => { definirF({ ...f, ...parte }); definirRes(null); };
     const alterarLinha = (id, parte) => alterar({ linhas: f.linhas.map((l) => (l.id === id ? { ...l, ...parte } : l)) });
+
+    // Acrescenta linhas a partir de [{ vencimento, valor }] (gerador em lote ou tabela colada).
+    function adicionarLinhas(itens) {
+      const novas = itens.map((it, i) => ({ ...novaLinha(f.lote), vencimento: it.vencimento, competencia: it.vencimento.slice(3), valor: it.valor, descricao: `Linha ${f.linhas.length + i + 1}` }));
+      alterar({ linhas: [...f.linhas, ...novas] });
+      UI.avisar(`${novas.length} obrigação(ões) adicionada(s).`);
+    }
 
     function validar() {
       const erros = K.validarCalculo(f.criterios, f.linhas, 'Linha');
@@ -159,6 +166,8 @@
             </div>
             <B.CorrecaoLote valor={f.lote} onChange={(v) => definirF({ ...f, lote: v })} quantidade={f.linhas.length}
               onAplicar={() => { const linhas = B.aplicarLote(f.linhas, f.lote); if (linhas) alterar({ linhas }); }} />
+            <B.GeradorParcelas valor={f.gerador} onChange={(v) => definirF({ ...f, gerador: v })} onGerar={adicionarLinhas} />
+            <B.ColarTabela onAdicionar={adicionarLinhas} />
             {f.linhas.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhuma obrigação.</p>}
             {f.linhas.map((l, i) => (
               <LinhaEditavel key={l.id} linha={l} indice={i} erros={errosForm} criterios={f.criterios}

@@ -8,7 +8,7 @@
   const UI = window.CentralUI;
   const R = window.CentralRegras;
   const K = window.CentralCalculo;
-  const { Icone, Botao, Alerta, CampoData, CampoPercentual, CampoMoeda, Selecao, Chave, Indicador, Segmentado, PainelResultado } = UI;
+  const { Icone, Botao, Alerta, CampoTexto, CampoData, CampoPercentual, CampoMoeda, CampoCompetencia, AreaTexto, Selecao, Chave, Indicador, Segmentado, PainelResultado } = UI;
 
   // ---------- Descrição dos critérios (tela e demonstrativo) ----------
   // parcelas (opcional): lista com a correção escolhida em cada uma, para descrever a origem da correção.
@@ -16,8 +16,12 @@
     const linhas = [['Data final do cálculo', c.dataFinal]];
     const modos = (parcelas || []).map((p) => p.correcao || {});
     const indices = [...new Set(modos.filter((x) => x.modo === 'indice').map((x) => (K.INDICES[x.indice] || K.INDICES.IPCA).nome))];
+    const media = modos.some((x) => x.modo === 'mediaInpcIgpm');
     const manual = modos.some((x) => x.modo === 'percentual' || x.modo === 'valorCorrigido');
-    if (indices.length) {
+    if (media) {
+      const tabela = K.indicesCarregados();
+      linhas.push(['Correção monetária', `Média entre INPC e IGP-M (fatores acumulados separadamente), do termo inicial escolhido ao termo final informado, mês final incluído por completo (tabela do Banco Central do Brasil${tabela && tabela.atualizadoEm ? `, atualizada em ${tabela.atualizadoEm}` : ''})${indices.length || manual ? '; nas demais linhas, índice oficial, percentual acumulado ou valor corrigido' : ''}`]);
+    } else if (indices.length) {
       const tabela = K.indicesCarregados();
       linhas.push(['Correção monetária', `${indices.join(', ')}: variações mensais do mês do vencimento até o mês anterior ao da data final, acumuladas (tabela do Banco Central do Brasil${tabela && tabela.atualizadoEm ? `, atualizada em ${tabela.atualizadoEm}` : ''})${manual ? '; nas demais parcelas, percentual acumulado ou valor corrigido' : ''}`]);
     } else {
@@ -59,12 +63,14 @@
     if (c.modo === 'indice') return `Correção: ${(K.INDICES[c.indice] || K.INDICES.IPCA).nome}`;
     if (c.modo === 'percentual') return `Correção: ${c.percentual || '—'}%`;
     if (c.modo === 'valorCorrigido') return 'Valor corrigido';
+    if (c.modo === 'mediaInpcIgpm') return `Correção: Média INPC+IGP-M${c.termoFinal ? ` até ${c.termoFinal}` : ''}`;
     return 'Sem correção';
   }
 
   // ---------- Correção monetária ----------
   const OPCOES_CORRECAO = [
     ['indice', 'Índice oficial'],
+    ['mediaInpcIgpm', 'Média INPC + IGP-M'],
     ['percentual', 'Percentual'],
     ['valorCorrigido', 'Valor já corrigido'],
     ['nenhuma', 'Sem correção'],
@@ -95,6 +101,13 @@
           }
         }
       }
+    } else if (c.modo === 'mediaInpcIgpm') {
+      if (indices.status === 'carregando') avisoIndice = 'Carregando índices…';
+      else if (indices.status !== 'ok') avisoIndice = 'Tabela de índices indisponível: use Percentual.';
+      else if (original > 0 && R.dataEhValida(vencimento) && /^(0[1-9]|1[0-2])\/\d{4}$/.test(String(c.termoFinal || ''))) {
+        const r = K.aplicarCorrecao(original, c, { inicio: vencimento });
+        previa = `INPC ${R.formatarPercentual(r.inpc.percentual)} · IGP-M ${R.formatarPercentual(r.igpm.percentual)} · Média ${R.formatarPercentual(r.percentual)} · Correção: ${R.formatarMoeda(r.valorCorrecao)} · Principal corrigido: ${R.formatarMoeda(r.principalCorrigido)}${r.faltantes.length ? ` · sem índice divulgado para ${r.faltantes.map(K.nomeMes).join(', ')}` : ''}`;
+      }
     } else if (original > 0) {
       if (c.modo === 'percentual' && R.lerValor(c.percentual) >= 0) {
         const r = K.aplicarCorrecao(original, c);
@@ -117,6 +130,14 @@
             {avisoIndice && <p className={`text-[11.5px] sm:pt-[26px] ${indices.status === 'ok' || indices.status === 'carregando' ? 'text-muted-foreground' : 'text-warning'}`}>{avisoIndice}</p>}
           </div>
         )}
+        {c.modo === 'mediaInpcIgpm' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
+            <Selecao rotulo="Termo inicial" valor={c.termoInicial || 'vencimento'} onChange={(v) => alterar({ termoInicial: v })}
+              opcoes={[{ valor: 'vencimento', rotulo: 'Mês do vencimento' }, { valor: 'proximo', rotulo: 'Mês seguinte ao vencimento' }]} />
+            <CampoCompetencia rotulo="Termo final (mês incluído por completo)" obrigatorio valor={c.termoFinal} onChange={(v) => alterar({ termoFinal: v })} erro={erro} />
+            {avisoIndice && <p className={`text-[11.5px] sm:col-span-2 ${indices.status === 'ok' ? 'text-muted-foreground' : 'text-warning'}`}>{avisoIndice}</p>}
+          </div>
+        )}
         {c.modo === 'percentual' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 section-open">
             <CampoPercentual rotulo="Correção monetária acumulada do período" obrigatorio valor={c.percentual} onChange={(v) => alterar({ percentual: v })} erro={erro} />
@@ -136,15 +157,17 @@
   // ---------- Correção em lote: usada pelos geradores de parcelas e por "Aplicar a todas" ----------
   const OPCOES_LOTE = [
     ...Object.entries(K.INDICES).map(([valor, x]) => ({ valor, rotulo: x.nome })),
+    { valor: 'media', rotulo: 'Média INPC + IGP-M' },
     { valor: 'percentual', rotulo: 'Percentual' },
     { valor: 'nenhuma', rotulo: 'Sem correção' },
   ];
-  const loteInicial = () => ({ opcao: 'IPCA', percentual: '' });
+  const loteInicial = () => ({ opcao: 'IPCA', percentual: '', termoInicial: 'vencimento', termoFinal: '' });
 
   function correcaoDoLote(lote) {
     const l = lote || loteInicial();
     if (K.INDICES[l.opcao]) return { ...K.correcaoPadrao(), modo: 'indice', indice: l.opcao };
     if (l.opcao === 'percentual') return { ...K.correcaoPadrao(), modo: 'percentual', percentual: l.percentual };
+    if (l.opcao === 'media') return { ...K.correcaoPadrao(), modo: 'mediaInpcIgpm', termoInicial: l.termoInicial || 'vencimento', termoFinal: l.termoFinal };
     return K.correcaoPadrao();
   }
 
@@ -153,6 +176,7 @@
     const l = lote || loteInicial();
     if (!itens.length) { UI.avisar('Inclua as parcelas antes.', 'erro'); return null; }
     if (l.opcao === 'percentual' && !(R.lerValor(l.percentual) >= 0)) { UI.avisar('Informe o percentual.', 'erro'); return null; }
+    if (l.opcao === 'media' && !/^(0[1-9]|1[0-2])\/\d{4}$/.test(String(l.termoFinal || ''))) { UI.avisar('Informe o mês final da correção (MM/AAAA).', 'erro'); return null; }
     const correcao = correcaoDoLote(l);
     UI.avisar(`${rotuloCorrecao(correcao)} em ${itens.length} item(ns).`);
     return itens.map((x) => ({ ...x, correcao: { ...correcao } }));
@@ -164,8 +188,95 @@
       <div className="flex flex-wrap items-end gap-3">
         <Selecao className="w-40" rotulo={rotulo} valor={l.opcao} onChange={(v) => onChange({ ...l, opcao: v })} opcoes={OPCOES_LOTE} />
         {l.opcao === 'percentual' && <CampoPercentual className="w-32" rotulo="Acumulado" valor={l.percentual} onChange={(v) => onChange({ ...l, percentual: v })} />}
+        {l.opcao === 'media' && (
+          <>
+            <Selecao className="w-52" rotulo="Termo inicial" valor={l.termoInicial || 'vencimento'} onChange={(v) => onChange({ ...l, termoInicial: v })}
+              opcoes={[{ valor: 'vencimento', rotulo: 'Mês do vencimento' }, { valor: 'proximo', rotulo: 'Mês seguinte ao vencimento' }]} />
+            <CampoCompetencia className="w-32" rotulo="Termo final" valor={l.termoFinal} onChange={(v) => onChange({ ...l, termoFinal: v })} />
+          </>
+        )}
         {onAplicar && quantidade > 0 && <Botao onClick={onAplicar}>Aplicar a todas ({quantidade})</Botao>}
       </div>
+    );
+  }
+
+  // ---------- Entrada em lote de parcelas: gerador (N parcelas) e colagem de tabela ----------
+  const OPCOES_PERIODICIDADE = [
+    { valor: 'mensal', rotulo: 'Mensal' },
+    { valor: 'quinzenal', rotulo: 'Quinzenal (15 dias)' },
+    { valor: 'semanal', rotulo: 'Semanal (7 dias)' },
+    { valor: 'anual', rotulo: 'Anual' },
+  ];
+  const geradorInicial = () => ({ quantidade: '', primeiro: '', valor: '', periodicidade: 'mensal' });
+
+  function dataDaPeriodicidade(primeiro, periodicidade, indice) {
+    if (periodicidade === 'semanal') return R.adicionarDias(primeiro, indice * 7);
+    if (periodicidade === 'quinzenal') return R.adicionarDias(primeiro, indice * 15);
+    if (periodicidade === 'anual') return R.adicionarMeses(primeiro, indice * 12);
+    return R.adicionarMeses(primeiro, indice);
+  }
+
+  // Gera [{ vencimento, valor }]; devolve null (e avisa) quando falta algum dado.
+  function gerarParcelas(gerador) {
+    const g = gerador || geradorInicial();
+    const qtd = Number.parseInt(g.quantidade, 10);
+    if (!(qtd >= 1 && qtd <= R.LIMITE_PARCELAS)) { UI.avisar(`Informe a quantidade de parcelas (1 a ${R.LIMITE_PARCELAS}).`, 'erro'); return null; }
+    if (!R.dataEhValida(g.primeiro)) { UI.avisar('Informe o primeiro vencimento (DD/MM/AAAA).', 'erro'); return null; }
+    if (!(R.lerValor(g.valor) > 0)) { UI.avisar('Informe o valor de cada parcela.', 'erro'); return null; }
+    return Array.from({ length: qtd }, (_, i) => ({ vencimento: dataDaPeriodicidade(g.primeiro, g.periodicidade, i), valor: g.valor }));
+  }
+
+  function GeradorParcelas({ valor, onChange, onGerar }) {
+    const g = valor || geradorInicial();
+    const alterar = (parte) => onChange({ ...g, ...parte });
+    return (
+      <div className="rounded-[10px] border border-dashed border-border p-4 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-[6rem_1fr_1fr_8rem] gap-3 items-end">
+          <CampoTexto rotulo="Quantidade" valor={g.quantidade} onChange={(v) => alterar({ quantidade: v.replace(/\D/g, '') })} inputMode="numeric" maxLength={3} />
+          <CampoData rotulo="Primeiro vencimento" valor={g.primeiro} onChange={(v) => alterar({ primeiro: v })} />
+          <CampoMoeda rotulo="Valor de cada parcela" valor={g.valor} onChange={(v) => alterar({ valor: v })} />
+          <Selecao rotulo="Periodicidade" valor={g.periodicidade} onChange={(v) => alterar({ periodicidade: v })} opcoes={OPCOES_PERIODICIDADE} />
+        </div>
+        <div className="flex justify-end">
+          <Botao variante="solido" icone="mais" onClick={() => { const itens = gerarParcelas(g); if (itens) onGerar(itens); }}>Gerar parcelas</Botao>
+        </div>
+      </div>
+    );
+  }
+
+  // Lê linhas "data;valor" (aceita ; ou tabulação como separador); ignora linhas inválidas e reporta.
+  function colarTabela(texto) {
+    const linhas = String(texto || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const itens = [];
+    const erros = [];
+    linhas.forEach((l, i) => {
+      const partes = l.split(/[;\t]+/).map((p) => p.trim()).filter(Boolean);
+      if (partes.length < 2) { erros.push(`Linha ${i + 1}: use o formato "data;valor".`); return; }
+      const [data, valorTexto] = partes;
+      if (!R.dataEhValida(data)) { erros.push(`Linha ${i + 1}: data inválida (${data}).`); return; }
+      if (!(R.lerValor(valorTexto) > 0)) { erros.push(`Linha ${i + 1}: valor inválido (${valorTexto}).`); return; }
+      itens.push({ vencimento: data, valor: valorTexto });
+    });
+    return { itens, erros };
+  }
+
+  function ColarTabela({ onAdicionar }) {
+    const [texto, definirTexto] = useState('');
+    const adicionar = () => {
+      const { itens, erros } = colarTabela(texto);
+      if (!itens.length) { UI.avisar(erros[0] || 'Nada para adicionar: cole linhas no formato "data;valor".', 'erro'); return; }
+      onAdicionar(itens);
+      definirTexto('');
+      UI.avisar(`${itens.length} linha(s) adicionada(s)${erros.length ? `; ${erros.length} ignorada(s) — ${erros[0]}` : ''}.`);
+    };
+    return (
+      <details className="rounded-[10px] border border-border p-3">
+        <summary className="cursor-pointer text-[13px] text-foreground">Colar tabela (uma linha por obrigação: data;valor)</summary>
+        <div className="mt-3 space-y-2">
+          <AreaTexto rotulo="Cole aqui, uma linha por obrigação: DD/MM/AAAA;valor" valor={texto} onChange={definirTexto} linhas={5} maxLength={20000} />
+          <Botao tamanho="sm" onClick={adicionar}>Adicionar da lista</Botao>
+        </div>
+      </details>
     );
   }
 
@@ -277,6 +388,7 @@
     if (correcao.modo === 'percentual') return `${R.formatarPercentual(correcao.percentual)} → ${R.formatarMoeda(correcao.valorCorrecao)}`;
     if (correcao.modo === 'valorCorrigido') return `Valor corrigido (${R.formatarMoeda(correcao.valorCorrecao)})`;
     if (correcao.modo === 'indice') return `${correcao.nomeIndice} ${R.formatarPercentual(correcao.percentual)} → ${R.formatarMoeda(correcao.valorCorrecao)}${correcao.faltantes && correcao.faltantes.length ? ' (parcial)' : ''}`;
+    if (correcao.modo === 'mediaInpcIgpm') return `Média INPC+IGP-M ${R.formatarPercentual(correcao.percentual)} → ${R.formatarMoeda(correcao.valorCorrecao)}${correcao.faltantes && correcao.faltantes.length ? ' (parcial)' : ''}`;
     return 'Sem correção';
   }
 
@@ -349,5 +461,6 @@
   window.CentralBlocos = {
     descreverCriterios, useIndices, correcaoInicial, rotuloCorrecao, CorrecaoManual, CorrecaoLote, loteInicial, correcaoDoLote, aplicarLote, CriteriosCalculo, PainelTotais, ResumoConsolidado, ListaAlertas,
     textoCorrecao, VisualizadorDocumento, guardarMemoria, gerarPlanilhaCalculo, gerarPdfCalculo, gerarPdfRegistro,
+    geradorInicial, gerarParcelas, GeradorParcelas, colarTabela, ColarTabela,
   };
 })();

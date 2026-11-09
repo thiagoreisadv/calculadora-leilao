@@ -388,3 +388,80 @@ test('salário mínimo: valor vigente na competência, com a série do Banco Cen
   assert.equal(C.salarioMinimo('08/2025'), 1500); // último valor conhecido até a competência
   C.definirIndices(null);
 });
+
+// ---------- Correção "Média INPC + IGP-M" ----------
+
+const TABELA_MEDIA = { atualizadoEm: '10/07/2025', fonte: 'Banco Central do Brasil (SGS)', series: {
+  INPC: { codigo: 188, valores: { '2025-01': 0.2, '2025-02': 0.3, '2025-03': 0.4, '2025-04': 0.5, '2025-05': 0.6 } },
+  IGPM: { codigo: 189, valores: { '2025-01': 0.1, '2025-02': 0.2, '2025-03': -0.1, '2025-04': 0.3, '2025-05': 0.4 } },
+} };
+
+test('média INPC+IGP-M: fator é a média dos dois fatores acumulados separadamente, mês final incluído por completo', () => {
+  C.definirIndices(TABELA_MEDIA);
+  const r = C.aplicarCorrecao('1000', { modo: 'mediaInpcIgpm', termoFinal: '05/2025' }, { inicio: '10/01/2025' });
+  const fInpc = [0.2, 0.3, 0.4, 0.5, 0.6].reduce((f, v) => f * (1 + v / 100), 1);
+  const fIgpm = [0.1, 0.2, -0.1, 0.3, 0.4].reduce((f, v) => f * (1 + v / 100), 1);
+  const fator = 1 + ((fInpc - 1) + (fIgpm - 1)) / 2;
+  assert.ok(Math.abs(r.fator - fator) < 1e-12);
+  assert.equal(r.valorCorrecao, Math.round(1000 * (fator - 1) * 100) / 100);
+  assert.equal(r.faltantes.length, 0);
+  C.definirIndices(null);
+});
+
+test('média INPC+IGP-M: termo inicial "mês seguinte" começa um mês depois do vencimento', () => {
+  C.definirIndices(TABELA_MEDIA);
+  const comVencimento = C.aplicarCorrecao('1000', { modo: 'mediaInpcIgpm', termoFinal: '05/2025' }, { inicio: '10/01/2025' });
+  const comProximo = C.aplicarCorrecao('1000', { modo: 'mediaInpcIgpm', termoFinal: '05/2025', termoInicial: 'proximo' }, { inicio: '10/01/2025' });
+  assert.equal(comVencimento.meses.length, 5); // jan a mai
+  assert.equal(comProximo.meses.length, 4); // fev a mai
+  C.definirIndices(null);
+});
+
+test('média INPC+IGP-M: mês sem divulgação em qualquer um dos índices é apontado nos faltantes', () => {
+  const tabela = { series: { INPC: { valores: { '2025-01': 0.2, '2025-02': 0.3 } }, IGPM: { valores: { '2025-01': 0.1 } } } };
+  C.definirIndices(tabela);
+  const r = C.aplicarCorrecao('1000', { modo: 'mediaInpcIgpm', termoFinal: '02/2025' }, { inicio: '10/01/2025' });
+  assert.deepEqual(r.faltantes, ['2025-02']);
+  C.definirIndices(null);
+});
+
+test('média INPC+IGP-M: sem tabela de INPC e IGP-M a validação pede para tentar mais tarde', () => {
+  C.definirIndices(null);
+  const erros = C.validarCalculo(criterios(), [parcela({ correcao: { modo: 'mediaInpcIgpm', termoFinal: '05/2025' } })]);
+  assert.ok(erros.some((e) => e.campo === 'correcao' && /tabela de índices/.test(e.mensagem)));
+  C.definirIndices(TABELA_MEDIA);
+  assert.equal(C.validarCalculo(criterios(), [parcela({ correcao: { modo: 'mediaInpcIgpm', termoFinal: '05/2025' } })]).length, 0);
+  assert.ok(C.validarCalculo(criterios(), [parcela({ correcao: { modo: 'mediaInpcIgpm', termoFinal: '13/2025' } })]).some((e) => e.campo === 'correcao'));
+  C.definirIndices(null);
+});
+
+// ---------- Casos de aceite (comparação com o cálculo manual do usuário) ----------
+
+test('caso de aceite 1: 15 notas de R$ 520,00, média INPC+IGP-M até set/2026, juros de 1% simples até 07/11/2026', () => {
+  const indices = require('../dados/indices.json');
+  C.definirIndices(indices);
+  const crit = criterios({ dataFinal: '07/11/2026', juros: juros({ percentual: '1' }) });
+  const vencimentos = ['30/05/2022', '30/06/2022', '30/07/2022', '30/08/2022', '30/09/2022', '30/10/2022', '30/11/2022',
+    '30/12/2022', '30/01/2023', '02/03/2023', '30/03/2023', '30/04/2023', '30/05/2023', '30/06/2023', '30/07/2023'];
+  const resultados = vencimentos.map((v) => C.calcularParcela(parcela({ valor: '520', vencimento: v, correcao: { modo: 'mediaInpcIgpm', termoFinal: '09/2026' } }), crit));
+  const totais = C.consolidar(resultados, {});
+  assert.ok(Math.abs(totais.saldoFinal - 12688.38) <= 0.02);
+  C.definirIndices(null);
+});
+
+test('caso de aceite 2: 5 parcelas de R$ 912,26, mesma correção e juros, até 07/11/2026', () => {
+  const indices = require('../dados/indices.json');
+  C.definirIndices(indices);
+  const crit = criterios({ dataFinal: '07/11/2026', juros: juros({ percentual: '1' }) });
+  const vencimentos = ['17/07/2023', '15/08/2023', '15/09/2023', '15/10/2023', '15/11/2023'];
+  const resultados = vencimentos.map((v) => C.calcularParcela(parcela({ valor: '912,26', vencimento: v, correcao: { modo: 'mediaInpcIgpm', termoFinal: '09/2026' } }), crit));
+  const totais = C.consolidar(resultados, {});
+  assert.equal(totais.saldoFinal, 7075.06);
+  C.definirIndices(null);
+});
+
+test('caso de aceite 3: R$ 15.000,00 com correção percentual de 12,9225%, juros de 1% simples até 07/11/2026', () => {
+  const crit = criterios({ dataFinal: '07/11/2026', juros: juros({ percentual: '1' }) });
+  const r = C.calcularParcela(parcela({ valor: '15000', vencimento: '23/04/2022', correcao: { modo: 'percentual', percentual: '12,9225' } }), crit);
+  assert.equal(r.saldo, 26169.80);
+});

@@ -39,14 +39,14 @@
 
   const inicial = () => ({
     descricao: '', credor: '', devedor: '', observacoes: '', parcelas: [], encargos: [],
-    criterios: K.criteriosPadrao(), gerador: { quantidade: '12', primeiro: '', valor: '' }, lote: B.loteInicial(),
+    criterios: K.criteriosPadrao(), gerador: B.geradorInicial(), lote: B.loteInicial(),
   });
 
 
   function LinhaParcela({ parcela, indice, onChange, onRemover, erros, rotuloBase, criterios }) {
     const [pagamentos, definirPagamentos] = useState(parcela.pagamentos.length > 0);
     // Abre a correção quando ela depende de dado digitado (percentual ou valor corrigido)
-    const [correcao, definirCorrecao] = useState(['percentual', 'valorCorrigido'].includes(parcela.correcao.modo));
+    const [correcao, definirCorrecao] = useState(['percentual', 'valorCorrigido', 'mediaInpcIgpm'].includes(parcela.correcao.modo));
     const aVencer = R.dataEhValida(parcela.vencimento) && K.estaAVencer(parcela, criterios.dataFinal);
     const erro = (campo) => (erros.find((e) => e.linha === indice && e.campo === campo) || {}).mensagem;
     return (
@@ -92,23 +92,12 @@
     const alterar = (parte) => { definirF({ ...f, ...parte }); definirResultado(null); };
     const alterarParcela = (id, parte) => alterar({ parcelas: f.parcelas.map((x) => (x.id === id ? { ...x, ...parte } : x)) });
 
-    function gerar() {
-      const g = f.gerador;
-      const qtd = Number.parseInt(g.quantidade, 10);
-      const erros = [];
-      if (!(qtd >= 1 && qtd <= 120)) erros.push('Informe a quantidade de parcelas (1 a 120).');
-      if (!R.dataEhValida(g.primeiro)) erros.push('Informe o primeiro vencimento (DD/MM/AAAA).');
-      if (!(R.lerValor(g.valor) > 0)) erros.push('Informe o valor de cada parcela.');
-      if (qtd + f.parcelas.length > R.LIMITE_PARCELAS) erros.push(`O limite é de ${R.LIMITE_PARCELAS} parcelas.`);
-      const lote = f.lote || B.loteInicial();
-      if (lote.opcao === 'percentual' && !(R.lerValor(lote.percentual) >= 0)) erros.push('Informe o percentual de correção.');
-      if (erros.length) { UI.avisar(erros[0], 'erro'); return; }
-      const novas = Array.from({ length: qtd }, (_, i) => {
-        const venc = R.adicionarMeses(g.primeiro, i);
-        return novaParcela({ descricao: `${p.parcela} ${i + 1}/${qtd}`, competencia: venc.slice(3), vencimento: venc, valor: g.valor, correcao: B.correcaoDoLote(lote) });
-      });
+    // Acrescenta parcelas a partir de [{ vencimento, valor }] (gerador em lote).
+    function adicionarGeradas(itens) {
+      const inicioIndice = f.parcelas.length;
+      const novas = itens.map((it, i) => novaParcela({ descricao: `${p.parcela} ${inicioIndice + i + 1}`, competencia: it.vencimento.slice(3), vencimento: it.vencimento, valor: it.valor, correcao: B.correcaoDoLote(f.lote) }));
       alterar({ parcelas: [...f.parcelas, ...novas] });
-      UI.avisar(`${qtd} parcelas adicionadas.`);
+      UI.avisar(`${novas.length} parcelas adicionadas.`);
     }
 
     // Nova parcela: um mês depois da última, com o mesmo valor e a mesma correção.
@@ -191,16 +180,10 @@
             <div>
               <h3 className="text-[13px] font-medium text-foreground">Parcelas</h3>
             </div>
-            <div className="rounded-[10px] border border-dashed border-border p-4 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-[6rem_1fr_1fr] gap-3 items-end">
-                <CampoTexto rotulo="Quantidade" valor={f.gerador.quantidade} onChange={(v) => alterar({ gerador: { ...f.gerador, quantidade: v.replace(/\D/g, '') } })} inputMode="numeric" maxLength={3} />
-                <CampoData rotulo="Primeiro vencimento" valor={f.gerador.primeiro} onChange={(v) => alterar({ gerador: { ...f.gerador, primeiro: v } })} />
-                <CampoMoeda rotulo="Valor de cada parcela" valor={f.gerador.valor} onChange={(v) => alterar({ gerador: { ...f.gerador, valor: v } })} />
-              </div>
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <B.CorrecaoLote valor={f.lote} onChange={(v) => definirF({ ...f, lote: v })} quantidade={f.parcelas.length} onAplicar={aplicarATodas} />
-                <Botao variante="solido" icone="mais" onClick={gerar}>Gerar parcelas</Botao>
-              </div>
+            <B.GeradorParcelas valor={f.gerador} onChange={(v) => alterar({ gerador: v })} onGerar={adicionarGeradas} />
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <B.CorrecaoLote valor={f.lote} onChange={(v) => definirF({ ...f, lote: v })} quantidade={f.parcelas.length} onAplicar={aplicarATodas} />
+              <B.ColarTabela onAdicionar={adicionarGeradas} />
             </div>
 
             {f.parcelas.length === 0 && <p className="text-[13px] text-muted-foreground">Nenhuma parcela incluída ainda.</p>}
