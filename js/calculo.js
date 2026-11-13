@@ -163,10 +163,11 @@
     if (c.modo === 'indice') {
       const chave = INDICES[c.indice] ? c.indice : 'IPCA';
       const ctx = contexto || {};
-      const f = fatorIndice(chave, ctx.inicio, ctx.fim);
+      const inicioIndice = ctx.inicioCorrecao === 'mesSeguinte' ? R.adicionarMeses(ctx.inicio, 1) : ctx.inicio;
+      const f = fatorIndice(chave, inicioIndice, ctx.fim);
       const valorCorrecao = R.arredondar(original * (f.fator - 1));
       return {
-        modo: 'indice', indice: chave, nomeIndice: INDICES[chave].nome, codigoSerie: INDICES[chave].codigo, original,
+        modo: 'indice', indice: chave, inicioCorrecao: ctx.inicioCorrecao === 'mesSeguinte' ? 'mesSeguinte' : 'mesVencimento', nomeIndice: INDICES[chave].nome, codigoSerie: INDICES[chave].codigo, original,
         fator: f.fator, percentual: (f.fator - 1) * 100, meses: f.meses, faltantes: f.faltantes,
         valorCorrecao, principalCorrigido: R.arredondar(original + valorCorrecao), informadoManualmente: false,
         atualizadoEm: tabelaIndices ? tabelaIndices.atualizadoEm : null,
@@ -291,7 +292,10 @@
     const erros = [];
     if (!c) return [{ campo: 'criterios', mensagem: 'Critérios de cálculo não informados.' }];
     if (!R.dataEhValida(c.dataFinal)) erros.push({ campo: 'dataFinal', mensagem: 'Informe a data final do cálculo no formato DD/MM/AAAA.' });
-    if (c.juros && c.juros.ativo) {
+    if (c.inicioCorrecao !== undefined && !['mesVencimento', 'mesSeguinte'].includes(c.inicioCorrecao)) erros.push({ campo: 'inicioCorrecao', mensagem: 'Escolha o início da correção (mês do vencimento ou mês seguinte).' });
+    if (c.juros && c.juros.ativo && c.juros.criterio === 'taxaLegal') {
+      if (!tabelaTaxaLegal || !Object.keys(tabelaTaxaLegal.taxas).length) erros.push({ campo: 'jurosCriterio', mensagem: 'A tabela da taxa legal não está disponível agora; use taxa fixa ou tente mais tarde.' });
+    } else if (c.juros && c.juros.ativo) {
       if (!(R.lerValor(c.juros.percentual) >= 0)) erros.push({ campo: 'jurosPercentual', mensagem: 'Informe a taxa de juros (zero ou maior).' });
       if (!['mensal', 'anual'].includes(c.juros.periodicidade)) erros.push({ campo: 'jurosPeriodicidade', mensagem: 'Escolha se a taxa de juros é ao mês ou ao ano.' });
       if (!['simples', 'compostos'].includes(c.juros.modalidade)) erros.push({ campo: 'jurosModalidade', mensagem: 'Escolha a modalidade dos juros (simples ou compostos).' });
@@ -368,7 +372,7 @@
   function criteriosDaParcela(parcela, criterios) {
     const c = JSON.parse(JSON.stringify(criterios));
     if (parcela.jurosPct !== undefined && parcela.jurosPct !== '') {
-      c.juros = { ...c.juros, ativo: R.lerValor(parcela.jurosPct) > 0, percentual: parcela.jurosPct };
+      c.juros = { ...c.juros, ativo: R.lerValor(parcela.jurosPct) > 0, percentual: parcela.jurosPct, criterio: 'fixa' };
     }
     if (parcela.multaPct !== undefined && parcela.multaPct !== '') {
       c.multa = { ...c.multa, ativo: R.lerValor(parcela.multaPct) > 0, percentual: parcela.multaPct };
@@ -387,7 +391,7 @@
     const fim = c.dataFinal;
     const vencMora = vencimentoDaMora(parcela);
     const aVencer = estaAVencer(parcela, fim);
-    const correcao = aplicarCorrecao(parcela.valor, parcela.correcao, { inicio, fim });
+    const correcao = aplicarCorrecao(parcela.valor, parcela.correcao, { inicio, fim, inicioCorrecao: c.inicioCorrecao });
     const principal = correcao.principalCorrigido;
     const pagamentos = (parcela.pagamentos || []).map((p) => ({ data: p.data, valor: R.arredondar(R.lerValor(p.valor)) }));
     const somaPagamentos = R.arredondar(pagamentos.reduce((s, p) => s + p.valor, 0));
@@ -396,9 +400,19 @@
     let juros = 0;
     let credito = 0;
     let passosJuros = [];
+    let jurosMensal = null;
     if (aVencer) {
       credito = R.arredondar(Math.max(0, somaPagamentos - principal));
       passosJuros = [`Juros: não há atraso na data final (${fim}), pois o vencimento é ${vencMora}; nenhum juro é cobrado.`];
+    } else if (c.juros && c.juros.ativo && c.juros.criterio === 'taxaLegal') {
+      const evolutiva = correcao.modo === 'indice';
+      jurosMensal = apurarJurosTaxaLegal({ principal: evolutiva ? correcao.original : principal, vencimento: inicio, dataBase: fim, corrigir: evolutiva, indice: correcao.indice, inicioCorrecao: c.inicioCorrecao });
+      juros = jurosMensal.total;
+      credito = R.arredondar(Math.max(0, somaPagamentos - (principal + juros)));
+      const base = evolutiva ? `principal corrigido pelo ${correcao.nomeIndice} até o mês anterior a cada mês de juros` : `principal corrigido ${m(principal)}`;
+      passosJuros = [`Juros pela taxa legal (art. 406 do Código Civil; Resolução CMN 5.171/2024), simples, de ${inicio} a ${fim}, mês a mês sobre o ${base}; meses incompletos proporcionais aos dias de mora: ${jurosMensal.meses.length} ${jurosMensal.meses.length === 1 ? 'mês' : 'meses'}, total ${m(juros)}.`]
+        .concat(jurosMensal.meses.map((x) => `${nomeMes(x.mes)}: taxa ${x.taxa === null ? '—' : `${num(x.taxa, 6)}% (${x.fonteTaxa})`}, ${x.dias} de ${x.diasMes} dias, base ${m(x.base)} = ${m(x.juros)}.`), jurosMensal.avisos.map((a) => `Atenção: ${a}`));
+      if (c.imputacao === 'art354' && pagamentos.length) passosJuros.push('Os pagamentos foram abatidos do saldo final de principal e juros: a imputação do art. 354 não se aplica à taxa legal.');
     } else if (c.juros && c.juros.ativo) {
       const r = apurarJuros({ principal, config: c.juros, inicio, fim, pagamentos, imputacao: c.imputacao });
       juros = R.arredondar(r.valor);
@@ -436,7 +450,7 @@
       const fonte = `fonte: Banco Central do Brasil, série SGS ${correcao.codigoSerie}${correcao.atualizadoEm ? `, tabela atualizada em ${correcao.atualizadoEm}` : ''}`;
       if (correcao.meses.length) {
         const periodoIdx = `${nomeMes(correcao.meses[0].mes)} a ${nomeMes(correcao.meses[correcao.meses.length - 1].mes)}`;
-        memoria.push(`Correção monetária pelo ${correcao.nomeIndice}: variações mensais de ${periodoIdx} (${correcao.meses.length} ${correcao.meses.length === 1 ? 'mês' : 'meses'}; ${fonte}). Fator acumulado ${num(correcao.fator, 6)} (${pct(correcao.percentual)}) sobre ${m(correcao.original)} = ${m(correcao.valorCorrecao)}.`);
+        memoria.push(`Correção monetária pelo ${correcao.nomeIndice}: variações mensais de ${periodoIdx} (${correcao.meses.length} ${correcao.meses.length === 1 ? 'mês' : 'meses'}; ${fonte}). Fator acumulado ${num(correcao.fator, 6)} (${pct(correcao.percentual)}) sobre ${m(correcao.original)} = ${m(correcao.valorCorrecao)}${correcao.inicioCorrecao === 'mesSeguinte' ? '; correção iniciada no mês seguinte ao do vencimento' : ''}.`);
       } else {
         memoria.push(`Correção monetária pelo ${correcao.nomeIndice}: nenhum mês decorrido entre o vencimento e a data final; sem correção (${fonte}).`);
       }
@@ -462,7 +476,7 @@
     return {
       original: correcao.original, correcao, principalCorrigido: principal,
       juros, periodo, multa, multaPct, baseMulta, multaQuitada, honorarios, pagamentos: somaPagamentos, creditoNaoImputado: credito,
-      saldoPrincipalJuros, saldo, memoria, aVencer,
+      saldoPrincipalJuros, saldo, memoria, aVencer, jurosMensal,
     };
   }
 

@@ -19,7 +19,7 @@
   'use strict';
 
   // Estilos disponíveis (índice em cellXfs).
-  const ESTILOS = { padrao: 0, titulo: 1, cabecalho: 2, moeda: 3, percentual: 4, texto: 5, totalMoeda: 6, totalTexto: 7, rotulo: 8, destaque: 9, nota: 10, numero: 11 };
+  const ESTILOS = { padrao: 0, titulo: 1, cabecalho: 2, moeda: 3, percentual: 4, texto: 5, totalMoeda: 6, totalTexto: 7, rotulo: 8, destaque: 9, nota: 10, numero: 11, percentual6: 12, fator: 13 };
 
   const T = (texto, estilo) => ({ tipo: 't', v: texto === null || texto === undefined ? '' : String(texto), s: estilo || 'padrao' });
   const N = (numero, estilo) => ({ tipo: 'n', v: Number(numero), s: estilo || 'padrao' });
@@ -77,7 +77,7 @@
     const borda = '<border><left/><right/><top style="thin"><color rgb="FF14243A"/></top><bottom/><diagonal/></border>';
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-      + '<numFmts count="2"><numFmt numFmtId="164" formatCode="&quot;R$&quot;\\ #,##0.00;\\-&quot;R$&quot;\\ #,##0.00"/><numFmt numFmtId="165" formatCode="0.00%"/></numFmts>'
+      + '<numFmts count="4"><numFmt numFmtId="164" formatCode="&quot;R$&quot;\\ #,##0.00;\\-&quot;R$&quot;\\ #,##0.00"/><numFmt numFmtId="165" formatCode="0.00%"/><numFmt numFmtId="166" formatCode="0.000000%"/><numFmt numFmtId="167" formatCode="0.000000"/></numFmts>'
       + '<fonts count="6">'
       + '<font><sz val="11"/><name val="Calibri"/></font>'
       + '<font><b/><sz val="14"/><color rgb="FF14243A"/><name val="Calibri"/></font>'
@@ -91,7 +91,7 @@
       + '<fill><patternFill patternType="solid"><fgColor rgb="FF0F8B68"/><bgColor indexed="64"/></patternFill></fill></fills>'
       + `<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>${borda}</borders>`
       + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-      + '<cellXfs count="12">'
+      + '<cellXfs count="14">'
       + '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'                                                                   // 0 padrão
       + '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'                                                     // 1 título
       + '<xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>' // 2 cabeçalho
@@ -104,6 +104,8 @@
       + '<xf numFmtId="164" fontId="5" fillId="3" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1"/>'              // 9 destaque
       + '<xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1"/>'                                                     // 10 nota
       + '<xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'                                             // 11 número
+      + '<xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'                                           // 12 percentual com 6 casas
+      + '<xf numFmtId="167" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'                                           // 13 fator com 6 casas
       + '</cellXfs>'
       + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
       + '</styleSheet>';

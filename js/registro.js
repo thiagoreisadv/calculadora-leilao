@@ -33,6 +33,43 @@
     return { comIndice: Boolean(indice), manual, atualizadoEm: indice ? indice.correcao.atualizadoEm : null };
   }
 
+  // ---------- Quadro mês a mês dos juros pela taxa legal ----------
+  const dec = (n, c) => (n === null || n === undefined || !Number.isFinite(n) ? '—' : Number(n).toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c }));
+  const mesBR = (am) => `${am.slice(5, 7)}/${am.slice(0, 4)}`;
+  const rotuloFonte = (f) => (f === 'oficial' ? 'oficial' : 'calculada');
+
+  function temTaxaLegal(resultados) { return (resultados || []).some((r) => r.jurosMensal && r.jurosMensal.meses.length); }
+
+  function avisosTaxaLegal(resultados) {
+    const lista = [];
+    (resultados || []).forEach((r) => (r.jurosMensal ? r.jurosMensal.avisos : []).forEach((a) => { if (!lista.includes(a)) lista.push(a); }));
+    return lista;
+  }
+
+  function fonteTaxaLegal(resultados) {
+    const K = root.CentralCalculo;
+    const tl = K && K.taxaLegalCarregada && K.taxaLegalCarregada();
+    const ind = K && K.indicesCarregados && K.indicesCarregados();
+    return `Fontes: IBGE (IPCA e IPCA-15); Banco Central do Brasil (Selic e taxa legal); Resolução CMN 5.171/2024. Séries da taxa legal atualizadas em ${tl && tl.atualizadoEm ? tl.atualizadoEm : 'data não informada'}; tabela de índices atualizada em ${ind && ind.atualizadoEm ? ind.atualizadoEm : 'data não informada'}`;
+  }
+
+  function secoesTaxaLegal(o) {
+    const secoes = [];
+    o.resultados.forEach((r, i) => {
+      const jm = r.jurosMensal;
+      if (!jm || !jm.meses.length) return;
+      const p = o.parcelas[i];
+      secoes.push({
+        titulo: `Juros pela taxa legal — ${p.descricao}${p.competencia ? ` (${p.competencia})` : ''}, vencimento ${p.vencimento}`,
+        colunas: ['Mês', 'Dias de mora', 'Taxa legal (%)', 'Fonte da taxa', 'IPCA do mês (%)', 'Fator de correção acumulado', 'Base de cálculo (R$)', 'Juros do mês (R$)'],
+        numericas: [1, 2, 4, 5, 6, 7],
+        linhas: jm.meses.map((x) => [mesBR(x.mes), `${x.dias}/${x.diasMes}`, dec(x.taxa, 6), x.taxa === null ? '—' : rotuloFonte(x.fonteTaxa), dec(x.ipcaMes, 2), dec(x.fatorBase, 6), m(x.base), m(x.juros)]),
+        rodape: ['Total', '', '', '', '', '', '', m(jm.total)],
+      });
+    });
+    return secoes;
+  }
+
   function montarCalculo(o) {
     const t = o.totais;
     const origem = origemCorrecao(o.resultados);
@@ -65,7 +102,8 @@
     if (comHonorarios) rodape.push(m(t.honorarios - t.honorariosFixos));
     rodape.push(t.pagamentos ? `-${m(t.pagamentos)}` : '—', m(t.saldo));
 
-    const secoes = [{ titulo: 'Detalhamento por parcela', colunas, numericas, linhas, rodape }];
+    const secoes = [{ titulo: 'Detalhamento por parcela', colunas, numericas, linhas, rodape }].concat(secoesTaxaLegal(o));
+    const avisos = avisosTaxaLegal(o.resultados);
     const notaTotal = [];
     if (t.honorariosFixos) notaTotal.push(`honorários de valor fixo (${m(t.honorariosFixos)})`);
     if (t.encargosNominais) notaTotal.push(`outros encargos (${m(t.encargosNominais)})`);
@@ -83,11 +121,14 @@
       total: { rotulo: 'Saldo final atualizado', valor: m(t.saldoFinal) },
       secoes,
       memorias: o.resultados.map((r, i) => ({ rotulo: `${o.parcelas[i].descricao}${o.parcelas[i].competencia ? ` (${o.parcelas[i].competencia})` : ''} — vencimento ${o.parcelas[i].vencimento}`, texto: r.memoria.join('\n') })),
-      alertas: o.alertas || [],
+      alertas: (o.alertas || []).concat(avisos.map((mensagem) => ({ tipo: 'aviso', mensagem }))),
+      avisos,
       observacoes: [o.observacoes, notaTotal.length ? `O saldo final inclui, além do total das parcelas: ${notaTotal.join(' e ')}.` : ''].filter(Boolean).join('\n'),
-      fonte: origem.comIndice
-        ? `Índices de correção: Banco Central do Brasil (SGS)${origem.atualizadoEm ? `, tabela atualizada em ${origem.atualizadoEm}` : ''}`
-        : '',
+      fonte: temTaxaLegal(o.resultados)
+        ? fonteTaxaLegal(o.resultados)
+        : (origem.comIndice
+          ? `Índices de correção: Banco Central do Brasil (SGS)${origem.atualizadoEm ? `, tabela atualizada em ${origem.atualizadoEm}` : ''}`
+          : ''),
       totais: t,
       planilha: o,
     };
@@ -98,6 +139,36 @@
   // Monta a planilha a partir dos mesmos dados numéricos do cálculo. As colunas de correção, principal
   // corrigido, saldo e os totais são fórmulas do Excel (com o valor já calculado guardado), para que o
   // usuário possa conferir e editar; juros, multa e honorários vão como valores calculados pelo sistema.
+  // Aba com o quadro mês a mês de todas as parcelas; o juro de cada mês é fórmula (base x taxa ÷ dias do mês x dias de mora).
+  function abaTaxaLegal(o) {
+    const { T, N, F } = root.CentralXlsx;
+    const linhas = [[T('Juros pela taxa legal — quadro mês a mês', 'titulo')], [T('Taxa legal: art. 406 do Código Civil e Resolução CMN 5.171/2024 (Selic ÷ IPCA-15 do mês anterior, mínimo zero). Juros simples; meses incompletos proporcionais aos dias de mora; base = principal corrigido pelo IPCA até o mês anterior.', 'nota')], []];
+    const cab = ['Parcela', 'Vencimento', 'Mês', 'Dias de mora', 'Dias do mês', 'Taxa legal (%)', 'Fonte da taxa', 'IPCA do mês (%)', 'Fator de correção acumulado', 'Base de cálculo (R$)', 'Juros do mês (R$)'];
+    linhas.push(cab.map((c) => T(c, 'cabecalho')));
+    const primeira = linhas.length + 1;
+    let soma = 0;
+    o.resultados.forEach((r, i) => {
+      const jm = r.jurosMensal;
+      if (!jm) return;
+      const p = o.parcelas[i];
+      jm.meses.forEach((x) => {
+        const n = linhas.length + 1;
+        soma += x.juros;
+        linhas.push([
+          T(`${i + 1} — ${p.descricao}${p.competencia ? ` (${p.competencia})` : ''}`, 'texto'), T(p.vencimento), T(mesBR(x.mes)), N(x.dias), N(x.diasMes),
+          x.taxa === null ? T('—') : N(x.taxa / 100, 'percentual6'), T(x.taxa === null ? '—' : rotuloFonte(x.fonteTaxa)), x.ipcaMes === null ? T('—') : N(x.ipcaMes / 100, 'percentual'),
+          N(x.fatorBase, 'fator'), N(x.base, 'moeda'), x.taxa === null ? N(x.juros, 'moeda') : F(`ROUND(J${n}*F${n}/E${n}*D${n},2)`, x.juros, 'moeda'),
+        ]);
+      });
+    });
+    const ultima = linhas.length;
+    linhas.push([T('Total dos juros', 'totalTexto'), ...Array(9).fill(0).map(() => T('', 'totalTexto')), F(`SUM(K${primeira}:K${ultima})`, Math.round(soma * 100) / 100, 'totalMoeda')]);
+    linhas.push([]);
+    linhas.push([T(fonteTaxaLegal(o.resultados), 'nota')]);
+    avisosTaxaLegal(o.resultados).forEach((a) => linhas.push([T(`Atenção: ${a}`, 'nota')]));
+    return { nome: 'Juros taxa legal', larguras: [34, 13, 10, 12, 12, 14, 12, 14, 18, 18, 18], linhas };
+  }
+
   function montarPlanilha(o) {
     const X = root.CentralXlsx;
     const { T, N, F } = X;
@@ -154,11 +225,10 @@
     (o.criterios || []).forEach((c) => criterios.push([T(c[0], 'rotulo'), T(c[1], 'texto')]));
     if (o.observacoes) criterios.push([T('Observações', 'rotulo'), T(o.observacoes, 'texto')]);
 
-    return { abas: [
-      { nome: 'Cálculo', larguras: [6, 34, 13, 16, 14, 16, 16, 14, 14, 14, 14, 18, 18], linhas },
-      { nome: 'Memória', larguras: [34, 8, 110], linhas: memoria },
-      { nome: 'Critérios', larguras: [34, 110], linhas: criterios },
-    ] };
+    const abas = [{ nome: 'Cálculo', larguras: [6, 34, 13, 16, 14, 16, 16, 14, 14, 14, 14, 18, 18], linhas }];
+    if (temTaxaLegal(o.resultados)) abas.push(abaTaxaLegal(o));
+    abas.push({ nome: 'Memória', larguras: [34, 8, 110], linhas: memoria }, { nome: 'Critérios', larguras: [34, 110], linhas: criterios });
+    return { abas };
   }
 
 
@@ -232,6 +302,7 @@
       doc.secao('Memória de cálculo');
       memorias.forEach((x) => { doc.paragrafo(x.rotulo, { cor: '0.078 0.141 0.227' }); doc.lista(String(x.texto).split('\n')); doc.espaco(4); });
     }
+    if (reg.avisos && reg.avisos.length) { doc.secao('Avisos'); reg.avisos.forEach((a) => doc.paragrafo(a)); }
     if (reg.observacoes) { doc.secao('Observações'); doc.paragrafo(reg.observacoes); }
     doc.espaco(8);
     if (reg.fonte) doc.paragrafo(`${reg.fonte}.`, { tam: 7.5, cor: '0.392 0.455 0.545' });

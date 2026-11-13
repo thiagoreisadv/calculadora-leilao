@@ -27,7 +27,11 @@
     } else {
       linhas.push(['Correção monetária', 'Percentual acumulado ou valor já corrigido, por parcela']);
     }
-    if (c.juros && c.juros.ativo) {
+    if (c.juros && c.juros.ativo && c.juros.criterio === 'taxaLegal') {
+      const tl = K.taxaLegalCarregada();
+      linhas.push(['Juros moratórios', `Taxa legal (art. 406 do Código Civil; Resolução CMN 5.171/2024: Selic ÷ IPCA-15 do mês anterior, mínimo zero), juros simples mês a mês do vencimento até a data final, com meses incompletos proporcionais aos dias de mora e base de cálculo igual ao principal corrigido pelo IPCA até o mês anterior a cada mês${tl && tl.atualizadoEm ? ` (séries atualizadas em ${tl.atualizadoEm})` : ''}`]);
+      linhas.push(['Início da correção', c.inicioCorrecao === 'mesSeguinte' ? 'Mês seguinte ao do vencimento' : 'Mês do vencimento']);
+    } else if (c.juros && c.juros.ativo) {
       linhas.push(['Juros moratórios', `${R.formatarPercentual(R.lerValor(c.juros.percentual))} ${c.juros.periodicidade === 'anual' ? 'ao ano' : 'ao mês'}, ${c.juros.modalidade === 'compostos' ? 'compostos (capitalizados)' : 'simples'}, do vencimento até a data final, sobre o principal corrigido; período = meses completos + dias restantes ÷ 30`]);
     } else {
       linhas.push(['Juros moratórios', 'Não aplicados']);
@@ -47,9 +51,11 @@
     const [estado, definir] = useState(() => ({ ...(window.CentralIndicesEstado || { status: 'carregando' }) }));
     useEffect(() => {
       const f = (e) => definir({ ...e.detail });
+      const g = () => definir({ ...(window.CentralIndicesEstado || { status: 'carregando' }), taxaLegal: window.CentralTaxaLegalEstado && window.CentralTaxaLegalEstado.status });
       window.addEventListener('central-indices', f);
+      window.addEventListener('central-taxa-legal', g);
       if (window.CentralIndicesEstado) definir({ ...window.CentralIndicesEstado });
-      return () => window.removeEventListener('central-indices', f);
+      return () => { window.removeEventListener('central-indices', f); window.removeEventListener('central-taxa-legal', g); };
     }, []);
     return estado;
   }
@@ -293,10 +299,21 @@
           <Selecao rotulo="Parcelas que vencem depois da data final" valor={c.vincendas || 'antecipar'} onChange={(v) => alterar({ vincendas: v })} erro={erro('vincendas')} className="sm:col-span-2"
             opcoes={[{ valor: 'antecipar', rotulo: 'Vencimento antecipado (sem juros, com multa)' }, { valor: 'excluir', rotulo: 'Fora do cálculo' }]} />
         </div>
+        <Selecao rotulo="Início da correção pelo índice" valor={c.inicioCorrecao || 'mesVencimento'} onChange={(v) => alterar({ inicioCorrecao: v })} erro={erro('inicioCorrecao')}
+          opcoes={[{ valor: 'mesVencimento', rotulo: 'Mês do vencimento (padrão)' }, { valor: 'mesSeguinte', rotulo: 'Mês seguinte ao vencimento' }]} />
         <div className="rounded-[10px] border border-border divide-y divide-border">
           <div className="p-4 space-y-3">
             <Chave rotulo="Juros moratórios" marcado={c.juros.ativo} onChange={(v) => alterar({ juros: { ...c.juros, ativo: v } })} />
             {c.juros.ativo && (
+              <div className="space-y-3 section-open">
+                <Selecao rotulo="Critério de juros" valor={c.juros.criterio || 'fixa'} onChange={(v) => alterar({ juros: { ...c.juros, criterio: v } })} erro={erro('jurosCriterio')}
+                  opcoes={[{ valor: 'fixa', rotulo: 'Taxa fixa' }, { valor: 'taxaLegal', rotulo: 'Taxa legal (art. 406 CC)' }]} />
+                {c.juros.criterio === 'taxaLegal' && (
+                  <p className="text-xs text-muted-foreground">Juros simples mês a mês pela taxa legal (Selic ÷ IPCA-15, Resolução CMN 5.171/2024), sobre o principal corrigido pelo IPCA até o mês anterior. Use a correção "IPCA" nas parcelas.</p>
+                )}
+              </div>
+            )}
+            {c.juros.ativo && c.juros.criterio !== 'taxaLegal' && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 section-open">
                 <CampoPercentual rotulo="Taxa de juros" valor={c.juros.percentual} onChange={(v) => alterar({ juros: { ...c.juros, percentual: v } })} erro={erro('jurosPercentual')} />
                 <Selecao rotulo="Taxa" valor={c.juros.periodicidade} onChange={(v) => alterar({ juros: { ...c.juros, periodicidade: v } })} opcoes={[{ valor: 'mensal', rotulo: 'Ao mês' }, { valor: 'anual', rotulo: 'Ao ano' }]} erro={erro('jurosPeriodicidade')} />

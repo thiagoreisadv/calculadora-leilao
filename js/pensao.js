@@ -47,7 +47,8 @@
 
   function valorDevido(f, c) {
     if (f.fixacao.tipo === 'valor_fixo') return R.arredondar(R.lerValor(f.fixacao.valorFixo));
-    if (EM_PERCENTUAL.includes(f.fixacao.tipo)) return R.arredondar(R.lerValor(f.fixacao.percentual) / 100 * baseDoMes(f, c));
+    // Percentual sobre a base: o centavo é truncado (arredondado para baixo), sem perder frações de um percentual decimal (ex.: 33,3333333%).
+    if (EM_PERCENTUAL.includes(f.fixacao.tipo)) return Math.floor(R.lerValor(f.fixacao.percentual) / 100 * baseDoMes(f, c) * 100 + 1e-6) / 100;
     if (f.fixacao.tipo === 'manual') return R.arredondar(R.lerValor(c.valor));
     return NaN;
   }
@@ -64,7 +65,7 @@
     return (
       <div className="rounded-lg bg-field border border-border px-3 py-2 text-[13px] flex flex-wrap gap-x-4 gap-y-1">
         <span className="text-muted-foreground">Salário mínimo atual ({comp}): <span className="text-foreground tabular-nums">{R.formatarMoeda(sm)}</span></span>
-        {pct > 0 && <span className="text-muted-foreground">Pensão: <span className="text-primary-text tabular-nums">{R.formatarMoeda(R.arredondar(pct / 100 * sm))}</span> por mês</span>}
+        {pct > 0 && <span className="text-muted-foreground">Pensão: <span className="text-primary-text tabular-nums">{R.formatarMoeda(Math.floor(pct / 100 * sm * 100 + 1e-6) / 100)}</span> por mês</span>}
       </div>
     );
   }

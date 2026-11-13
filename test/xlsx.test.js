@@ -94,3 +94,51 @@ test('nome do arquivo é seguro', () => {
   const { nome } = Reg.baixarPlanilha(entrada(), 'Débito: Fulano / 2025!');
   assert.equal(nome, 'Debito-Fulano-2025-planilha.xlsx');
 });
+
+// ---------- Taxa legal: demonstrativo, Excel e PDF (Teste A de ponta a ponta) ----------
+
+test('Teste A de ponta a ponta: parcelas, totais, quadro mês a mês, Excel e PDF', () => {
+  C.definirIndices(require('../dados/indices.json'));
+  C.definirTaxaLegal(require('../dados/taxa-legal.json'));
+  globalThis.CentralCalculo = C;
+  const criterios = { ...C.criteriosPadrao(), dataFinal: '13/11/2026', juros: { ativo: true, criterio: 'taxaLegal', percentual: '', periodicidade: 'mensal', modalidade: 'simples' } };
+  const venc = ['10/08/2026', '10/09/2026', '10/10/2026'];
+  const lista = venc.map((v) => ({ descricao: 'Competência', vencimento: v, valor: '540,33', correcao: { ...C.correcaoPadrao(), modo: 'indice', indice: 'IPCA' }, pagamentos: [] }));
+  assert.deepEqual(C.validarCalculo(criterios, lista, 'Competência'), []);
+  const resultados = lista.map((p) => C.calcularParcela(p, criterios));
+  const totais = C.consolidar(resultados, {});
+  assert.equal(totais.original, 1620.99);
+  assert.ok(Math.abs(totais.correcao - 9.4) <= 0.02);
+  assert.ok(Math.abs(totais.juros - 28.5) <= 0.02, `juros ${totais.juros}`);
+  assert.ok(Math.abs(totais.saldoFinal - 1658.89) <= 0.02, `total ${totais.saldoFinal}`);
+  assert.equal(resultados[0].jurosMensal.meses.length, 4);
+  assert.ok(resultados[0].memoria.some((l) => /taxa legal/i.test(l)));
+
+  const entrada = { tipo: 'pensao', titulo: 'Pensão', identificacao: [], criterios: [], parcelas: lista.map((p) => ({ descricao: p.descricao, vencimento: p.vencimento })), resultados, totais, dataFinal: '13/11/2026' };
+  const reg = Reg.montarCalculo(entrada);
+  const quadros = reg.secoes.filter((s) => /taxa legal/.test(s.titulo));
+  assert.equal(quadros.length, 3);
+  assert.deepEqual(quadros[0].colunas, ['Mês', 'Dias de mora', 'Taxa legal (%)', 'Fonte da taxa', 'IPCA do mês (%)', 'Fator de correção acumulado', 'Base de cálculo (R$)', 'Juros do mês (R$)']);
+  assert.equal(quadros[0].linhas[0][2], '1,154527');
+  assert.equal(quadros[0].linhas[0][3], 'oficial');
+  assert.match(reg.fonte, /IBGE.*IPCA-15.*Banco Central.*Selic.*Resolução CMN 5\.171\/2024/);
+
+  const xlsx = lerZip(Reg.baixarPlanilha(entrada, 'Pensão (teste)').bytes);
+  assert.ok(Object.keys(xlsx).some((n) => /sheet2/.test(n)));
+  assert.match(Object.values(xlsx).join('\n'), /Juros taxa legal/);
+  assert.equal(Reg.baixarPlanilha(entrada, 'Pensão (teste)').nome, 'Pensao-teste-planilha.xlsx');
+
+  globalThis.CentralPdf = require('../js/pdf.js');
+  assert.ok(Reg.pdfDeRegistro(reg).length > 1000);
+  C.definirIndices(null); C.definirTaxaLegal(null);
+});
+
+test('taxa legal sem tabela carregada: validação bloqueia e o aviso de mês futuro vai para o demonstrativo', () => {
+  C.definirTaxaLegal(null);
+  const criterios = { ...C.criteriosPadrao(), dataFinal: '13/11/2026', juros: { ativo: true, criterio: 'taxaLegal' } };
+  assert.ok(C.validarCriterios(criterios).some((e) => e.campo === 'jurosCriterio'));
+  C.definirTaxaLegal(require('../dados/taxa-legal.json'));
+  const futuro = C.apurarJurosTaxaLegal({ principal: 100, vencimento: '10/12/2026', dataBase: '20/01/2027', corrigir: false });
+  assert.ok(futuro.avisos.length >= 1);
+  C.definirTaxaLegal(null);
+});

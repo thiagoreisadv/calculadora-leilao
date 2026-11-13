@@ -217,7 +217,7 @@
     return (
       <Campo rotulo={rotulo} id={id} erro={erro} ajuda={ajuda} obrigatorio={obrigatorio} className={className}>
         <div className="relative">
-          <input id={id} type="text" inputMode="decimal" value={valor || ''} placeholder={placeholder} maxLength={9}
+          <input id={id} type="text" inputMode="decimal" value={valor || ''} placeholder={placeholder} maxLength={12}
             aria-invalid={Boolean(erro)} aria-describedby={erro ? `${id}-erro` : undefined}
             onChange={(e) => onChange(e.target.value.replace(/[^\d.,]/g, ''))}
             className={`${CLASSE_ENTRADA} pr-8 tabular-nums ${bordaEntrada(erro)}`} />
