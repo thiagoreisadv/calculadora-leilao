@@ -263,5 +263,5 @@
     );
   }
 
-  window.CentralModulos = Object.assign(window.CentralModulos || {}, { ModuloParcelas, PRESETS });
+  window.CentralModulos = Object.assign(window.CentralModulos || {}, { ModuloParcelas, PRESETS, LinhaParcela, novaParcela });
 })();
