@@ -142,3 +142,66 @@ test('taxa legal sem tabela carregada: validação bloqueia e o aviso de mês fu
   assert.ok(futuro.avisos.length >= 1);
   C.definirTaxaLegal(null);
 });
+
+// ---------- Fase 4: critério por linha e memória que reabre igual ----------
+
+function entradaPlanilha(tipo) {
+  C.definirIndices(require('../dados/indices.json'));
+  C.definirTaxaLegal(require('../dados/taxa-legal.json'));
+  globalThis.CentralCalculo = C;
+  globalThis.CentralPdf = require('../js/pdf.js');
+  const criterios = { ...C.criteriosPadrao(), dataFinal: '13/11/2026', juros: { ativo: true, criterio: 'taxaLegal', percentual: '', periodicidade: 'mensal', modalidade: 'simples' } };
+  const ind = { ...C.correcaoPadrao(), modo: 'indice', indice: 'IPCA' };
+  const lista = [
+    { descricao: 'Linha legal', vencimento: '10/08/2026', valor: '540,33', correcao: ind, pagamentos: [] },
+    { descricao: 'Linha própria', vencimento: '10/09/2026', valor: '540,33', correcao: ind, pagamentos: [], jurosPct: '1' },
+  ];
+  const resultados = lista.map((p) => C.calcularParcela(p, criterios));
+  return { tipo, titulo: 'Planilha', identificacao: [], criterios: [], parcelas: lista.map((p) => ({ descricao: p.descricao, vencimento: p.vencimento })), resultados, totais: C.consolidar(resultados, {}), dataFinal: '13/11/2026' };
+}
+
+test('planilha consolidada: cada linha indica o critério de juros usado (taxa legal x taxa própria)', () => {
+  const e = entradaPlanilha('planilha');
+  assert.equal(e.resultados[0].criterioJuros, 'Taxa legal (art. 406 CC)');
+  assert.match(e.resultados[1].criterioJuros, /^1,00% ao mês, simples$/);
+  assert.equal(e.resultados[1].jurosMensal, null);
+  const reg = Reg.montarCalculo(e);
+  const principal = reg.secoes[0];
+  assert.ok(principal.colunas.includes('Critério de juros'));
+  const k = principal.colunas.indexOf('Critério de juros');
+  assert.equal(principal.linhas[0][k], 'Taxa legal (art. 406 CC)');
+  assert.equal(reg.secoes.filter((s) => /taxa legal/.test(s.titulo)).length, 1);
+  const outro = Reg.montarCalculo(entradaPlanilha('contrato'));
+  assert.ok(!outro.secoes[0].colunas.includes('Critério de juros'));
+  C.definirIndices(null); C.definirTaxaLegal(null);
+});
+
+test('memória salva grava critério, data das séries e taxas mensais e reabre igual com as séries já atualizadas', () => {
+  const reg = Reg.montarCalculo(entradaPlanilha('planilha'));
+  assert.equal(reg.taxaLegal.series.taxaLegal, require('../dados/taxa-legal.json').atualizadoEm);
+  assert.equal(reg.taxaLegal.taxas['2026-08'].taxa, 1.154527);
+  assert.equal(reg.taxaLegal.taxas['2026-08'].fonte, 'oficial');
+  assert.ok(reg.identificacao.some((p) => p[0] === 'Critério de juros'));
+  // Simula guardar no histórico (JSON) e reabrir depois, com as tabelas já substituídas por outras datas.
+  const guardado = JSON.parse(JSON.stringify(reg));
+  C.definirTaxaLegal({ atualizadoEm: '01/01/2099', taxas: { '2026-08': { taxa: 9, fonte: 'calculada' } } });
+  assert.match(guardado.fonte, new RegExp(guardado.taxaLegal.series.taxaLegal.replace(/\//g, '\/')));
+  const xlsx = Object.values(lerZip(Reg.baixarPlanilha(guardado.planilha, 'x').bytes)).join('\n');
+  assert.ok(xlsx.includes(guardado.taxaLegal.series.taxaLegal));
+  assert.ok(!xlsx.includes('01/01/2099'));
+  assert.deepEqual(Reg.montarCalculo(guardado.planilha).secoes, reg.secoes);
+  assert.ok(Reg.pdfDeRegistro(guardado).length > 1000);
+  C.definirIndices(null); C.definirTaxaLegal(null);
+});
+
+test('Aluguéis e Acordos: o critério de juros da taxa legal vale para qualquer parcela (mesmo motor)', () => {
+  C.definirIndices(require('../dados/indices.json'));
+  C.definirTaxaLegal(require('../dados/taxa-legal.json'));
+  const criterios = { ...C.criteriosPadrao(), dataFinal: '13/11/2026', multa: { ativo: true, percentual: '2' }, juros: { ativo: true, criterio: 'taxaLegal' } };
+  const p = { descricao: 'Aluguel', vencimento: '10/09/2026', valor: '1.000,00', correcao: { ...C.correcaoPadrao(), modo: 'indice', indice: 'IPCA' }, pagamentos: [] };
+  assert.deepEqual(C.validarCalculo(criterios, [p], 'Aluguel'), []);
+  const r = C.calcularParcela(p, criterios);
+  assert.equal(r.jurosMensal.meses.length, 3);
+  assert.ok(r.multa > 0 && r.juros > 0);
+  C.definirIndices(null); C.definirTaxaLegal(null);
+});

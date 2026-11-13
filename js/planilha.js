@@ -109,17 +109,17 @@
     const m = R.formatarMoeda;
     function celulas(i) {
       const x = res.resultados[i]; const l = res.linhas[i]; const o = res.outros[i];
-      return [i + 1, l.descricao || '—', l.competencia || '—', l.vencimento, m(x.original), `${m(x.correcao.valorCorrecao)}${x.correcao.modo === 'percentual' ? ` (${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'indice' ? ` (${x.correcao.nomeIndice} ${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'valorCorrigido' ? ' (valor corrigido)' : ''}`, m(x.juros), m(x.multa), o ? m(o) : '—', x.pagamentos ? `-${m(x.pagamentos)}` : '—', m(x.saldo + o)];
+      return [i + 1, l.descricao || '—', l.competencia || '—', l.vencimento, m(x.original), `${m(x.correcao.valorCorrecao)}${x.correcao.modo === 'percentual' ? ` (${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'indice' ? ` (${x.correcao.nomeIndice} ${R.formatarPercentual(x.correcao.percentual)})` : x.correcao.modo === 'valorCorrigido' ? ' (valor corrigido)' : ''}`, m(x.juros), x.criterioJuros || '—', m(x.multa), o ? m(o) : '—', x.pagamentos ? `-${m(x.pagamentos)}` : '—', m(x.saldo + o)];
     }
 
     function exportarCsv() {
       const linhas = res.resultados.map((x, i) => {
         const l = res.linhas[i]; const o = res.outros[i];
-        return [i + 1, l.descricao, l.competencia, l.vencimento, R.numeroCSV(x.original), R.numeroCSV(x.correcao.valorCorrecao), R.numeroCSV(x.principalCorrigido), R.numeroCSV(x.juros), R.numeroCSV(x.multa), R.numeroCSV(x.honorarios), R.numeroCSV(o), R.numeroCSV(-x.pagamentos), R.numeroCSV(x.saldo + o)];
+        return [i + 1, l.descricao, l.competencia, l.vencimento, R.numeroCSV(x.original), R.numeroCSV(x.correcao.valorCorrecao), R.numeroCSV(x.principalCorrigido), R.numeroCSV(x.juros), x.criterioJuros || '', R.numeroCSV(x.multa), R.numeroCSV(x.honorarios), R.numeroCSV(o), R.numeroCSV(-x.pagamentos), R.numeroCSV(x.saldo + o)];
       });
       const t = res.totais;
-      linhas.push(['', 'TOTAL', '', '', R.numeroCSV(t.original), R.numeroCSV(t.correcao), R.numeroCSV(t.principalCorrigido), R.numeroCSV(t.juros), R.numeroCSV(t.multa), R.numeroCSV(t.honorarios), R.numeroCSV(t.encargosNominais), R.numeroCSV(-t.pagamentos), R.numeroCSV(t.saldoFinal)]);
-      const csv = R.gerarCSV(['Número', 'Descrição', 'Competência', 'Vencimento', 'Valor original', 'Correção monetária', 'Principal corrigido', 'Juros', 'Multa', 'Honorários', 'Outros encargos', 'Pagamentos', 'Saldo atualizado'], linhas);
+      linhas.push(['', 'TOTAL', '', '', R.numeroCSV(t.original), R.numeroCSV(t.correcao), R.numeroCSV(t.principalCorrigido), R.numeroCSV(t.juros), '', R.numeroCSV(t.multa), R.numeroCSV(t.honorarios), R.numeroCSV(t.encargosNominais), R.numeroCSV(-t.pagamentos), R.numeroCSV(t.saldoFinal)]);
+      const csv = R.gerarCSV(['Número', 'Descrição', 'Competência', 'Vencimento', 'Valor original', 'Correção monetária', 'Principal corrigido', 'Juros', 'Critério de juros', 'Multa', 'Honorários', 'Outros encargos', 'Pagamentos', 'Saldo atualizado'], linhas);
       UI.baixarArquivo(UI.nomeArquivo(f.titulo || 'planilha-debitos', 'csv'), csv, 'text/csv;charset=utf-8');
     }
 
@@ -215,9 +215,9 @@
         <Cartao titulo="Detalhes da planilha" descricao={`Calculado até ${f.criterios.dataFinal}, com a correção monetária escolhida em cada linha.`} className="section-open print-hide">
           <div className="space-y-3">
             {res.aVencer.length > 0 && <Alerta tipo="aviso">Fora do cálculo por vencerem depois da data final ({f.criterios.dataFinal}): {res.aVencer.map((l) => `${l.descricao || 'linha'} (${l.vencimento})`).join(', ')}.</Alerta>}
-            <Tabela legenda="Planilha consolidada" colunas={['Nº', 'Descrição', 'Competência', 'Vencimento', 'Valor original', 'Correção monetária', 'Juros', 'Multa', 'Outros encargos', 'Pagamentos', 'Saldo atualizado']} numericas={[4, 5, 6, 7, 8, 9, 10]}
+            <Tabela legenda="Planilha consolidada" colunas={['Nº', 'Descrição', 'Competência', 'Vencimento', 'Valor original', 'Correção monetária', 'Juros', 'Critério de juros', 'Multa', 'Outros encargos', 'Pagamentos', 'Saldo atualizado']} numericas={[4, 5, 6, 8, 9, 10, 11]}
               linhas={res.resultados.map((_, i) => celulas(i))}
-              rodape={['', 'Totais', '', '', m(res.totais.original), m(res.totais.correcao), m(res.totais.juros), m(res.totais.multa), m(res.totais.encargosNominais), res.totais.pagamentos ? `-${m(res.totais.pagamentos)}` : '—', m(res.totais.saldoFinal)]} />
+              rodape={['', 'Totais', '', '', m(res.totais.original), m(res.totais.correcao), m(res.totais.juros), '', m(res.totais.multa), m(res.totais.encargosNominais), res.totais.pagamentos ? `-${m(res.totais.pagamentos)}` : '—', m(res.totais.saldoFinal)]} />
             <p className="text-xs text-muted-foreground">O saldo de cada linha inclui honorários em percentual, quando aplicados. Honorários de valor fixo entram uma única vez no total.</p>
           </div>
         </Cartao>

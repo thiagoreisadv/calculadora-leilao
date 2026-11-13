@@ -46,11 +46,25 @@
     return lista;
   }
 
-  function fonteTaxaLegal(resultados) {
+  // Datas de atualização das séries usadas: as gravadas com o cálculo (series) ou, na primeira geração, as da tabela carregada.
+  function seriesDoCalculo(o) {
+    if (o.series) return o.series;
     const K = root.CentralCalculo;
     const tl = K && K.taxaLegalCarregada && K.taxaLegalCarregada();
     const ind = K && K.indicesCarregados && K.indicesCarregados();
-    return `Fontes: IBGE (IPCA e IPCA-15); Banco Central do Brasil (Selic e taxa legal); Resolução CMN 5.171/2024. Séries da taxa legal atualizadas em ${tl && tl.atualizadoEm ? tl.atualizadoEm : 'data não informada'}; tabela de índices atualizada em ${ind && ind.atualizadoEm ? ind.atualizadoEm : 'data não informada'}`;
+    return { taxaLegal: tl && tl.atualizadoEm ? tl.atualizadoEm : '', indices: ind && ind.atualizadoEm ? ind.atualizadoEm : '' };
+  }
+
+  function fonteTaxaLegal(o) {
+    const s = seriesDoCalculo(o);
+    return `Fontes: IBGE (IPCA e IPCA-15); Banco Central do Brasil (Selic e taxa legal); Resolução CMN 5.171/2024. Séries da taxa legal atualizadas em ${s.taxaLegal || 'data não informada'}; tabela de índices atualizada em ${s.indices || 'data não informada'}`;
+  }
+
+  // Taxa legal de cada mês usada no cálculo (mês -> { taxa, fonte }), gravada na memória para reabrir igual depois.
+  function taxasUsadas(resultados) {
+    const t = {};
+    (resultados || []).forEach((r) => (r.jurosMensal ? r.jurosMensal.meses : []).forEach((x) => { if (x.taxa !== null) t[x.mes] = { taxa: x.taxa, fonte: x.fonteTaxa }; }));
+    return t;
   }
 
   function secoesTaxaLegal(o) {
@@ -73,6 +87,9 @@
   function montarCalculo(o) {
     const t = o.totais;
     const origem = origemCorrecao(o.resultados);
+    const comTaxaLegal = temTaxaLegal(o.resultados);
+    const series = comTaxaLegal ? seriesDoCalculo(o) : null;
+    o = comTaxaLegal ? { ...o, series } : o;
     const rotuloCorrecao = 'Correção monetária';
     const comHonorarios = t.honorarios !== 0;
     const resumo = [
@@ -87,18 +104,22 @@
     resumo.push(['Pagamentos', t.pagamentos ? `-${m(t.pagamentos)}` : m(0)]);
     if (t.creditoNaoImputado !== 0) resumo.push(['Excedente de pagamentos (não imputado)', m(t.creditoNaoImputado)]);
 
+    const comCriterio = o.tipo === 'planilha';
     const colunas = ['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Correção monetária', 'Principal corrigido', 'Juros', 'Multa'];
+    if (comCriterio) colunas.push('Critério de juros');
     if (comHonorarios) colunas.push('Honorários');
     colunas.push('Pagamentos', 'Saldo atualizado');
     const linhas = o.resultados.map((r, i) => {
       const p = o.parcelas[i];
       const base = [String(i + 1), p.competencia ? `${p.descricao} (${p.competencia})` : p.descricao, p.vencimento, m(r.original), textoCorrecao(r.correcao), m(r.principalCorrigido), m(r.juros), m(r.multa)];
+      if (comCriterio) base.push(r.criterioJuros || '—');
       if (comHonorarios) base.push(m(r.honorarios));
       base.push(r.pagamentos ? `-${m(r.pagamentos)}` : '—', m(r.saldo));
       return base;
     });
-    const numericas = colunas.map((c, i) => (i >= 3 && i !== 4 ? i : -1)).filter((i) => i >= 0);
+    const numericas = colunas.map((c, i) => (i >= 3 && i !== 4 && c !== 'Critério de juros' ? i : -1)).filter((i) => i >= 0);
     const rodape = ['', 'Totais', '', m(t.original), m(t.correcao), m(t.principalCorrigido), m(t.juros), m(t.multa)];
+    if (comCriterio) rodape.push('');
     if (comHonorarios) rodape.push(m(t.honorarios - t.honorariosFixos));
     rodape.push(t.pagamentos ? `-${m(t.pagamentos)}` : '—', m(t.saldo));
 
@@ -115,8 +136,9 @@
       geradoEm: new Date().toISOString(),
       dataReferencia: o.dataFinal,
       profissional: profissional(),
-      identificacao: o.identificacao || [],
+      identificacao: (o.identificacao || []).concat(comTaxaLegal ? [['Critério de juros', 'Taxa legal (art. 406 do Código Civil)'], ['Séries atualizadas em', `taxa legal ${series.taxaLegal || 'não informado'}; índices ${series.indices || 'não informado'}`]] : []),
       criterios: o.criterios || [],
+      taxaLegal: comTaxaLegal ? { series, taxas: taxasUsadas(o.resultados) } : null,
       resumo: resumo.concat(o.notasResumo || []),
       total: { rotulo: 'Saldo final atualizado', valor: m(t.saldoFinal) },
       secoes,
@@ -124,8 +146,8 @@
       alertas: (o.alertas || []).concat(avisos.map((mensagem) => ({ tipo: 'aviso', mensagem }))),
       avisos,
       observacoes: [o.observacoes, notaTotal.length ? `O saldo final inclui, além do total das parcelas: ${notaTotal.join(' e ')}.` : ''].filter(Boolean).join('\n'),
-      fonte: temTaxaLegal(o.resultados)
-        ? fonteTaxaLegal(o.resultados)
+      fonte: comTaxaLegal
+        ? fonteTaxaLegal(o)
         : (origem.comIndice
           ? `Índices de correção: Banco Central do Brasil (SGS)${origem.atualizadoEm ? `, tabela atualizada em ${origem.atualizadoEm}` : ''}`
           : ''),
@@ -164,7 +186,7 @@
     const ultima = linhas.length;
     linhas.push([T('Total dos juros', 'totalTexto'), ...Array(9).fill(0).map(() => T('', 'totalTexto')), F(`SUM(K${primeira}:K${ultima})`, Math.round(soma * 100) / 100, 'totalMoeda')]);
     linhas.push([]);
-    linhas.push([T(fonteTaxaLegal(o.resultados), 'nota')]);
+    linhas.push([T(fonteTaxaLegal(o), 'nota')]);
     avisosTaxaLegal(o.resultados).forEach((a) => linhas.push([T(`Atenção: ${a}`, 'nota')]));
     return { nome: 'Juros taxa legal', larguras: [34, 13, 10, 12, 12, 14, 12, 14, 18, 18, 18], linhas };
   }
@@ -184,6 +206,7 @@
     (o.identificacao || []).filter((p) => p[1] && String(p[1]).trim()).forEach((p) => linhas.push([T(`${p[0]}:`, 'rotulo'), T(p[1])]));
     linhas.push([]);
     const cab = ['Nº', 'Descrição', 'Vencimento', 'Valor original', 'Correção (%)', 'Correção monetária (R$)', 'Principal corrigido', 'Juros', 'Multa', 'Honorários', 'Pagamentos', 'Excedente de pagamentos (não imputado)', 'Saldo atualizado'];
+    if (o.tipo === 'planilha') cab.push('Critério de juros');
     linhas.push(cab.map((c) => T(c, 'cabecalho')));
     const primeira = linhas.length + 1;
     o.resultados.forEach((r, i) => {
@@ -200,6 +223,7 @@
         F(`D${n}+F${n}`, r.principalCorrigido, 'moeda'),
         N(r.juros, 'moeda'), N(r.multa, 'moeda'), N(r.honorarios, 'moeda'), N(r.pagamentos, 'moeda'), N(r.creditoNaoImputado, 'moeda'),
         F(`G${n}+H${n}+I${n}+J${n}-K${n}+L${n}`, r.saldo, 'moeda'),
+        ...(o.tipo === 'planilha' ? [T(r.criterioJuros || '—')] : []),
       ]);
     });
     const ultima = linhas.length;
@@ -225,7 +249,7 @@
     (o.criterios || []).forEach((c) => criterios.push([T(c[0], 'rotulo'), T(c[1], 'texto')]));
     if (o.observacoes) criterios.push([T('Observações', 'rotulo'), T(o.observacoes, 'texto')]);
 
-    const abas = [{ nome: 'Cálculo', larguras: [6, 34, 13, 16, 14, 16, 16, 14, 14, 14, 14, 18, 18], linhas }];
+    const abas = [{ nome: 'Cálculo', larguras: [6, 34, 13, 16, 14, 16, 16, 14, 14, 14, 14, 18, 18, 26], linhas }];
     if (temTaxaLegal(o.resultados)) abas.push(abaTaxaLegal(o));
     abas.push({ nome: 'Memória', larguras: [34, 8, 110], linhas: memoria }, { nome: 'Critérios', larguras: [34, 110], linhas: criterios });
     return { abas };

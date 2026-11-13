@@ -385,6 +385,14 @@
       ? R.arredondar(R.lerValor(criterios.honorarios.valor)) : 0;
   }
 
+  // Texto do critério de juros efetivamente usado (indicado em cada linha da planilha consolidada).
+  function rotuloCriterioJuros(juros, aVencer) {
+    if (aVencer) return 'Sem juros (a vencer)';
+    if (!juros || !juros.ativo) return 'Sem juros';
+    if (juros.criterio === 'taxaLegal') return 'Taxa legal (art. 406 CC)';
+    return descricaoTaxa(juros).replace('compostos (capitalizados)', 'compostos');
+  }
+
   function calcularParcela(parcela, criteriosGerais) {
     const c = criteriosDaParcela(parcela, criteriosGerais);
     const inicio = parcela.vencimento;
@@ -476,7 +484,7 @@
     return {
       original: correcao.original, correcao, principalCorrigido: principal,
       juros, periodo, multa, multaPct, baseMulta, multaQuitada, honorarios, pagamentos: somaPagamentos, creditoNaoImputado: credito,
-      saldoPrincipalJuros, saldo, memoria, aVencer, jurosMensal,
+      saldoPrincipalJuros, saldo, memoria, aVencer, jurosMensal, criterioJuros: rotuloCriterioJuros(c.juros, aVencer),
     };
   }
 
@@ -629,7 +637,7 @@
   return {
     MODOS_CORRECAO, INDICES, correcaoPadrao, criteriosPadrao, definirIndices, indicesCarregados, ultimoMesIndice, fatorIndice, nomeMes, salarioMinimo, competenciaAtual, chaveCompetencia,
     definirTaxaLegal, taxaLegalCarregada, arredondarNBR, fatorSelicMes, fatorIpca15, taxaLegalCalculada, taxaLegalDoMes, apurarJurosTaxaLegal,
-    aplicarCorrecao, periodoEntre, acumuladoJuros, apurarJuros,
+    aplicarCorrecao, periodoEntre, acumuladoJuros, apurarJuros, rotuloCriterioJuros,
     validarCorrecao, validarCriterios, validarParcela, validarCalculo, criteriosDaParcela, honorariosFixos,
     estaAVencer, separarVincendas, calcularParcela, consolidar, outrosEncargosTotal, particionarRitos,
   };
