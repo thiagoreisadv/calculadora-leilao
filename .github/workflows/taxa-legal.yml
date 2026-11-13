@@ -1,0 +1,43 @@
+name: Atualizar taxa legal
+
+# Segundo robô, independente do de índices (indices.yml): busca a Selic diária (Banco Central), o IPCA-15 (IBGE)
+# e a taxa legal oficial, e grava dados/taxa-legal.json e dados/taxa-legal-oficial.json (só quando algo muda).
+# Falha sem gravar se a taxa calculada divergir da oficial. Também pode ser executado à mão em Actions > "Run workflow".
+on:
+  schedule:
+    - cron: '47 12 * * *' # todo dia às 09:47 (Brasília), depois do robô de índices
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: taxa-legal
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Buscar Selic, IPCA-15 e taxa legal oficial
+        run: node scripts/atualizar-taxa-legal.js
+      - name: Gravar e publicar se mudou
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- dados/taxa-legal.json dados/taxa-legal-oficial.json && [ -z "$(git ls-files --others --exclude-standard dados)" ]; then
+            echo "Taxa legal sem mudanças."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dados/taxa-legal.json dados/taxa-legal-oficial.json
+          git commit -m "Atualiza a tabela da taxa legal"
+          git pull --rebase
+          git push
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" || echo "Não foi possível pedir a publicação do Pages agora."

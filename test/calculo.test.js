@@ -465,3 +465,112 @@ test('caso de aceite 3: R$ 15.000,00 com correção percentual de 12,9225%, juro
   const r = C.calcularParcela(parcela({ valor: '15000', vencimento: '23/04/2022', correcao: { modo: 'percentual', percentual: '12,9225' } }), crit);
   assert.equal(r.saldo, 26169.80);
 });
+
+// ---------- Taxa legal (art. 406 CC; Resolução CMN 5.171/2024) ----------
+
+const TL = require('../dados/taxa-legal.json');
+const TL_OFICIAL = require('../dados/taxa-legal-oficial.json');
+const ROBO_TL = require('../scripts/atualizar-taxa-legal.js');
+
+test('arredondamento NBR 5891: 5 exato vai para o par, demais casos arredondam normalmente', () => {
+  assert.equal(C.arredondarNBR(0.125, 2), 0.12);
+  assert.equal(C.arredondarNBR(0.135, 2), 0.14);
+  assert.equal(C.arredondarNBR(1.00907122499, 8), 1.00907122);
+  assert.equal(C.arredondarNBR(1.0030, 4), 1.003);
+});
+
+test('taxa legal: ago/2024 e set/2024 reproduzem as taxas oficiais do Banco Central', () => {
+  const porMes = ROBO_TL.agruparPorMes(TL.selicDiaria);
+  assert.equal(C.taxaLegalCalculada(porMes['2024-07'], TL.ipca15['2024-07']).taxa, 0.605306);
+  assert.equal(C.taxaLegalCalculada(porMes['2024-08'], TL.ipca15['2024-08']).taxa, 0.676227);
+});
+
+test('taxa legal: todos os meses calculados batem com a taxa oficial (tolerância de 0,000001)', () => {
+  const porMes = ROBO_TL.agruparPorMes(TL.selicDiaria);
+  const meses = Object.keys(TL_OFICIAL.taxas);
+  assert.ok(meses.length >= 28);
+  meses.forEach((m) => {
+    const ant = ROBO_TL.mesAnterior(m);
+    const calc = C.taxaLegalCalculada(porMes[ant], TL.ipca15[ant]);
+    assert.ok(Math.abs(calc.taxa - TL_OFICIAL.taxas[m]) <= 0.000001, `${m}: ${calc.taxa} x ${TL_OFICIAL.taxas[m]}`);
+  });
+});
+
+test('taxa legal: piso zero quando o IPCA-15 supera a Selic (mar/2025)', () => {
+  assert.equal(TL.taxas['2025-03'].taxa, 0);
+  const porMes = ROBO_TL.agruparPorMes(TL.selicDiaria);
+  assert.equal(C.taxaLegalCalculada(porMes['2025-02'], TL.ipca15['2025-02']).taxa, 0);
+});
+
+test('robô da taxa legal: falha, sem montar tabela, se a calculada divergir da oficial', () => {
+  const selicDiaria = {};
+  TL.selicDiaria && Object.keys(TL.selicDiaria).filter((d) => d.startsWith('2024-07')).forEach((d) => { selicDiaria[d] = TL.selicDiaria[d]; });
+  const base = { selicDiaria, ipca15: { '2024-07': 0.3 }, mesAtual: '2024-08' };
+  const ok = ROBO_TL.montarTabela({ ...base, oficial: { taxaLegal: { '2024-08': 0.605306 }, fatorSelic: {}, fatorIpca: {} } });
+  assert.equal(ok['2024-08'].fonte, 'oficial');
+  assert.throws(() => ROBO_TL.montarTabela({ ...base, oficial: { taxaLegal: { '2024-08': 0.61 }, fatorSelic: {}, fatorIpca: {} } }), /diverge da oficial/);
+});
+
+test('taxa legal: mês ainda sem taxa usa a última divulgada e avisa', () => {
+  const r = C.taxaLegalDoMes('2027-06', TL);
+  assert.equal(r.mes, Object.keys(TL.taxas).sort().pop());
+  assert.match(r.aviso, /ainda não divulgada/);
+  assert.equal(C.taxaLegalDoMes('2026-08', TL).aviso, null);
+  assert.equal(C.taxaLegalDoMes('2024-01', TL).taxa, null);
+});
+
+const PROVISORIA = { taxas: { '2026-08': { taxa: 1.159304 }, '2026-09': { taxa: 1.495984 }, '2026-10': { taxa: 0.377358 }, '2026-11': { taxa: 0.747608 } } };
+const PARCELAS_A = ['10/08/2026', '10/09/2026', '10/10/2026'];
+
+function pensaoTeste(inicioCorrecao, tabela) {
+  C.definirIndices(require('../dados/indices.json'));
+  return PARCELAS_A.map((v) => {
+    const f = C.fatorIndice('IPCA', inicioCorrecao === 'mesSeguinte' ? require('../js/regras.js').adicionarMeses(v, 1) : v, '13/11/2026');
+    const correcao = require('../js/regras.js').arredondar(540.33 * f.fator - 540.33);
+    const j = C.apurarJurosTaxaLegal({ principal: 540.33, vencimento: v, dataBase: '13/11/2026', inicioCorrecao, tabela });
+    return { correcao, juros: j.total, meses: j.meses };
+  });
+}
+const soma = (l, k) => Math.round(l.reduce((s, x) => s + x[k], 0) * 100) / 100;
+
+test('Teste A com as taxas provisórias antigas: reproduz os juros por parcela esperados (R$ 16,11 / 9,21 / 3,13)', () => {
+  const r = pensaoTeste('mesVencimento', PROVISORIA);
+  [16.11, 9.21, 3.13].forEach((esp, i) => assert.ok(Math.abs(r[i].juros - esp) <= 0.02, `parcela ${i + 1}: ${r[i].juros} x ${esp}`));
+  [3.45, 5.19, 0.76].forEach((esp, i) => assert.ok(Math.abs(r[i].correcao - esp) <= 0.02));
+});
+
+test('Teste A (taxas oficiais): correção 9,40, juros 28,50 e total 1.658,89 (±0,02)', () => {
+  const r = pensaoTeste('mesVencimento', TL);
+  assert.ok(Math.abs(soma(r, 'correcao') - 9.4) <= 0.02);
+  assert.ok(Math.abs(soma(r, 'juros') - 28.5) <= 0.02, `juros ${soma(r, 'juros')}`);
+  assert.ok(Math.abs(1620.99 + soma(r, 'correcao') + soma(r, 'juros') - 1658.89) <= 0.02);
+});
+
+test('Teste B (início da correção no mês seguinte, taxas oficiais): correção 5,95, juros 28,51 e total 1.655,45 (±0,02)', () => {
+  const r = pensaoTeste('mesSeguinte', TL);
+  assert.ok(Math.abs(soma(r, 'correcao') - 5.95) <= 0.02);
+  assert.ok(Math.abs(soma(r, 'juros') - 28.51) <= 0.02, `juros ${soma(r, 'juros')}`);
+  assert.ok(Math.abs(1620.99 + soma(r, 'correcao') + soma(r, 'juros') - 1655.45) <= 0.02);
+});
+
+test('juros pela taxa legal: dias proporcionais nos meses de ponta e quadro mês a mês coerente', () => {
+  const r = C.apurarJurosTaxaLegal({ principal: 540.33, vencimento: '10/08/2026', dataBase: '13/11/2026', tabela: TL });
+  assert.deepEqual(r.meses.map((m) => m.mes), ['2026-08', '2026-09', '2026-10', '2026-11']);
+  assert.deepEqual(r.meses.map((m) => m.dias), [21, 30, 31, 13]);
+  assert.equal(r.total, Math.round(r.meses.reduce((s, m) => s + m.juros, 0) * 100) / 100);
+  assert.equal(r.meses[0].base, 540.33);
+  assert.equal(r.meses[0].fonteTaxa, 'oficial');
+});
+
+test('juros pela taxa legal: sem correção a base é o principal; mesmo mês usa a diferença de dias', () => {
+  const r = C.apurarJurosTaxaLegal({ principal: 1000, vencimento: '10/08/2026', dataBase: '25/08/2026', corrigir: false, tabela: TL });
+  assert.equal(r.meses.length, 1);
+  assert.equal(r.meses[0].dias, 15);
+  assert.equal(r.meses[0].juros, Math.round((1000 * 1.154527 / 100 / 31 * 15) * 100) / 100);
+  assert.equal(C.apurarJurosTaxaLegal({ principal: 1000, vencimento: '10/08/2026', dataBase: '10/08/2026', tabela: TL }).total, 0);
+});
+
+test('Teste D: a taxa fixa de 1% ao mês simples continua igual (a taxa legal não altera apurarJuros)', () => {
+  const r = C.apurarJuros({ principal: 1000, config: { ativo: true, percentual: '1', periodicidade: 'mensal', modalidade: 'simples' }, inicio: '10/01/2025', fim: '10/07/2025', pagamentos: [] });
+  assert.equal(r.valor, 60);
+});

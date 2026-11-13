@@ -519,8 +519,102 @@
     };
   }
 
+  // ---------- Taxa legal (art. 406 do Código Civil; Resolução CMN 5.171/2024) ----------
+  // Tabela (dados/taxa-legal.json): { atualizadoEm, taxas: { 'AAAA-MM': { taxa, fonte: 'oficial'|'calculada', ... } } }
+  let tabelaTaxaLegal = null;
+  function definirTaxaLegal(dados) {
+    tabelaTaxaLegal = dados && dados.taxas ? dados : null;
+    return Boolean(tabelaTaxaLegal);
+  }
+  function taxaLegalCarregada() { return tabelaTaxaLegal; }
+
+  // Arredondamento da NBR 5891:2014 (5 exato arredonda para o par), feito sobre a representação decimal.
+  function arredondarNBR(valor, casas) {
+    const n = Number(valor);
+    if (!Number.isFinite(n)) return 0;
+    const f = 10 ** casas;
+    const y = Math.abs(n) * f;
+    const piso = Math.floor(y + 1e-9);
+    const resto = y - piso;
+    let r;
+    if (Math.abs(resto - 0.5) < 1e-7) r = piso % 2 === 0 ? piso : piso + 1;
+    else r = Math.round(y);
+    return (n < 0 ? -1 : 1) * r / f;
+  }
+
+  // Fator Selic do mês (art. 3º e 4º): produto dos fatores diários (1 + Selic anual/100)^(1/252) de cada dia útil do mês
+  // anterior ao de referência, com 8 casas. Por padrão cada fator diário também é arredondado a 8 casas (leitura que
+  // reproduz as taxas oficiais).
+  function fatorSelicMes(taxasAnuais, { arredondarDiario = true } = {}) {
+    let f = 1;
+    taxasAnuais.forEach((t) => {
+      let diario = (1 + Number(t) / 100) ** (1 / 252);
+      if (arredondarDiario) diario = arredondarNBR(diario, 8);
+      f *= diario;
+    });
+    return arredondarNBR(f, 8);
+  }
+
+  // Fator IPCA do mês (art. 5º): 1 + IPCA-15 (2 casas) do mês anterior, com 4 casas.
+  const fatorIpca15 = (variacaoPct) => arredondarNBR(1 + arredondarNBR(variacaoPct, 2) / 100, 4);
+
+  // Taxa legal do mês de referência (art. 2º): máx[Fator Selic / Fator IPCA − 1; 0] x 100, com 6 casas.
+  function taxaLegalCalculada(taxasSelicAnuais, ipca15Pct, opcoes) {
+    const fatorSelic = fatorSelicMes(taxasSelicAnuais, opcoes);
+    const fatorIpca = fatorIpca15(ipca15Pct);
+    return { fatorSelic, fatorIpca, taxa: arredondarNBR(Math.max(fatorSelic / fatorIpca - 1, 0) * 100, 6), diasUteis: taxasSelicAnuais.length };
+  }
+
+  // Taxa do mês na tabela. Se o mês ainda não foi divulgado, usa a última disponível e devolve aviso.
+  function taxaLegalDoMes(chave, tabela = tabelaTaxaLegal) {
+    const taxas = (tabela && tabela.taxas) || {};
+    if (taxas[chave] && Number.isFinite(taxas[chave].taxa)) return { taxa: taxas[chave].taxa, fonte: taxas[chave].fonte || 'calculada', mes: chave, aviso: null };
+    const anteriores = Object.keys(taxas).filter((k) => k < chave && Number.isFinite(taxas[k].taxa)).sort();
+    if (!anteriores.length) return { taxa: null, fonte: null, mes: null, aviso: `Taxa legal de ${nomeMes(chave)} indisponível.` };
+    const ult = anteriores[anteriores.length - 1];
+    return { taxa: taxas[ult].taxa, fonte: taxas[ult].fonte || 'calculada', mes: ult, aviso: `Taxa legal de ${nomeMes(chave)} ainda não divulgada: usada a de ${nomeMes(ult)} (${taxas[ult].taxa.toFixed(6).replace('.', ',')}%).` };
+  }
+
+  // Juros simples pela taxa legal, mês a mês (arts. 6º e 7º): em cada mês, taxa do mês x base / dias do mês x dias de mora.
+  // A base é o principal corrigido pelo IPCA até o mês ANTERIOR ao do juro. Mês do vencimento: dias = último dia − dia do
+  // vencimento; mês da data-base: dias = dia da data-base. inicioCorrecao: 'mesVencimento' (padrão) | 'mesSeguinte'.
+  function apurarJurosTaxaLegal({ principal, vencimento, dataBase, corrigir = true, indice = 'IPCA', inicioCorrecao = 'mesVencimento', tabela = tabelaTaxaLegal }) {
+    const v = R.lerData(vencimento);
+    const b = R.lerData(dataBase);
+    const vazio = { meses: [], total: 0, avisos: [] };
+    if (!v || !b || b.ts <= v.ts) return vazio;
+    const inicioIndice = inicioCorrecao === 'mesSeguinte' ? R.adicionarMeses(vencimento, 1) : vencimento;
+    const serie = tabelaIndices && tabelaIndices.series && tabelaIndices.series[indice];
+    const meses = [];
+    const avisos = [];
+    const faltantes = new Set();
+    let ano = v.ano; let mes = v.mes;
+    const limite = chaveMes(b.ano, b.mes);
+    while (chaveMes(ano, mes) <= limite) {
+      const k = chaveMes(ano, mes);
+      const diasMes = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+      const dias = k === chaveMes(v.ano, v.mes) && k === limite ? b.dia - v.dia : k === chaveMes(v.ano, v.mes) ? diasMes - v.dia : k === limite ? b.dia : diasMes;
+      let fatorBase = 1;
+      if (corrigir) {
+        const f = fatorIndice(indice, inicioIndice, `01/${String(mes).padStart(2, '0')}/${ano}`);
+        fatorBase = f.fator;
+        f.faltantes.forEach((x) => faltantes.add(x));
+      }
+      const t = taxaLegalDoMes(k, tabela);
+      if (t.aviso && !avisos.includes(t.aviso)) avisos.push(t.aviso);
+      const base = principal * fatorBase;
+      const juros = t.taxa === null || dias <= 0 ? 0 : R.arredondar((base * t.taxa / 100 / diasMes) * dias);
+      const ipcaMes = serie && serie.valores && typeof serie.valores[k] === 'number' ? serie.valores[k] : null;
+      meses.push({ mes: k, dias, diasMes, taxa: t.taxa, fonteTaxa: t.fonte, ipcaMes, fatorBase, base: R.arredondar(base), juros });
+      mes += 1; if (mes > 12) { mes = 1; ano += 1; }
+    }
+    if (faltantes.size) avisos.push(`Sem ${indice} divulgado para ${[...faltantes].sort().map(nomeMes).join(', ')}: mês tratado sem variação.`);
+    return { meses, total: R.arredondar(meses.reduce((s, m) => s + m.juros, 0)), avisos };
+  }
+
   return {
     MODOS_CORRECAO, INDICES, correcaoPadrao, criteriosPadrao, definirIndices, indicesCarregados, ultimoMesIndice, fatorIndice, nomeMes, salarioMinimo, competenciaAtual, chaveCompetencia,
+    definirTaxaLegal, taxaLegalCarregada, arredondarNBR, fatorSelicMes, fatorIpca15, taxaLegalCalculada, taxaLegalDoMes, apurarJurosTaxaLegal,
     aplicarCorrecao, periodoEntre, acumuladoJuros, apurarJuros,
     validarCorrecao, validarCriterios, validarParcela, validarCalculo, criteriosDaParcela, honorariosFixos,
     estaAVencer, separarVincendas, calcularParcela, consolidar, outrosEncargosTotal, particionarRitos,
