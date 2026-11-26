@@ -1,5 +1,5 @@
 {
- "atualizadoEm": "25/11/2026",
+ "atualizadoEm": "26/11/2026",
  "fonte": "Banco Central do Brasil (Selic, SGS 1178; taxa legal oficial, SGS 29543), IBGE (IPCA-15, SIDRA 3065) e Resolução CMN 5.171/2024",
  "selicDiaria": {
   "2024-07-01": 10.4,
@@ -636,7 +636,8 @@
   "2026-07": 0.06,
   "2026-08": -0.4,
   "2026-09": 0.7,
-  "2026-10": 0.32
+  "2026-10": 0.32,
+  "2026-11": 0.22
  },
  "taxas": {
   "2024-08": {
